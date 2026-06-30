@@ -71,6 +71,38 @@ export const routes: RouteRecordRaw[] = [
     meta: { layout: 'default' },
   },
 
+  // ===== Company =====
+  {
+    path: '/company/opportunities/create',
+    name: 'create-opportunity',
+    component: () => import('@/modules/opportunities/pages/CreateOpportunityPage.vue'),
+    meta: { layout: 'default' },
+  },
+  {
+    path: '/company/candidates',
+    name: 'candidates',
+    component: () => import('@/modules/candidates/pages/CandidatesPage.vue'),
+    meta: { layout: 'default' },
+  },
+  {
+    path: '/company/candidates/:id',
+    name: 'candidate-profile',
+    component: () => import('@/modules/candidates/pages/CandidateProfilePage.vue'),
+    meta: { layout: 'default' },
+  },
+  {
+    path: '/company/wishes',
+    name: 'company-wishes',
+    component: () => import('@/modules/wishes/pages/CompanyWishesPage.vue'),
+    meta: { layout: 'default' },
+  },
+  {
+    path: '/company/analytics',
+    name: 'analytics',
+    component: () => import('@/modules/analytics/pages/AnalyticsPage.vue'),
+    meta: { layout: 'default' },
+  },
+
   // ===== Errors =====
   {
     path: '/:pathMatch(.*)*',

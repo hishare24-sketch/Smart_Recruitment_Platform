@@ -20,9 +20,10 @@ export const navItems: NavItem[] = [
   { title: 'assistant', icon: 'mdi-robot-happy-outline', to: 'assistant', roles: ['seeker', 'company'] },
 
   // Company
-  { title: 'createOpportunity', icon: 'mdi-briefcase-plus-outline', to: 'opportunities', roles: ['company'] },
-  { title: 'candidates', icon: 'mdi-account-group-outline', to: 'opportunities', roles: ['company'] },
-  { title: 'analytics', icon: 'mdi-chart-box-outline', to: 'dashboard', roles: ['company'] },
+  { title: 'createOpportunity', icon: 'mdi-briefcase-plus-outline', to: 'create-opportunity', roles: ['company'] },
+  { title: 'candidates', icon: 'mdi-account-group-outline', to: 'candidates', roles: ['company'] },
+  { title: 'wishes', icon: 'mdi-hand-heart-outline', to: 'company-wishes', roles: ['company'] },
+  { title: 'analytics', icon: 'mdi-chart-box-outline', to: 'analytics', roles: ['company'] },
 
   // Admin
   { title: 'team', icon: 'mdi-shield-account-outline', to: 'dashboard', roles: ['admin'] },
