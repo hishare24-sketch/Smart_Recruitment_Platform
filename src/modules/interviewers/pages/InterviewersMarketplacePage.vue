@@ -7,7 +7,8 @@ import type { InterviewerType } from '@/stores/InterviewersStore'
 import { useProfileStore } from '@/stores/ProfileStore'
 import EmptyState from '@/components/shared/EmptyState.vue'
 import AttachmentsDialog from '@/components/shared/AttachmentsDialog.vue'
-import { ALL_SKILLS } from '@/services/taxonomy'
+import TaxonomyTree from '@/components/shared/TaxonomyTree.vue'
+import { ALL_SKILLS, categorizeSkill } from '@/services/taxonomy'
 
 const router = useRouter()
 const store = useInterviewersStore()
@@ -36,6 +37,13 @@ const selectedTypes = ref<InterviewerType[]>([])
 const selectedSkills = ref<string[]>([])
 const minRating = ref(0)
 const maxPrice = ref(500)
+const treeSel = ref<{ category?: string, sub?: string }>({})
+
+// Taxonomy tree items (skills for counting, text for sub-category keyword match)
+const treeItems = computed(() => store.interviewers.map(iv => ({
+  skills: iv.specialties,
+  text: `${iv.title} ${iv.field} ${iv.specialties.join(' ')}`,
+})))
 
 // Skill options = interviewer specialties ∪ taxonomy skills (so a pick always matches something)
 const skillOptions = computed(() =>
@@ -53,6 +61,10 @@ const filtered = computed(() =>
     if (selectedTypes.value.length && !selectedTypes.value.includes(iv.type))
       return false
     if (selectedSkills.value.length && !iv.specialties.some(s => selectedSkills.value.includes(s)))
+      return false
+    if (treeSel.value.category && !iv.specialties.some(s => categorizeSkill(s) === treeSel.value.category))
+      return false
+    if (treeSel.value.sub && !`${iv.title} ${iv.field} ${iv.specialties.join(' ')}`.includes(treeSel.value.sub))
       return false
     if (iv.rating < minRating.value)
       return false
@@ -112,6 +124,10 @@ function open(id: number) {
     <VRow>
       <!-- Filters -->
       <VCol cols="12" md="3">
+        <VCard class="pa-4 mb-4">
+          <TaxonomyTree v-model="treeSel" :items="treeItems" />
+        </VCard>
+
         <VCard class="pa-4">
           <div class="d-flex align-center justify-space-between mb-3">
             <span class="text-subtitle-2 font-weight-bold">فلترة</span>

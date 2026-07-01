@@ -6,6 +6,8 @@ import { KIND_META, STATE_META, useRequestsStore } from '@/stores/RequestsStore'
 import type { RequestKind } from '@/stores/RequestsStore'
 import { ai } from '@/services/ai'
 import EmptyState from '@/components/shared/EmptyState.vue'
+import TaxonomyTree from '@/components/shared/TaxonomyTree.vue'
+import { categorizeSkill } from '@/services/taxonomy'
 
 const router = useRouter()
 const store = useRequestsStore()
@@ -20,6 +22,12 @@ const selectedField = ref<string | null>(null)
 const remoteOnly = ref(false)
 const maxWeeks = ref(20)
 const minBudget = ref(0)
+const treeSel = ref<{ category?: string, sub?: string }>({})
+
+const treeItems = computed(() => store.requests.map(r => ({
+  skills: r.skills,
+  text: `${r.title} ${r.field} ${r.skills.join(' ')}`,
+})))
 
 // Side-sheet filter + sorting
 const filterDrawer = ref(false)
@@ -32,7 +40,7 @@ const sortOptions = [
 ]
 const activeFilterCount = computed(() =>
   selectedKinds.value.length + (selectedField.value ? 1 : 0) + (remoteOnly.value ? 1 : 0)
-  + (maxWeeks.value < 20 ? 1 : 0) + (minBudget.value > 0 ? 1 : 0),
+  + (maxWeeks.value < 20 ? 1 : 0) + (minBudget.value > 0 ? 1 : 0) + (treeSel.value.category ? 1 : 0),
 )
 function resetFilters() {
   selectedKinds.value = []
@@ -40,6 +48,7 @@ function resetFilters() {
   remoteOnly.value = false
   maxWeeks.value = 20
   minBudget.value = 0
+  treeSel.value = {}
 }
 
 function toggleKind(k: RequestKind) {
@@ -61,6 +70,10 @@ const filtered = computed(() => {
     if (r.durationWeeks > maxWeeks.value)
       return false
     if (r.budgetValue < minBudget.value)
+      return false
+    if (treeSel.value.category && !r.skills.some(s => categorizeSkill(s) === treeSel.value.category))
+      return false
+    if (treeSel.value.sub && !`${r.title} ${r.field} ${r.skills.join(' ')}`.includes(treeSel.value.sub))
       return false
     return true
   })
@@ -243,6 +256,9 @@ function open(id: number) {
           <span class="text-subtitle-1 font-weight-bold"><VIcon icon="mdi-filter-variant" class="me-1" /> فلترة الطلبات</span>
           <VBtn icon="mdi-close" variant="text" size="small" @click="filterDrawer = false" />
         </div>
+
+        <TaxonomyTree v-model="treeSel" :items="treeItems" class="mb-4" />
+        <VDivider class="mb-4" />
 
         <div class="text-caption font-weight-bold mb-2">نوع الطلب</div>
         <div class="d-flex flex-wrap ga-1 mb-4">

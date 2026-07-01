@@ -6,8 +6,15 @@ import { mockOpportunities } from '../services/mockOpportunities'
 import { EMPLOYMENT_TYPE_LABELS, EXPERIENCE_LEVEL_LABELS } from '../interfaces/Opportunity'
 import type { EmploymentType, ExperienceLevel } from '../interfaces/Opportunity'
 import { useSavedStore } from '@/stores/SavedStore'
+import TaxonomyTree from '@/components/shared/TaxonomyTree.vue'
+import { categorizeSkill } from '@/services/taxonomy'
 
 const savedStore = useSavedStore()
+const treeSel = ref<{ category?: string, sub?: string }>({})
+const treeItems = computed(() => mockOpportunities.map(o => ({
+  skills: o.skills,
+  text: `${o.title} ${o.city} ${o.skills.join(' ')}`,
+})))
 
 const search = ref('')
 const selectedType = ref<EmploymentType | null>(null)
@@ -38,7 +45,9 @@ const filtered = computed(() => {
     const matchesCity = !selectedCity.value || o.city === selectedCity.value
     const matchesSalary = o.salaryMax >= minSalary.value
     const matchesSaved = !savedOnly.value || savedStore.isSaved(o.id)
-    return matchesSearch && matchesType && matchesLevel && matchesCity && matchesSalary && matchesSaved
+    const matchesCategory = !treeSel.value.category || o.skills.some(s => categorizeSkill(s) === treeSel.value.category)
+    const matchesSub = !treeSel.value.sub || `${o.title} ${o.city} ${o.skills.join(' ')}`.includes(treeSel.value.sub)
+    return matchesSearch && matchesType && matchesLevel && matchesCity && matchesSalary && matchesSaved && matchesCategory && matchesSub
   })
 
   list = [...list].sort((a, b) => {
@@ -58,6 +67,7 @@ function resetFilters() {
   selectedCity.value = null
   minSalary.value = 0
   savedOnly.value = false
+  treeSel.value = {}
 }
 </script>
 
@@ -121,28 +131,38 @@ function resetFilters() {
       </VRow>
     </VCard>
 
-    <div class="text-body-2 text-medium-emphasis mb-3">
-      {{ filtered.length }} فرصة متاحة
-    </div>
+    <VRow>
+      <!-- Taxonomy tree -->
+      <VCol cols="12" md="3">
+        <VCard class="pa-4">
+          <TaxonomyTree v-model="treeSel" :items="treeItems" />
+        </VCard>
+      </VCol>
 
-    <!-- Results -->
-    <VRow v-if="filtered.length">
-      <VCol
-        v-for="opp in filtered"
-        :key="opp.id"
-        cols="12"
-        :md="view === 'grid' ? 6 : 12"
-        :lg="view === 'grid' ? 4 : 12"
-      >
-        <OpportunityCard :opportunity="opp" />
+      <!-- Results -->
+      <VCol cols="12" md="9">
+        <div class="text-body-2 text-medium-emphasis mb-3">
+          {{ filtered.length }} فرصة متاحة
+        </div>
+
+        <VRow v-if="filtered.length">
+          <VCol
+            v-for="opp in filtered"
+            :key="opp.id"
+            cols="12"
+            :md="view === 'grid' ? 6 : 12"
+          >
+            <OpportunityCard :opportunity="opp" />
+          </VCol>
+        </VRow>
+
+        <VCard v-else class="pa-12 text-center">
+          <VIcon icon="mdi-briefcase-remove-outline" size="64" color="medium-emphasis" />
+          <div class="text-h6 mt-3">لا توجد فرص مطابقة</div>
+          <div class="text-body-2 text-medium-emphasis mb-3">جرّب تعديل كلمات البحث أو الفلاتر</div>
+          <VBtn color="primary" variant="tonal" @click="resetFilters">إعادة تعيين الفلاتر</VBtn>
+        </VCard>
       </VCol>
     </VRow>
-
-    <VCard v-else class="pa-12 text-center">
-      <VIcon icon="mdi-briefcase-remove-outline" size="64" color="medium-emphasis" />
-      <div class="text-h6 mt-3">لا توجد فرص مطابقة</div>
-      <div class="text-body-2 text-medium-emphasis mb-3">جرّب تعديل كلمات البحث أو الفلاتر</div>
-      <VBtn color="primary" variant="tonal" @click="resetFilters">إعادة تعيين الفلاتر</VBtn>
-    </VCard>
   </div>
 </template>
