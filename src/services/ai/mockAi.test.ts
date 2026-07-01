@@ -38,6 +38,30 @@ describe('mockAi.attachmentsInsight', () => {
   })
 })
 
+describe('mockAi resume helpers', () => {
+  it('reviews a resume with strengths, weaknesses, ATS keywords and a score', () => {
+    const strong = mockAi.resumeReview('مطوّر بخبرة 5 سنوات حسّن الأداء بنسبة 40% في تطبيقات عالية الجودة والقياس.', ['Vue.js', 'TypeScript', 'Node.js', 'UI/UX'])
+    expect(strong.strengths.length).toBeGreaterThan(0)
+    expect(strong.atsKeywords.length).toBeGreaterThan(0)
+    expect(strong.score).toBeGreaterThan(0)
+    expect(strong.score).toBeLessThanOrEqual(96)
+    const weak = mockAi.resumeReview('مطوّر.', [])
+    expect(weak.weaknesses.length).toBeGreaterThan(0)
+    expect(weak.score).toBeLessThan(strong.score)
+  })
+
+  it('suggests tweaks against a target opportunity', () => {
+    const s = mockAi.resumeVsOpportunity('ملخص قصير', 'مطوّر واجهات أول')
+    expect(s.length).toBeGreaterThan(0)
+    expect(s.join(' ')).toContain('مطوّر واجهات أول')
+  })
+
+  it('translates non-empty text and keeps empty empty', () => {
+    expect(mockAi.translateText('', 'en')).toBe('')
+    expect(mockAi.translateText('نص', 'en').length).toBeGreaterThan(0)
+  })
+})
+
 describe('mockAi.trustAnalysis', () => {
   it('suggests tips for weak factors', () => {
     const tips = mockAi.trustAnalysis([{ key: 'endorsements', label: 'التوصيات', value: 40 }])

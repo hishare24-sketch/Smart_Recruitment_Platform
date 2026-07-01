@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import PageHeader from '@/components/shared/PageHeader.vue'
 import { useResumesStore } from '@/stores/ResumesStore'
+import { ai } from '@/services/ai'
 
 const router = useRouter()
 const resumesStore = useResumesStore()
@@ -54,10 +55,48 @@ function currentName() {
 function exportResume(format: string) {
   toastMsg.value = `جارٍ تصدير «${currentName()}» بصيغة ${format}...`
 }
-function shareResumeLink() {
-  const url = `${window.location.origin}/resume/preview`
-  navigator.clipboard?.writeText(url)
-  toastMsg.value = 'تم نسخ رابط المشاركة العام للسيرة.'
+
+// — Sharing: public link, private (password) link, QR —
+const resumeSlug = computed(() => encodeURIComponent(currentName()))
+const publicLink = computed(() => `${window.location.origin}/resume/${resumeSlug.value}`)
+const privateDialog = ref(false)
+const privatePassword = ref('')
+const qrDialog = ref(false)
+const qrUrl = computed(() => `https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=8&data=${encodeURIComponent(publicLink.value)}`)
+
+function copyPublicLink() {
+  navigator.clipboard?.writeText(publicLink.value)
+  toastMsg.value = 'تم نسخ الرابط العام للسيرة.'
+}
+function genPassword() {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
+  privatePassword.value = Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+}
+function openPrivateLink() {
+  genPassword()
+  privateDialog.value = true
+}
+function copyPrivate() {
+  navigator.clipboard?.writeText(`${publicLink.value}?pw=${privatePassword.value}`)
+  toastMsg.value = 'تم نسخ الرابط الخاص وكلمة المرور.'
+}
+
+const exportFormats = [
+  { label: 'PDF احترافي', icon: 'mdi-file-pdf-box', color: 'error', fmt: 'PDF احترافي' },
+  { label: 'PDF تفاعلي', icon: 'mdi-file-link-outline', color: 'error', fmt: 'PDF تفاعلي' },
+  { label: 'DOCX', icon: 'mdi-file-word-box', color: 'primary', fmt: 'DOCX' },
+  { label: 'صورة PNG', icon: 'mdi-file-image-outline', color: 'success', fmt: 'PNG' },
+]
+
+// — AI analysis —
+const resumeSkills = ['Vue.js', 'TypeScript', 'UI/UX', 'Node.js']
+const aiReview = computed(() => ai.resumeReview(summary.value, resumeSkills))
+const opportunities = ['مطوّر واجهات أمامية أول', 'استشارة معمارية Frontend', 'بناء نظام تصميم موحّد']
+const selectedOpportunity = ref(opportunities[0])
+const vsSuggestions = computed(() => ai.resumeVsOpportunity(summary.value, selectedOpportunity.value))
+function translateSummary(to: 'ar' | 'en') {
+  summary.value = ai.translateText(summary.value, to)
+  toastMsg.value = to === 'en' ? 'تُرجم الملخص للإنجليزية.' : 'تُرجم الملخص للعربية.'
 }
 
 const summary = ref('مطوّر واجهات أمامية بخبرة 5 سنوات في بناء تطبيقات ويب حديثة وعالية الأداء باستخدام Vue.js و TypeScript. شغوف بتجربة المستخدم والحلول القابلة للتوسّع.')
@@ -181,11 +220,22 @@ function regenerateSummary() {
 
       <!-- Step 4: Summary -->
       <div v-else-if="step === 4">
-        <div class="d-flex justify-space-between align-center mb-3">
+        <div class="d-flex justify-space-between align-center mb-3 flex-wrap ga-2">
           <h3 class="text-subtitle-1 font-weight-bold">الملخص المهني</h3>
-          <VBtn color="secondary" variant="tonal" size="small" prepend-icon="mdi-refresh" @click="regenerateSummary">
-            إعادة توليد ذكي
-          </VBtn>
+          <div class="d-flex ga-2">
+            <VMenu>
+              <template #activator="{ props }">
+                <VBtn v-bind="props" color="secondary" variant="tonal" size="small" prepend-icon="mdi-translate">ترجمة</VBtn>
+              </template>
+              <VList density="compact">
+                <VListItem title="إلى الإنجليزية" prepend-icon="mdi-alphabet-latin" @click="translateSummary('en')" />
+                <VListItem title="إلى العربية" prepend-icon="mdi-abjad-arabic" @click="translateSummary('ar')" />
+              </VList>
+            </VMenu>
+            <VBtn color="secondary" variant="tonal" size="small" prepend-icon="mdi-refresh" @click="regenerateSummary">
+              إعادة توليد ذكي
+            </VBtn>
+          </div>
         </div>
         <VChipGroup v-model="summaryStyle" mandatory color="primary" class="mb-2">
           <VChip value="professional" filter>احترافي</VChip>
@@ -238,10 +288,48 @@ function regenerateSummary() {
           <p class="text-body-2 text-medium-emphasis">{{ summary }}</p>
           <div class="text-caption font-weight-bold text-primary mb-1 mt-3">المهارات</div>
           <div class="d-flex flex-wrap ga-1">
-            <VChip v-for="s in ['Vue.js', 'TypeScript', 'UI/UX', 'Node.js']" :key="s" size="x-small" color="secondary" variant="tonal">
+            <VChip v-for="s in resumeSkills" :key="s" size="x-small" color="secondary" variant="tonal">
               {{ s }}
             </VChip>
           </div>
+        </VCard>
+
+        <!-- AI analysis -->
+        <VCard variant="tonal" color="secondary" class="pa-4 mt-4 mx-auto" max-width="600">
+          <div class="d-flex align-center justify-space-between mb-3 flex-wrap ga-2">
+            <div class="d-flex align-center ga-2">
+              <VIcon icon="mdi-robot-happy-outline" />
+              <span class="text-subtitle-2 font-weight-bold">تحليل الـ AI للسيرة</span>
+            </div>
+            <VChip :color="aiReview.score >= 80 ? 'success' : aiReview.score >= 60 ? 'warning' : 'error'" label>قوة السيرة {{ aiReview.score }}%</VChip>
+          </div>
+
+          <div class="d-flex flex-column flex-md-row ga-4 mb-3">
+            <div class="flex-grow-1">
+              <div class="text-caption font-weight-bold text-success mb-1"><VIcon icon="mdi-thumb-up-outline" size="14" /> نقاط القوة</div>
+              <ul class="text-caption ps-4 mb-0">
+                <li v-for="(s, i) in aiReview.strengths" :key="i">{{ s }}</li>
+              </ul>
+            </div>
+            <div class="flex-grow-1">
+              <div class="text-caption font-weight-bold text-warning mb-1"><VIcon icon="mdi-alert-outline" size="14" /> فرص التحسين</div>
+              <ul class="text-caption ps-4 mb-0">
+                <li v-for="(w, i) in aiReview.weaknesses" :key="i">{{ w }}</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="text-caption font-weight-bold mb-1"><VIcon icon="mdi-tag-multiple-outline" size="14" /> كلمات مفتاحية (ATS)</div>
+          <div class="d-flex flex-wrap ga-1 mb-3">
+            <VChip v-for="k in aiReview.atsKeywords" :key="k" size="x-small" color="surface" variant="flat" label>{{ k }}</VChip>
+          </div>
+
+          <VDivider class="mb-3" />
+          <div class="text-caption font-weight-bold mb-2"><VIcon icon="mdi-target" size="14" /> تحليل مقابل فرصة</div>
+          <VSelect v-model="selectedOpportunity" :items="opportunities" density="compact" variant="outlined" hide-details class="mb-2" />
+          <ul class="text-caption ps-4 mb-0">
+            <li v-for="(s, i) in vsSuggestions" :key="i">{{ s }}</li>
+          </ul>
         </VCard>
       </div>
 
@@ -260,13 +348,60 @@ function regenerateSummary() {
           style="max-width: 360px"
           prepend-inner-icon="mdi-file-account-outline"
         />
-        <div class="d-flex flex-wrap justify-center ga-3">
-          <VBtn color="error" prepend-icon="mdi-file-pdf-box" @click="exportResume('PDF')">تصدير PDF</VBtn>
-          <VBtn color="primary" prepend-icon="mdi-file-word-box" @click="exportResume('DOCX')">تصدير DOCX</VBtn>
-          <VBtn color="secondary" variant="tonal" prepend-icon="mdi-link-variant" @click="shareResumeLink">مشاركة الرابط</VBtn>
+        <!-- File exports -->
+        <div class="text-caption font-weight-bold text-medium-emphasis mb-2">تصدير كملف</div>
+        <VRow class="mb-2" style="max-width: 560px; margin-inline: auto">
+          <VCol v-for="f in exportFormats" :key="f.fmt" cols="6" sm="3">
+            <VCard variant="outlined" class="pa-3 text-center cursor-pointer h-100" @click="exportResume(f.fmt)">
+              <VIcon :icon="f.icon" :color="f.color" size="30" />
+              <div class="text-caption font-weight-bold mt-1">{{ f.label }}</div>
+            </VCard>
+          </VCol>
+        </VRow>
+
+        <!-- Share -->
+        <div class="text-caption font-weight-bold text-medium-emphasis mb-2 mt-4">مشاركة</div>
+        <div class="d-flex flex-wrap justify-center ga-2">
+          <VBtn color="secondary" variant="tonal" prepend-icon="mdi-link-variant" @click="copyPublicLink">رابط عام</VBtn>
+          <VBtn color="secondary" variant="tonal" prepend-icon="mdi-lock-outline" @click="openPrivateLink">رابط خاص</VBtn>
+          <VBtn color="secondary" variant="tonal" prepend-icon="mdi-qrcode" @click="qrDialog = true">رمز QR</VBtn>
         </div>
       </div>
     </VCard>
+
+    <!-- QR dialog -->
+    <VDialog v-model="qrDialog" max-width="320">
+      <VCard class="pa-4 text-center">
+        <VCardTitle class="text-subtitle-1">رمز QR للسيرة</VCardTitle>
+        <VImg :src="qrUrl" width="200" height="200" class="mx-auto my-2" cover>
+          <template #error>
+            <div class="d-flex align-center justify-center fill-height text-caption text-medium-emphasis pa-4">
+              يتطلب اتصالاً بالإنترنت لعرض الرمز.
+            </div>
+          </template>
+        </VImg>
+        <div class="text-caption text-medium-emphasis mb-3">امسح الرمز لفتح السيرة على الجوال.</div>
+        <VBtn color="primary" variant="text" block @click="qrDialog = false">إغلاق</VBtn>
+      </VCard>
+    </VDialog>
+
+    <!-- Private link dialog -->
+    <VDialog v-model="privateDialog" max-width="440">
+      <VCard class="pa-2">
+        <VCardTitle class="text-subtitle-1">رابط خاص محمي بكلمة مرور</VCardTitle>
+        <VCardText>
+          <VTextField :model-value="publicLink" label="الرابط" readonly density="compact" class="mb-2" />
+          <VTextField :model-value="privatePassword" label="كلمة المرور" readonly density="compact" append-inner-icon="mdi-refresh" @click:append-inner="genPassword" />
+          <VAlert type="info" variant="tonal" density="compact" class="mt-2 text-caption">
+            شارك الرابط وكلمة المرور مع الجهات المحددة فقط.
+          </VAlert>
+        </VCardText>
+        <VCardActions class="justify-end">
+          <VBtn variant="text" @click="privateDialog = false">إغلاق</VBtn>
+          <VBtn color="accent" prepend-icon="mdi-content-copy" @click="copyPrivate">نسخ الرابط وكلمة المرور</VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
 
     <VSnackbar :model-value="!!toastMsg" color="primary" location="top" timeout="3500" @update:model-value="toastMsg = ''">
       {{ toastMsg }}

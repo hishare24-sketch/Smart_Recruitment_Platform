@@ -14,6 +14,7 @@ import type {
   EvalElementSuggestion,
   PricingSuggestion,
   RequestPerformance,
+  ResumeReview,
   ReviewsDigest,
   SkillInsight,
   SkillLevelResult,
@@ -521,6 +522,43 @@ function attachmentsInsight(items: { name: string, kind: 'file' | 'link', fileTy
   }
 }
 
+// — Resume builder AI —
+function resumeReview(summary: string, skills: string[]): ResumeReview {
+  const strengths: string[] = []
+  const weaknesses: string[] = []
+  if (/\d+%|\d+ سنوات|\d+ ثانية/.test(summary))
+    strengths.push('يتضمّن مؤشرات قابلة للقياس ترفع مصداقية السيرة.')
+  else
+    weaknesses.push('أضف أرقامًا ومؤشرات قابلة للقياس لإبراز الأثر.')
+  if (skills.length >= 4)
+    strengths.push('مجموعة مهارات متنوّعة تغطّي متطلبات متعدّدة.')
+  else
+    weaknesses.push('وسّع قائمة المهارات لتغطية كلمات مفتاحية أكثر.')
+  if (summary.length > 120)
+    strengths.push('ملخص مهني واضح وكافٍ.')
+  else
+    weaknesses.push('الملخص قصير — أضف تخصّصك وأبرز إنجازاتك.')
+  const atsKeywords = [...new Set([...skills, 'Vue.js', 'TypeScript', 'REST API', 'الأداء', 'قابلية التوسّع'])].slice(0, 8)
+  const score = Math.max(40, Math.min(96, 55 + strengths.length * 12 - weaknesses.length * 6 + Math.min(skills.length, 5) * 2))
+  return { strengths, weaknesses, atsKeywords, score }
+}
+
+function resumeVsOpportunity(summary: string, opportunity: string): string[] {
+  return [
+    `أبرز في ملخّصك الكلمات المفتاحية الواردة في «${opportunity}» لرفع نسبة التطابق.`,
+    'قدّم إنجازًا واحدًا مرتبطًا مباشرةً بمسؤوليات هذه الفرصة في أعلى السيرة.',
+    summary.length < 140 ? 'وسّع الملخص ليعكس خبرتك المتوافقة مع هذه الفرصة.' : 'أعد ترتيب المهارات لتظهر الأكثر صلة بالفرصة أولًا.',
+  ]
+}
+
+function translateText(text: string, to: 'ar' | 'en'): string {
+  if (!text.trim())
+    return ''
+  if (to === 'en')
+    return 'Front-end developer with 5 years of experience building high-performance, modern web applications using Vue.js and TypeScript. Passionate about user experience and scalable solutions.'
+  return 'مطوّر واجهات أمامية بخبرة 5 سنوات في بناء تطبيقات ويب حديثة وعالية الأداء باستخدام Vue.js و TypeScript. شغوف بتجربة المستخدم والحلول القابلة للتوسّع.'
+}
+
 export const mockAi: AiService = {
   skillLevel,
   trustAnalysis,
@@ -552,4 +590,7 @@ export const mockAi: AiService = {
   suggestReviewReply,
   suggestEvalElements,
   attachmentsInsight,
+  resumeReview,
+  resumeVsOpportunity,
+  translateText,
 }

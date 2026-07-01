@@ -87,6 +87,14 @@ export interface AttachmentsInsight {
   tips: string[] // preparation focus tips for the interviewer
 }
 
+// — Resume builder AI —
+export interface ResumeReview {
+  strengths: string[]
+  weaknesses: string[]
+  atsKeywords: string[]
+  score: number // 0-100 resume strength
+}
+
 export interface SkillInsight {
   skill: string // weakest verified skill name
   confidence: number
@@ -160,4 +168,8 @@ export interface AiService {
   suggestEvalElements: (type: string, specialties: string[]) => EvalElementSuggestion[]
   // — pre-interview attachments —
   attachmentsInsight: (items: { name: string, kind: 'file' | 'link', fileType?: string }[]) => AttachmentsInsight
+  // — resume builder —
+  resumeReview: (summary: string, skills: string[]) => ResumeReview
+  resumeVsOpportunity: (summary: string, opportunity: string) => string[]
+  translateText: (text: string, to: 'ar' | 'en') => string
 }
