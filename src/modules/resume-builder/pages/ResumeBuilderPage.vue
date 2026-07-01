@@ -1,6 +1,11 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import PageHeader from '@/components/shared/PageHeader.vue'
+import { useResumesStore } from '@/stores/ResumesStore'
+
+const router = useRouter()
+const resumesStore = useResumesStore()
 
 const step = ref(1)
 const totalSteps = 7
@@ -31,6 +36,16 @@ const language = ref('ar')
 const colorScheme = ref('blue')
 const fontSize = ref('medium')
 const withPhoto = ref(true)
+const resumeName = ref('')
+
+const templateName = computed(() => templates.find(t => t.id === selectedTemplate.value)?.name ?? 'حديث')
+const languageLabel = computed(() => (language.value === 'ar' ? 'عربي' : language.value === 'en' ? 'English' : 'ثنائي'))
+
+function saveResume() {
+  const name = resumeName.value.trim() || `سيرة ${templateName.value}`
+  resumesStore.add(name, templateName.value, languageLabel.value)
+  router.push({ name: 'profile' })
+}
 
 const summary = ref('مطوّر واجهات أمامية بخبرة 5 سنوات في بناء تطبيقات ويب حديثة وعالية الأداء باستخدام Vue.js و TypeScript. شغوف بتجربة المستخدم والحلول القابلة للتوسّع.')
 const summaryStyle = ref('professional')
@@ -223,12 +238,19 @@ function regenerateSummary() {
           <VIcon icon="mdi-check-circle-outline" size="48" />
         </VAvatar>
         <h3 class="text-h6 font-weight-bold mb-1">سيرتك جاهزة!</h3>
-        <p class="text-body-2 text-medium-emphasis mb-5">اختر طريقة التصدير أو المشاركة</p>
+        <p class="text-body-2 text-medium-emphasis mb-4">سمِّ سيرتك ثم احفظها أو صدّرها</p>
+        <VTextField
+          v-model="resumeName"
+          :placeholder="`سيرة ${templateName}`"
+          label="اسم السيرة"
+          class="mx-auto mb-4"
+          style="max-width: 360px"
+          prepend-inner-icon="mdi-file-account-outline"
+        />
         <div class="d-flex flex-wrap justify-center ga-3">
           <VBtn color="error" prepend-icon="mdi-file-pdf-box">تصدير PDF</VBtn>
           <VBtn color="primary" prepend-icon="mdi-file-word-box">تصدير DOCX</VBtn>
           <VBtn color="secondary" variant="tonal" prepend-icon="mdi-link-variant">مشاركة الرابط</VBtn>
-          <VBtn color="accent" variant="tonal" prepend-icon="mdi-briefcase-check-outline">تقديم لفرصة</VBtn>
         </div>
       </div>
     </VCard>
@@ -241,7 +263,7 @@ function regenerateSummary() {
       <VBtn v-if="step < totalSteps" color="accent" append-icon="mdi-arrow-left" @click="next">
         التالي
       </VBtn>
-      <VBtn v-else color="success" prepend-icon="mdi-content-save" :to="{ name: 'profile' }">
+      <VBtn v-else color="success" prepend-icon="mdi-content-save" @click="saveResume">
         حفظ في حسابي
       </VBtn>
     </div>

@@ -5,11 +5,13 @@ import { EMPLOYMENT_TYPE_LABELS, EXPERIENCE_LEVEL_LABELS, formatSalary } from '.
 import { getOpportunityById, mockOpportunities } from '../services/mockOpportunities'
 import { useApplicationsStore } from '@/stores/ApplicationsStore'
 import { useSavedStore } from '@/stores/SavedStore'
+import { useResumesStore } from '@/stores/ResumesStore'
 
 const route = useRoute()
 const router = useRouter()
 const applicationsStore = useApplicationsStore()
 const savedStore = useSavedStore()
+const resumesStore = useResumesStore()
 
 const opportunity = computed(() => getOpportunityById(Number(route.params.id)))
 const similar = computed(() =>
@@ -23,12 +25,8 @@ const isSaved = computed(() => (opportunity.value ? savedStore.isSaved(opportuni
 
 const applyDialog = ref(false)
 const appliedSnackbar = ref(false)
-const selectedResume = ref<number | null>(1)
-
-const resumes = [
-  { id: 1, name: 'سيرة تقنية - حديث', template: 'حديث', lang: 'عربي' },
-  { id: 2, name: 'Technical CV - Modern', template: 'Modern', lang: 'English' },
-]
+const resumes = computed(() => resumesStore.resumes)
+const selectedResume = ref<number | null>(resumesStore.active?.id ?? null)
 
 const breakdown = computed(() => {
   const b = opportunity.value?.matchBreakdown
@@ -44,7 +42,7 @@ function openApply() {
   applyDialog.value = true
 }
 function confirmApply() {
-  const resume = resumes.find(r => r.id === selectedResume.value)?.name ?? 'سيرة'
+  const resume = resumes.value.find(r => r.id === selectedResume.value)?.name ?? 'سيرة'
   if (opportunity.value)
     applicationsStore.apply(opportunity.value, resume)
   applyDialog.value = false
@@ -202,7 +200,7 @@ function askAboutOpportunity() {
             <VIcon :icon="selectedResume === r.id ? 'mdi-radiobox-marked' : 'mdi-radiobox-blank'" :color="selectedResume === r.id ? 'white' : undefined" />
             <div>
               <div class="text-body-2 font-weight-bold" :class="selectedResume === r.id ? 'text-white' : ''">{{ r.name }}</div>
-              <div class="text-caption" :class="selectedResume === r.id ? 'text-white' : 'text-medium-emphasis'">{{ r.template }} · {{ r.lang }}</div>
+              <div class="text-caption" :class="selectedResume === r.id ? 'text-white' : 'text-medium-emphasis'">{{ r.template }} · {{ r.language }}</div>
             </div>
           </VCard>
           <VBtn variant="tonal" color="secondary" block class="mt-2" prepend-icon="mdi-plus" :to="{ name: 'resume-builder' }">

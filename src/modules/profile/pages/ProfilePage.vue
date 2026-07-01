@@ -2,9 +2,11 @@
 import { computed, ref } from 'vue'
 import { useAuthStore } from '@/stores/AuthStore'
 import { useProfileStore } from '@/stores/ProfileStore'
+import { useResumesStore } from '@/stores/ResumesStore'
 
 const authStore = useAuthStore()
 const profile = useProfileStore()
+const resumesStore = useResumesStore()
 const user = computed(() => authStore.authUser)
 const tab = ref('skills')
 
@@ -40,10 +42,6 @@ function saveCert() {
 const endorsements = [
   { name: 'أحمد المنصور', relation: 'مدير سابق', type: 'نص', trusted: true },
   { name: 'سارة العتيبي', relation: 'زميلة', type: 'فيديو', trusted: false },
-]
-const resumes = [
-  { name: 'سيرة تقنية - حديث', template: 'حديث', lang: 'عربي', active: true },
-  { name: 'Technical CV - Modern', template: 'Modern', lang: 'English', active: false },
 ]
 const privacySettings = ref([
   { label: 'ظهور الملف الشخصي', value: 'public' },
@@ -214,26 +212,37 @@ const profileCompletion = computed(() => {
       <VWindowItem value="resumes">
         <VCard class="pa-5">
           <div class="d-flex justify-space-between mb-4">
-            <h3 class="text-subtitle-1 font-weight-bold">السير الذاتية المنشأة</h3>
+            <h3 class="text-subtitle-1 font-weight-bold">السير الذاتية المنشأة ({{ resumesStore.count }})</h3>
             <VBtn color="accent" size="small" prepend-icon="mdi-plus" :to="{ name: 'resume-builder' }">إنشاء سيرة</VBtn>
           </div>
           <VList>
-            <VListItem v-for="r in resumes" :key="r.name" class="px-2">
+            <VListItem v-for="r in resumesStore.resumes" :key="r.id" class="px-2">
               <template #prepend>
-                <VAvatar color="primary" variant="tonal" rounded="lg"><VIcon icon="mdi-file-account-outline" /></VAvatar>
+                <VAvatar :color="r.active ? 'success' : 'primary'" variant="tonal" rounded="lg"><VIcon icon="mdi-file-account-outline" /></VAvatar>
               </template>
               <VListItemTitle class="font-weight-bold">
                 {{ r.name }}
                 <VChip v-if="r.active" color="success" size="x-small" label class="ms-1">نشطة</VChip>
               </VListItemTitle>
-              <VListItemSubtitle>{{ r.template }} · {{ r.lang }}</VListItemSubtitle>
+              <VListItemSubtitle>{{ r.template }} · {{ r.language }} · أُنشئت {{ r.createdAt }}</VListItemSubtitle>
               <template #append>
-                <VBtn icon="mdi-download" variant="text" size="small" />
-                <VBtn icon="mdi-share-variant" variant="text" size="small" />
-                <VBtn icon="mdi-pencil" variant="text" size="small" :to="{ name: 'resume-builder' }" />
+                <VBtn v-if="!r.active" variant="tonal" color="success" size="x-small" class="me-1" @click="resumesStore.setActive(r.id)">تعيين كنشطة</VBtn>
+                <VBtn icon="mdi-open-in-new" variant="text" size="small" :to="{ name: 'public-resume', params: { token: String(r.id) } }" />
+                <VMenu>
+                  <template #activator="{ props }">
+                    <VBtn v-bind="props" icon="mdi-dots-vertical" variant="text" size="small" />
+                  </template>
+                  <VList density="compact">
+                    <VListItem prepend-icon="mdi-pencil" title="تعديل" :to="{ name: 'resume-builder' }" />
+                    <VListItem prepend-icon="mdi-file-pdf-box" title="تصدير PDF" />
+                    <VListItem prepend-icon="mdi-share-variant" title="مشاركة الرابط" />
+                    <VListItem prepend-icon="mdi-delete-outline" title="حذف" base-color="error" @click="resumesStore.remove(r.id)" />
+                  </VList>
+                </VMenu>
               </template>
             </VListItem>
           </VList>
+          <div v-if="!resumesStore.count" class="text-center text-medium-emphasis py-6">لا سير ذاتية بعد — أنشئ أول سيرة</div>
         </VCard>
       </VWindowItem>
 
