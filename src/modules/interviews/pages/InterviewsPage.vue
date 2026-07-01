@@ -1,20 +1,25 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import PageHeader from '@/components/shared/PageHeader.vue'
 import { LEVEL_META, TYPE_META, useInterviewsStore } from '@/stores/InterviewsStore'
 import type { Interview } from '@/stores/InterviewsStore'
-import type { InterviewLevel, InterviewType } from '@/services/ai'
+import type { InterviewLevel, InterviewTrack, InterviewType } from '@/services/ai'
+import { TRACK_META } from '@/services/ai'
 
 const router = useRouter()
 const store = useInterviewsStore()
 
 const types = Object.keys(TYPE_META) as InterviewType[]
 const levels = Object.keys(LEVEL_META) as InterviewLevel[]
+const tracks = Object.keys(TRACK_META) as InterviewTrack[]
 
 const setupDialog = ref(false)
 const chosenType = ref<InterviewType>('ai_text')
 const chosenLevel = ref<InterviewLevel>('intermediate')
+const chosenTrack = ref<InterviewTrack>('tech')
+
+const isAiInterview = computed(() => chosenType.value === 'ai_text' || chosenType.value === 'ai_video')
 
 function openSetup(type: InterviewType) {
   chosenType.value = type
@@ -23,9 +28,9 @@ function openSetup(type: InterviewType) {
 }
 
 function startNow() {
-  const id = store.start(chosenType.value, chosenLevel.value)
+  const id = store.start(chosenType.value, chosenLevel.value, isAiInterview.value ? chosenTrack.value : undefined)
   setupDialog.value = false
-  if (chosenType.value === 'ai_text' || chosenType.value === 'ai_video')
+  if (isAiInterview.value)
     router.push({ name: 'interview-session', params: { id } })
   else
     router.push({ name: 'interviews' })
@@ -98,6 +103,24 @@ function viewResult(iv: Interview) {
           <VBtn icon="mdi-close" variant="text" size="small" @click="setupDialog = false" />
         </VCardTitle>
         <VCardText>
+          <template v-if="isAiInterview">
+            <div class="text-body-2 font-weight-bold mb-2">اختر مسار المقابلة</div>
+            <p class="text-caption text-medium-emphasis mb-2">أسئلة تفاعلية تكيّفية مضادة للغش حسب مجالك</p>
+            <VRow class="mb-3">
+              <VCol v-for="tr in tracks" :key="tr" cols="6">
+                <VCard
+                  :variant="chosenTrack === tr ? 'flat' : 'outlined'"
+                  :color="chosenTrack === tr ? 'primary' : undefined"
+                  class="pa-2 cursor-pointer d-flex align-center ga-2"
+                  @click="chosenTrack = tr"
+                >
+                  <VIcon :icon="TRACK_META[tr].icon" :color="chosenTrack === tr ? 'white' : 'primary'" size="20" />
+                  <div class="text-caption font-weight-bold" :class="chosenTrack === tr ? 'text-white' : ''">{{ TRACK_META[tr].label }}</div>
+                </VCard>
+              </VCol>
+            </VRow>
+          </template>
+
           <div class="text-body-2 font-weight-bold mb-2">اختر المستوى</div>
           <VCard
             v-for="lvl in levels"

@@ -6,4 +6,5 @@ const USE_MOCK_AI = true
 
 export const ai: AiService = USE_MOCK_AI ? mockAi : mockAi
 
+export * from './interviewEngine'
 export * from './types'

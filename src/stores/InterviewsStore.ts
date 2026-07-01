@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
-import type { InterviewLevel, InterviewType } from '@/services/ai'
+import type { InterviewLevel, InterviewTrack, InterviewType } from '@/services/ai'
 
 export interface CompetencyScore { name: string, score: number }
 
@@ -18,6 +18,7 @@ export interface Interview {
   id: number
   type: InterviewType
   level: InterviewLevel
+  track?: InterviewTrack
   status: 'scheduled' | 'in_progress' | 'completed'
   date: string
   cost: number
@@ -102,12 +103,13 @@ export const useInterviewsStore = defineStore('interviews', () => {
     return best >= 0 ? LEVEL_META[order[best]].label : 'لا يوجد'
   })
 
-  function start(type: InterviewType, level: InterviewLevel): number {
+  function start(type: InterviewType, level: InterviewLevel, track?: InterviewTrack): number {
     const id = nextId++
     interviews.value.unshift({
       id,
       type,
       level,
+      track,
       status: 'in_progress',
       date: 'الآن',
       cost: LEVEL_META[level].cost,

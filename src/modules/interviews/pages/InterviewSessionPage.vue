@@ -1,9 +1,14 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { LEVEL_META, TYPE_META, useInterviewsStore } from '@/stores/InterviewsStore'
 import type { InterviewResult } from '@/stores/InterviewsStore'
 import { ai } from '@/services/ai'
+import type { AdaptiveQuestion, InteractiveEvaluation, InterviewTrack } from '@/services/ai'
+import { PATTERN_META, TRACK_META, interviewEngine } from '@/services/ai'
+import CodeChallenge from '../components/CodeChallenge.vue'
+import DecisionMatrix from '../components/DecisionMatrix.vue'
+import FreeAnswer from '../components/FreeAnswer.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -11,182 +16,221 @@ const store = useInterviewsStore()
 
 const interview = computed(() => store.getById(Number(route.params.id)))
 const isVideo = computed(() => interview.value?.type === 'ai_video')
-
-const questions = computed(() =>
-  interview.value ? ai.interviewQuestions(interview.value.type, interview.value.level) : [],
-)
+const track = computed<InterviewTrack>(() => interview.value?.track ?? 'tech')
+const total = computed(() => interviewEngine.sequenceLength(track.value))
 
 const currentIndex = ref(0)
-const answers = ref<Record<number, { text: string, score: number, competency: string }>>({})
+const currentQuestion = shallowRef<AdaptiveQuestion | null>(null)
 const currentAnswer = ref('')
+const answers = ref<Record<number, { score: number, competency: string }>>({})
+const lastEval = ref<InteractiveEvaluation | null>(null)
 const evaluating = ref(false)
-const lastFeedback = ref('')
-const hint = ref('')
+let prevScore: number | null = null
 
-const current = computed(() => questions.value[currentIndex.value])
-const progress = computed(() => (questions.value.length ? ((currentIndex.value + 1) / questions.value.length) * 100 : 0))
-const isLast = computed(() => currentIndex.value === questions.value.length - 1)
-const answered = computed(() => !!(current.value && answers.value[current.value.id]))
+const answered = computed(() => !!(currentQuestion.value && answers.value[currentQuestion.value.id]))
+const isLast = computed(() => currentIndex.value === total.value - 1)
+const progress = computed(() => (total.value ? ((currentIndex.value + 1) / total.value) * 100 : 0))
 
-// — Per-question countdown timer —
-const QUESTION_SECONDS = 120
-const timeLeft = ref(QUESTION_SECONDS)
+function widgetFor(pattern: string) {
+  if (pattern === 'live_case' || pattern === 'fill_code')
+    return CodeChallenge
+  if (pattern === 'strategic')
+    return DecisionMatrix
+  return FreeAnswer
+}
+
+// ── per-question timer ──
+const timeLeft = ref(0)
 let timerId: ReturnType<typeof setInterval> | undefined
 const timeLabel = computed(() => `${String(Math.floor(timeLeft.value / 60)).padStart(2, '0')}:${String(timeLeft.value % 60).padStart(2, '0')}`)
-const timeColor = computed(() => (timeLeft.value <= 15 ? 'error' : timeLeft.value <= 40 ? 'warning' : 'primary'))
-
-function startTimer() {
+const timeColor = computed(() => (timeLeft.value <= 20 ? 'error' : timeLeft.value <= 60 ? 'warning' : 'primary'))
+function startTimer(seconds: number) {
   clearInterval(timerId)
-  timeLeft.value = QUESTION_SECONDS
+  timeLeft.value = seconds
   timerId = setInterval(() => {
     if (timeLeft.value > 0 && !answered.value)
       timeLeft.value--
-    else if (timeLeft.value === 0 && !answered.value)
-      submitAnswer()
+    else if (timeLeft.value === 0 && !answered.value && currentQuestion.value)
+      submit()
   }, 1000)
 }
-watch(current, () => startTimer(), { immediate: true })
-onBeforeUnmount(() => clearInterval(timerId))
 
-function requestHint() {
-  if (current.value)
-    hint.value = ai.interviewHint(current.value.text, current.value.competency)
+// ── anti-cheat: flag tab/window switches ──
+const tabSwitches = ref(0)
+const cheatWarning = ref(false)
+function onVisibility() {
+  if (document.hidden && !answered.value) {
+    tabSwitches.value++
+    cheatWarning.value = true
+  }
 }
 
-function submitAnswer() {
-  if (!current.value)
+function loadQuestion(index: number) {
+  const q = interviewEngine.nextQuestion(track.value, index, prevScore)
+  currentQuestion.value = q
+  currentAnswer.value = ''
+  lastEval.value = null
+  if (q)
+    startTimer(q.seconds)
+}
+
+function submit() {
+  const q = currentQuestion.value
+  if (!q || evaluating.value || answered.value)
     return
   evaluating.value = true
-  lastFeedback.value = ''
   setTimeout(() => {
-    const evalResult = ai.evaluateAnswer(current.value.text, currentAnswer.value)
-    answers.value[current.value.id] = { text: currentAnswer.value, score: evalResult.score, competency: current.value.competency }
-    lastFeedback.value = evalResult.feedback
+    const ev = interviewEngine.evaluate(q, currentAnswer.value)
+    answers.value[q.id] = { score: ev.score, competency: q.competency }
+    lastEval.value = ev
+    prevScore = ev.score
     evaluating.value = false
-  }, 800)
+  }, 700)
 }
 
-function nextQuestion() {
-  currentAnswer.value = ''
-  lastFeedback.value = ''
-  hint.value = ''
-  if (isLast.value)
+function next() {
+  if (isLast.value) {
     finish()
-  else currentIndex.value++
+    return
+  }
+  currentIndex.value++
+  loadQuestion(currentIndex.value)
 }
 
 function finish() {
   if (!interview.value)
     return
-  const scores = Object.values(answers.value)
-  const avg = scores.length ? Math.round(scores.reduce((s, a) => s + a.score, 0) / scores.length) : 0
-  const competencies = scores.map(a => ({ name: a.competency, score: a.score }))
-
+  clearInterval(timerId)
+  const entries = Object.values(answers.value)
+  const avg = entries.length ? Math.round(entries.reduce((s, a) => s + a.score, 0) / entries.length) : 0
+  const competencies = entries.map(a => ({ name: a.competency, score: a.score }))
   const levelLabel = avg >= 85 ? 'خبير' : avg >= 70 ? 'متقدم' : avg >= 50 ? 'متوسط' : 'أساسي'
+
+  const integrityClean = tabSwitches.value === 0
   const result: InterviewResult = {
     score: avg,
     level: levelLabel,
     competencies,
-    strengths: avg >= 70 ? ['إجابات واضحة ومنظّمة', 'أمثلة عملية داعمة'] : ['استعداد جيد للتطوير'],
-    improvements: avg >= 70 ? ['دعم الإجابات بأرقام ونتائج'] : ['إضافة أمثلة ملموسة', 'تعميق الشرح التقني'],
-    recommendations: ['راجع أسئلة المستوى الأعلى للتحضير', 'أكمل اختبار مهارة مرتبط'],
+    strengths: [
+      ...(avg >= 70 ? ['إجابات تفاعلية عملية', 'تعامل جيد مع الأسئلة التكيّفية'] : ['استعداد جيد للتطوير']),
+      ...(integrityClean ? ['نزاهة كاملة: بلا مغادرة للنافذة'] : []),
+    ],
+    improvements: [
+      ...(avg >= 70 ? ['دعم الحلول بحالات حدّية أكثر'] : ['تعميق الحلول العملية', 'إدارة الوقت تحت الضغط']),
+      ...(integrityClean ? [] : [`رُصدت ${tabSwitches.value} مغادرة للنافذة أثناء الأسئلة — قد تؤثر على مصداقية النتيجة`]),
+    ],
+    recommendations: ['راجع الأنماط الأصعب في مسارك', 'كرّر المقابلة بعد أسبوعين لقياس التطور'],
     video: isVideo.value ? ai.videoAnalysis() : undefined,
   }
   store.complete(interview.value.id, result)
   router.replace({ name: 'interview-result', params: { id: interview.value.id } })
 }
+
+onMounted(() => {
+  document.addEventListener('visibilitychange', onVisibility)
+  loadQuestion(0)
+})
+onBeforeUnmount(() => {
+  clearInterval(timerId)
+  document.removeEventListener('visibilitychange', onVisibility)
+})
 </script>
 
 <template>
-  <div v-if="interview" class="mx-auto" style="max-width: 780px">
-    <div class="d-flex align-center justify-space-between mb-4 flex-wrap ga-2">
+  <div v-if="interview && currentQuestion" class="mx-auto" style="max-width: 860px">
+    <!-- Header -->
+    <div class="d-flex align-center justify-space-between mb-3 flex-wrap ga-2">
       <div class="d-flex align-center ga-3">
-        <VAvatar color="primary" variant="tonal" rounded="lg"><VIcon :icon="TYPE_META[interview.type].icon" /></VAvatar>
+        <VAvatar color="primary" variant="tonal" rounded="lg"><VIcon :icon="TRACK_META[track].icon" /></VAvatar>
         <div>
-          <h1 class="text-h6 font-weight-bold mb-0">{{ TYPE_META[interview.type].label }}</h1>
-          <div class="text-caption text-medium-emphasis">المستوى: {{ LEVEL_META[interview.level].label }}</div>
+          <h1 class="text-h6 font-weight-bold mb-0">مقابلة {{ TRACK_META[track].label }}</h1>
+          <div class="text-caption text-medium-emphasis">مسار تكيّفي مضاد للغش · {{ LEVEL_META[interview.level].label }}</div>
         </div>
       </div>
       <div class="d-flex align-center ga-2">
+        <VChip v-if="tabSwitches" color="error" size="small" label prepend-icon="mdi-shield-alert-outline">مغادرة ×{{ tabSwitches }}</VChip>
+        <VChip v-else color="success" size="small" label prepend-icon="mdi-shield-check-outline">نزاهة</VChip>
         <VChip :color="timeColor" label prepend-icon="mdi-timer-outline" variant="flat">{{ timeLabel }}</VChip>
-        <VChip color="primary" label prepend-icon="mdi-robot-happy-outline">مقابلة ذكية</VChip>
       </div>
     </div>
 
-    <!-- Video placeholder -->
-    <VCard v-if="isVideo" class="pa-4 mb-4 text-center bg-grey-darken-4" theme="darkTheme">
-      <VIcon icon="mdi-account-box-outline" size="64" color="grey" />
-      <div class="d-flex align-center justify-center ga-2 mt-2">
+    <VProgressLinear :model-value="progress" color="accent" height="8" rounded class="mb-4" />
+
+    <!-- Video recording indicator -->
+    <VCard v-if="isVideo" class="pa-3 mb-4 text-center bg-grey-darken-4" theme="darkTheme">
+      <div class="d-flex align-center justify-center ga-2">
         <VIcon icon="mdi-record-circle" color="error" class="pulse" />
-        <span class="text-caption">جارٍ التسجيل — سيُحلّل الـ AI لغة جسدك ونبرتك</span>
+        <span class="text-caption">جارٍ التسجيل — يحلّل الـ AI نبرتك ولغة جسدك</span>
       </div>
     </VCard>
 
-    <div class="d-flex justify-space-between text-caption mb-1">
-      <span class="text-medium-emphasis">السؤال {{ currentIndex + 1 }} من {{ questions.length }}</span>
-      <span class="text-medium-emphasis">{{ current?.competency }}</span>
-    </div>
-    <VProgressLinear :model-value="progress" color="accent" height="8" rounded class="mb-5" />
-
     <VCard class="pa-5 mb-4">
-      <div class="d-flex ga-3 mb-4">
-        <VAvatar color="secondary" size="36"><VIcon icon="mdi-robot-happy-outline" color="white" size="20" /></VAvatar>
-        <div class="pa-3 rounded-lg bg-grey-lighten-3 text-body-1 flex-grow-1">{{ current?.text }}</div>
+      <!-- Question meta -->
+      <div class="d-flex align-center justify-space-between mb-3 flex-wrap ga-2">
+        <div class="d-flex align-center ga-2">
+          <VChip color="secondary" size="small" label :prepend-icon="PATTERN_META[currentQuestion.pattern].icon">
+            {{ PATTERN_META[currentQuestion.pattern].label }}
+          </VChip>
+          <VChip size="x-small" label variant="tonal">{{ currentQuestion.competency }}</VChip>
+        </div>
+        <span class="text-caption text-medium-emphasis">سؤال {{ currentIndex + 1 }} من {{ total }}</span>
       </div>
 
-      <VTextarea
-        v-model="currentAnswer"
-        label="إجابتك"
-        rows="4"
-        auto-grow
-        :disabled="!!answers[current?.id ?? -1]"
-        placeholder="اكتب إجابتك بتفصيل وأمثلة..."
-      />
+      <!-- Prompt -->
+      <div class="d-flex ga-3 mb-4">
+        <VAvatar color="secondary" size="34"><VIcon icon="mdi-robot-happy-outline" color="white" size="18" /></VAvatar>
+        <div class="pa-3 rounded-lg bg-grey-lighten-3 text-body-1 flex-grow-1">
+          {{ currentQuestion.prompt }}
+          <div v-if="currentQuestion.scenario" class="mt-2 pa-2 rounded bg-white text-body-2 font-weight-bold">
+            <VIcon icon="mdi-alert-decagram-outline" size="16" color="warning" /> {{ currentQuestion.scenario }}
+          </div>
+        </div>
+      </div>
 
-      <!-- AI hint on request -->
-      <VExpandTransition>
-        <VAlert v-if="hint && !answered" type="info" variant="tonal" density="compact" class="mt-2" icon="mdi-lightbulb-on-outline">
-          {{ hint }}
-        </VAlert>
-      </VExpandTransition>
+      <!-- Interactive widget per pattern -->
+      <div :class="{ 'answered-lock': answered }">
+        <component :is="widgetFor(currentQuestion.pattern)" :key="currentQuestion.id" :question="currentQuestion" v-model:answer="currentAnswer" />
+      </div>
 
-      <!-- Feedback -->
+      <!-- Live AI analysis -->
       <VExpandTransition>
-        <VAlert v-if="answers[current?.id ?? -1]" type="success" variant="tonal" density="compact" class="mt-2">
-          <div class="d-flex justify-space-between align-center">
-            <span>{{ lastFeedback }}</span>
-            <VChip color="success" size="small" label>{{ answers[current!.id].score }}%</VChip>
+        <VAlert v-if="lastEval" :type="lastEval.score >= 70 ? 'success' : 'warning'" variant="tonal" density="compact" class="mt-3">
+          <div class="d-flex justify-space-between align-center mb-1">
+            <span class="font-weight-bold">تحليل الـ AI اللحظي</span>
+            <VChip :color="lastEval.score >= 70 ? 'success' : 'warning'" size="small" label>{{ lastEval.score }}%</VChip>
+          </div>
+          <div class="text-body-2 mb-1">{{ lastEval.feedback }}</div>
+          <ul class="ps-4 text-caption">
+            <li v-for="s in lastEval.signals" :key="s">{{ s }}</li>
+          </ul>
+          <div v-if="lastEval.followUp" class="mt-2 pa-2 rounded bg-white text-body-2 d-flex align-center ga-2">
+            <VIcon icon="mdi-arrow-decision-outline" color="accent" size="18" />
+            <span>{{ lastEval.followUp }}</span>
           </div>
         </VAlert>
       </VExpandTransition>
     </VCard>
 
-    <div class="d-flex justify-space-between align-center ga-2 flex-wrap">
+    <div class="d-flex justify-end ga-2">
       <VBtn
         v-if="!answered"
-        variant="text"
-        color="secondary"
-        prepend-icon="mdi-help-circle-outline"
-        :disabled="!!hint"
-        @click="requestHint"
-      >
-        اطلب توضيح
-      </VBtn>
-      <VSpacer />
-      <VBtn
-        v-if="!answers[current?.id ?? -1]"
         color="primary"
         :loading="evaluating"
         :disabled="!currentAnswer.trim()"
         prepend-icon="mdi-send"
-        @click="submitAnswer"
+        @click="submit"
       >
         إرسال الإجابة
       </VBtn>
-      <VBtn v-else color="accent" :append-icon="isLast ? 'mdi-flag-checkered' : 'mdi-arrow-left'" @click="nextQuestion">
+      <VBtn v-else color="accent" :append-icon="isLast ? 'mdi-flag-checkered' : 'mdi-arrow-left'" @click="next">
         {{ isLast ? 'إنهاء وعرض النتيجة' : 'السؤال التالي' }}
       </VBtn>
     </div>
+
+    <!-- Anti-cheat snackbar -->
+    <VSnackbar v-model="cheatWarning" color="error" location="top" timeout="3500">
+      <VIcon icon="mdi-shield-alert-outline" /> رُصدت مغادرة للنافذة — النزاهة جزء من تقييمك.
+    </VSnackbar>
   </div>
 
   <VCard v-else class="pa-12 text-center">
@@ -197,11 +241,7 @@ function finish() {
 </template>
 
 <style scoped>
-.pulse {
-  animation: pulse 1.2s ease-in-out infinite;
-}
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
-}
+.pulse { animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+.answered-lock { opacity: 0.75; pointer-events: none; }
 </style>
