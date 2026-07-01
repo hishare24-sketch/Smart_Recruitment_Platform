@@ -40,6 +40,21 @@ describe('InterviewersStore', () => {
     expect(store.trustValue).toBeLessThanOrEqual(100)
   })
 
+  it('manages custom evaluation elements (add/remove) and books with elements', () => {
+    const store = useInterviewersStore()
+    const before = store.myEvalElements.length
+    store.addEvalElement({ name: 'عنصر تجريبي', description: 'وصف', price: 70 })
+    expect(store.myEvalElements.length).toBe(before + 1)
+    const added = store.myEvalElements[store.myEvalElements.length - 1]
+    store.removeEvalElement(added.id)
+    expect(store.myEvalElements.length).toBe(before)
+
+    const iv = store.interviewers[0]
+    expect(iv.evalElements.length).toBeGreaterThan(0)
+    store.book(iv, 'skills', 'الأحد · 18:00', 280, ['التقييم المتقدم'])
+    expect(store.bookings[0].elements).toEqual(['التقييم المتقدم'])
+  })
+
   it('accepts an agenda request and completes a session', () => {
     const store = useInterviewersStore()
     const req = store.agendaRequests[0]

@@ -74,6 +74,13 @@ export interface ReviewsDigest {
   traits: string[] // most-frequent traits/keywords extracted from comments
 }
 
+// — Custom evaluation elements (interviewer) —
+export interface EvalElementSuggestion {
+  name: string
+  description: string
+  price: number
+}
+
 export interface SkillInsight {
   skill: string // weakest verified skill name
   confidence: number
@@ -143,4 +150,6 @@ export interface AiService {
   // — public reviews (dual rating) —
   reviewsDigest: (comments: string[]) => ReviewsDigest
   suggestReviewReply: (stars: number, comment: string) => string
+  // — custom evaluation elements —
+  suggestEvalElements: (type: string, specialties: string[]) => EvalElementSuggestion[]
 }

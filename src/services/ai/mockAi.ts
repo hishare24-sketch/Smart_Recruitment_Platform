@@ -10,6 +10,7 @@ import type {
   EvaluationReview,
   InterviewerEligibility,
   InterviewerRank,
+  EvalElementSuggestion,
   PricingSuggestion,
   RequestPerformance,
   ReviewsDigest,
@@ -467,6 +468,33 @@ function suggestReviewReply(stars: number, comment: string): string {
   return 'أشكرك على صراحتك، وأعتذر إن لم ترقَ التجربة لتوقعاتك. ملاحظاتك مهمة وسأعمل على تحسينها — يسعدني التواصل لأي توضيح.'
 }
 
+// Suggest custom evaluation elements based on the interviewer's type + specialties
+const ELEMENT_LIBRARY: Record<string, EvalElementSuggestion[]> = {
+  technical: [
+    { name: 'مراجعة كود معمّقة', description: 'تحليل كود حقيقي مرفوع مع كشف الثغرات وفرص التحسين', price: 100 },
+    { name: 'تصميم نظام (System Design)', description: 'سيناريو تصميم معماري لنظام قابل للتوسّع', price: 130 },
+    { name: 'تقرير تقني مفصّل', description: 'تقرير مكتوب بنقاط القوة والفجوات وخطة تطوير', price: 60 },
+  ],
+  leadership: [
+    { name: 'التقييم القيادي', description: 'سيناريوهات قيادية لقياس اتخاذ القرار وإدارة الفرق', price: 150 },
+    { name: 'تقييم التفكير الاستراتيجي', description: 'دراسة حالة استراتيجية مع تحليل المقايضات', price: 120 },
+  ],
+  behavioral: [
+    { name: 'التقييم السلوكي الشامل', description: 'تحليل الشخصية والذكاء العاطفي والتوافق الثقافي', price: 80 },
+    { name: 'تقرير توافق ثقافي', description: 'تقييم ملاءمة المرشح لثقافة فريق محدّد', price: 70 },
+  ],
+  specialist: [
+    { name: 'تدقيق متخصّص', description: 'مراجعة معمّقة في مجال تخصّصك مع توصيات', price: 90 },
+    { name: 'خطة تطوير مخصّصة', description: 'خارطة طريق مهنية مبنية على نتائج التقييم', price: 60 },
+  ],
+}
+function suggestEvalElements(type: string, specialties: string[]): EvalElementSuggestion[] {
+  const base = ELEMENT_LIBRARY[type] ?? ELEMENT_LIBRARY.specialist
+  const spec = specialties[0]
+  // Tailor the first suggestion's wording to the interviewer's top specialty
+  return base.map((e, i) => (i === 0 && spec ? { ...e, description: `${e.description} — بتركيز على ${spec}` } : e))
+}
+
 export const mockAi: AiService = {
   skillLevel,
   trustAnalysis,
@@ -496,4 +524,5 @@ export const mockAi: AiService = {
   reviewEvaluationReport,
   reviewsDigest,
   suggestReviewReply,
+  suggestEvalElements,
 }

@@ -3,9 +3,11 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import PageHeader from '@/components/shared/PageHeader.vue'
 import StatCard from '@/components/shared/StatCard.vue'
-import { KIND_META, useInterviewersStore } from '@/stores/InterviewersStore'
+import { COMMISSION_NOTE, KIND_META, useInterviewersStore } from '@/stores/InterviewersStore'
 import type { AgendaItem, MarketInterviewKind } from '@/stores/InterviewersStore'
 import { useNotificationsStore } from '@/stores/NotificationsStore'
+import { ai } from '@/services/ai'
+import type { EvalElementSuggestion } from '@/services/ai'
 
 const router = useRouter()
 const store = useInterviewersStore()
@@ -40,6 +42,24 @@ function openPricing() {
 function savePricing() {
   kinds.forEach(k => store.setPrice(k, draftPricing.value[k]))
   priceDialog.value = false
+}
+
+// Custom evaluation elements management
+const commissionNote = COMMISSION_NOTE
+const newElement = ref({ name: '', description: '', price: 50 })
+function addElement() {
+  if (!newElement.value.name.trim())
+    return
+  store.addEvalElement({ name: newElement.value.name.trim(), description: newElement.value.description.trim(), price: newElement.value.price })
+  newElement.value = { name: '', description: '', price: 50 }
+}
+const suggestions = ref<EvalElementSuggestion[]>([])
+function loadSuggestions() {
+  suggestions.value = ai.suggestEvalElements('technical', [])
+}
+function addSuggestion(s: EvalElementSuggestion) {
+  store.addEvalElement({ name: s.name, description: s.description, price: s.price })
+  suggestions.value = suggestions.value.filter(x => x.name !== s.name)
 }
 </script>
 
@@ -150,6 +170,53 @@ function savePricing() {
           <div v-else class="pa-6 text-center text-medium-emphasis">لا مقابلات منفّذة بعد</div>
         </VCard>
       </VCol>
+
+      <!-- Custom evaluation elements management -->
+      <VCol cols="12">
+        <VCard class="pa-5">
+          <div class="d-flex align-center justify-space-between flex-wrap ga-2 mb-1">
+            <div class="d-flex align-center ga-2">
+              <VIcon icon="mdi-tune-vertical" color="accent" />
+              <h2 class="text-subtitle-1 font-weight-bold">عناصر التقييم المخصّصة</h2>
+            </div>
+            <VBtn size="small" variant="tonal" color="secondary" prepend-icon="mdi-robot-happy-outline" @click="loadSuggestions">اقترح بالذكاء الاصطناعي</VBtn>
+          </div>
+          <p class="text-caption text-medium-emphasis mb-3 d-flex align-center flex-wrap ga-1">
+            أضِف عناصر تقييم إضافية بسعر مستقل تظهر للمرشّحين عند الحجز.
+            <VMenu :close-on-content-click="false" location="top">
+              <template #activator="{ props }">
+                <span v-bind="props" class="cursor-pointer d-inline-flex align-center text-secondary"><VIcon icon="mdi-information-outline" size="14" class="me-1" />العمولة</span>
+              </template>
+              <VCard max-width="320" class="pa-3 text-caption">{{ commissionNote }}</VCard>
+            </VMenu>
+          </p>
+
+          <div v-if="suggestions.length" class="mb-3 d-flex flex-wrap ga-2">
+            <VChip v-for="s in suggestions" :key="s.name" color="secondary" variant="tonal" size="small" @click="addSuggestion(s)">
+              <VIcon icon="mdi-plus" start size="14" />{{ s.name }} (+{{ s.price }})
+            </VChip>
+          </div>
+
+          <div v-if="store.myEvalElements.length" class="d-flex flex-column ga-2 mb-4">
+            <div v-for="el in store.myEvalElements" :key="el.id" class="element-row pa-2 d-flex align-center ga-2">
+              <div class="flex-grow-1">
+                <div class="text-body-2 font-weight-bold">{{ el.name }}</div>
+                <div class="text-caption text-medium-emphasis">{{ el.description }}</div>
+              </div>
+              <span class="font-weight-bold">+{{ el.price }} ﷼</span>
+              <VBtn icon="mdi-delete-outline" variant="text" size="x-small" color="error" @click="store.removeEvalElement(el.id)" />
+            </div>
+          </div>
+          <div v-else class="text-caption text-medium-emphasis mb-3">لا عناصر مخصّصة بعد.</div>
+
+          <VRow dense align="center">
+            <VCol cols="12" sm="4"><VTextField v-model="newElement.name" label="اسم العنصر" density="compact" hide-details /></VCol>
+            <VCol cols="12" sm="5"><VTextField v-model="newElement.description" label="الوصف" density="compact" hide-details /></VCol>
+            <VCol cols="8" sm="2"><VTextField v-model.number="newElement.price" type="number" label="السعر" suffix="﷼" density="compact" hide-details /></VCol>
+            <VCol cols="4" sm="1"><VBtn color="accent" block height="40" :disabled="!newElement.name.trim()" @click="addElement"><VIcon icon="mdi-plus" /></VBtn></VCol>
+          </VRow>
+        </VCard>
+      </VCol>
     </VRow>
 
     <!-- Pricing dialog -->
@@ -177,3 +244,10 @@ function savePricing() {
     </VDialog>
   </div>
 </template>
+
+<style scoped>
+.element-row {
+  border: 1px solid rgba(140, 163, 150, 0.2);
+  border-radius: var(--ui-radius);
+}
+</style>

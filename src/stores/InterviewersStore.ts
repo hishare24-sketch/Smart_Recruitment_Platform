@@ -16,6 +16,18 @@ export interface EvaluationReport {
   trustGain: number
 }
 
+// Custom evaluation element an interviewer offers on top of the base interview
+export interface CustomEvalElement {
+  id: number
+  name: string
+  description: string
+  price: number // SAR, added on top of the base price
+}
+
+// Platform commission taken from each paid service (disclosed transparently)
+export const PLATFORM_COMMISSION = { min: 20, max: 30 } as const
+export const COMMISSION_NOTE = 'تتلقى المنصة نسبة تتراوح بين 20% إلى 30% من قيمة هذه الخدمة كعمولة لتغطية التكاليف التشغيلية والبنية التحتية والتسويق والدعم الفني.'
+
 export interface Interviewer {
   id: number
   name: string
@@ -33,6 +45,7 @@ export interface Interviewer {
   availability: string[]
   languages: string[]
   verified: boolean
+  evalElements: CustomEvalElement[]
 }
 
 export interface Booking {
@@ -45,6 +58,7 @@ export interface Booking {
   status: BookingStatus
   report?: EvaluationReport
   ratingGiven?: number
+  elements?: string[] // names of extra evaluation elements chosen
 }
 
 // Interviewer-side view: sessions the logged-in interviewer must conduct
@@ -90,6 +104,10 @@ const INTERVIEWERS_SEED: Interviewer[] = [
     specialties: ['Vue.js', 'TypeScript', 'Architecture', 'تطوير الويب'], field: 'تطوير الويب',
     rating: 4.9, reviewsCount: 128, sessionsCount: 214, priceMin: 120, priceMax: 300,
     availability: ['الأحد', 'الثلاثاء', 'الخميس'], languages: ['العربية', 'English'], verified: true,
+    evalElements: [
+      { id: 1, name: 'التقييم المتقدم (تحليل معمّق)', description: 'تحليل معمّق للمشاريع السابقة والكود المرفوع', price: 100 },
+      { id: 2, name: 'تقرير مفصّل مع توصيات', description: 'تقرير مكتوب شامل مع خطة تطوير مهني مخصّصة', price: 60 },
+    ],
   },
   {
     id: 2, name: 'د. ريم القحطاني', initial: 'ر', type: 'leadership', title: 'مستشارة قيادة وموارد بشرية · PMP',
@@ -97,6 +115,10 @@ const INTERVIEWERS_SEED: Interviewer[] = [
     specialties: ['القيادة', 'الإدارة', 'التخطيط الاستراتيجي'], field: 'الإدارة',
     rating: 4.8, reviewsCount: 96, sessionsCount: 150, priceMin: 200, priceMax: 500,
     availability: ['الإثنين', 'الأربعاء'], languages: ['العربية', 'English'], verified: true,
+    evalElements: [
+      { id: 1, name: 'التقييم القيادي', description: 'تقييم المهارات القيادية والإدارية عبر سيناريوهات عملية', price: 150 },
+      { id: 2, name: 'التقييم السلوكي الشامل', description: 'تحليل الشخصية والذكاء العاطفي والتوافق الثقافي', price: 80 },
+    ],
   },
   {
     id: 3, name: 'أ. سلمى العنزي', initial: 'س', type: 'behavioral', title: 'أخصائية تقييم نفسي وذكاء عاطفي',
@@ -104,6 +126,9 @@ const INTERVIEWERS_SEED: Interviewer[] = [
     specialties: ['الذكاء العاطفي', 'تحليل الشخصية', 'التواصل'], field: 'السلوكي',
     rating: 4.7, reviewsCount: 74, sessionsCount: 110, priceMin: 60, priceMax: 200,
     availability: ['الأحد', 'الأربعاء', 'الخميس'], languages: ['العربية'], verified: true,
+    evalElements: [
+      { id: 1, name: 'التقييم السلوكي الشامل', description: 'تحليل الشخصية والذكاء العاطفي والتوافق الثقافي', price: 80 },
+    ],
   },
   {
     id: 4, name: 'م. فهد الدوسري', initial: 'ف', type: 'technical', title: 'مهندس DevOps وأمن سيبراني',
@@ -111,6 +136,9 @@ const INTERVIEWERS_SEED: Interviewer[] = [
     specialties: ['DevOps', 'الأمن السيبراني', 'Cloud'], field: 'البنية التحتية',
     rating: 4.6, reviewsCount: 51, sessionsCount: 68, priceMin: 100, priceMax: 280,
     availability: ['الثلاثاء', 'الخميس'], languages: ['العربية', 'English'], verified: true,
+    evalElements: [
+      { id: 1, name: 'مراجعة أمنية معمّقة', description: 'فحص ثغرات وممارسات الأمان في مشروعك', price: 120 },
+    ],
   },
   {
     id: 5, name: 'أ. نورة المطيري', initial: 'ن', type: 'specialist', title: 'خبيرة تسويق رقمي ونمو',
@@ -118,6 +146,9 @@ const INTERVIEWERS_SEED: Interviewer[] = [
     specialties: ['التسويق الرقمي', 'النمو', 'المحتوى'], field: 'التسويق',
     rating: 4.8, reviewsCount: 63, sessionsCount: 89, priceMin: 80, priceMax: 260,
     availability: ['الأحد', 'الإثنين', 'الأربعاء'], languages: ['العربية', 'English'], verified: true,
+    evalElements: [
+      { id: 1, name: 'تدقيق حملة نمو', description: 'مراجعة استراتيجية نمو أو حملة تسويقية مع توصيات', price: 90 },
+    ],
   },
 ]
 
@@ -156,6 +187,24 @@ function loadBookings(): Booking[] {
 
 const AGENDA_STORAGE = 'interviewerAgenda'
 const PRICING_STORAGE = 'interviewerPricing'
+const MY_ELEMENTS_STORAGE = 'interviewerMyElements'
+
+const MY_ELEMENTS_SEED: CustomEvalElement[] = [
+  { id: 1, name: 'التقييم المتقدم (تحليل معمّق)', description: 'تحليل معمّق للمشاريع السابقة والكود المرفوع', price: 100 },
+  { id: 2, name: 'تقرير مفصّل مع توصيات', description: 'تقرير مكتوب شامل مع خطة تطوير مهني مخصّصة', price: 60 },
+]
+
+function loadMyElements(): CustomEvalElement[] {
+  const raw = localStorage.getItem(MY_ELEMENTS_STORAGE)
+  if (!raw)
+    return MY_ELEMENTS_SEED.map(e => ({ ...e }))
+  try {
+    return JSON.parse(raw) as CustomEvalElement[]
+  }
+  catch {
+    return MY_ELEMENTS_SEED.map(e => ({ ...e }))
+  }
+}
 
 const AGENDA_SEED: AgendaItem[] = [
   { id: 1, candidateName: 'أحمد العلي', candidateInitial: 'أ', candidateField: 'تطوير الويب', kind: 'skills', datetime: 'الخميس 2026-07-02 · 20:00', price: 180, status: 'requested' },
@@ -206,10 +255,12 @@ export const useInterviewersStore = defineStore('interviewers', () => {
   const bookings = ref<Booking[]>(loadBookings())
   const agenda = ref<AgendaItem[]>(loadAgenda())
   const pricing = ref<Record<MarketInterviewKind, number>>(loadPricing())
+  const myEvalElements = ref<CustomEvalElement[]>(loadMyElements())
 
   watch(bookings, val => localStorage.setItem(BOOKINGS_STORAGE, JSON.stringify(val)), { deep: true })
   watch(agenda, val => localStorage.setItem(AGENDA_STORAGE, JSON.stringify(val)), { deep: true })
   watch(pricing, val => localStorage.setItem(PRICING_STORAGE, JSON.stringify(val)), { deep: true })
+  watch(myEvalElements, val => localStorage.setItem(MY_ELEMENTS_STORAGE, JSON.stringify(val)), { deep: true })
 
   const fields = computed(() => [...new Set(interviewers.value.map(i => i.field))])
 
@@ -234,13 +285,23 @@ export const useInterviewersStore = defineStore('interviewers', () => {
     return ai.interviewerMatch(candidate, { type: iv.type, specialties: iv.specialties })
   }
 
-  function book(interviewer: Interviewer, kind: MarketInterviewKind, datetime: string, price: number): number {
+  function book(interviewer: Interviewer, kind: MarketInterviewKind, datetime: string, price: number, elements?: string[]): number {
     const id = nextBookingId++
     bookings.value.unshift({
       id, interviewerId: interviewer.id, interviewerName: interviewer.name,
       kind, datetime, price, status: 'requested',
+      ...(elements && elements.length ? { elements } : {}),
     })
     return id
+  }
+
+  // — Custom evaluation elements (logged-in interviewer) —
+  let nextElementId = 100
+  function addEvalElement(el: Omit<CustomEvalElement, 'id'>) {
+    myEvalElements.value.push({ ...el, id: nextElementId++ })
+  }
+  function removeEvalElement(id: number) {
+    myEvalElements.value = myEvalElements.value.filter(e => e.id !== id)
   }
   function rateBooking(id: number, stars: number) {
     const b = bookings.value.find(x => x.id === id)
@@ -300,10 +361,11 @@ export const useInterviewersStore = defineStore('interviewers', () => {
   })
 
   return {
-    interviewers, bookings, agenda, pricing, fields,
+    interviewers, bookings, agenda, pricing, myEvalElements, fields,
     getById, recommendedFor, matchFor, book, rateBooking,
     completedReports, trustValue,
     getAgendaItem, acceptRequest, declineRequest, completeSession, setPrice,
+    addEvalElement, removeEvalElement,
     agendaRequests, agendaUpcoming, agendaCompleted, interviewerStats,
   }
 })

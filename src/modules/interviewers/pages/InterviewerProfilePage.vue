@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { INTERVIEWER_TYPE_META, KIND_META, useInterviewersStore } from '@/stores/InterviewersStore'
-import type { MarketInterviewKind } from '@/stores/InterviewersStore'
+import { COMMISSION_NOTE, INTERVIEWER_TYPE_META, KIND_META, PLATFORM_COMMISSION, useInterviewersStore } from '@/stores/InterviewersStore'
+import type { CustomEvalElement, MarketInterviewKind } from '@/stores/InterviewersStore'
 import { useProfileStore } from '@/stores/ProfileStore'
 import { useNotificationsStore } from '@/stores/NotificationsStore'
 import ReviewsPanel from '@/components/shared/ReviewsPanel.vue'
@@ -58,7 +58,7 @@ function pickTime(time: string, taken: boolean) {
     chosenTime.value = time
 }
 
-const price = computed(() => {
+const basePrice = computed(() => {
   if (!interviewer.value)
     return 0
   // scale within the interviewer's range by interview kind weight
@@ -66,6 +66,27 @@ const price = computed(() => {
   const { priceMin, priceMax } = interviewer.value
   return Math.round((priceMin + (priceMax - priceMin) * weight[chosenKind.value]) / 5) * 5
 })
+
+// Custom evaluation elements selected on top of the base interview
+const selectedElements = ref<CustomEvalElement[]>([])
+function toggleElement(el: CustomEvalElement) {
+  const i = selectedElements.value.findIndex(e => e.id === el.id)
+  if (i >= 0)
+    selectedElements.value.splice(i, 1)
+  else
+    selectedElements.value.push(el)
+}
+function isSelected(el: CustomEvalElement) {
+  return selectedElements.value.some(e => e.id === el.id)
+}
+const elementsTotal = computed(() => selectedElements.value.reduce((s, e) => s + e.price, 0))
+const price = computed(() => basePrice.value + elementsTotal.value)
+const commissionText = computed(() => {
+  const lo = Math.round(price.value * PLATFORM_COMMISSION.min / 100)
+  const hi = Math.round(price.value * PLATFORM_COMMISSION.max / 100)
+  return `عمولة المنصة (${PLATFORM_COMMISSION.min}–${PLATFORM_COMMISSION.max}%): ${lo}–${hi} ريال · يصل للمقيّم ${price.value - hi}–${price.value - lo} ريال`
+})
+const commissionNote = COMMISSION_NOTE
 
 const dateLabel = computed(() => {
   if (!chosenDate.value)
@@ -80,12 +101,13 @@ function openBooking(kind?: MarketInterviewKind) {
     chosenKind.value = kind
   chosenDate.value = null
   chosenTime.value = ''
+  selectedElements.value = []
   bookDialog.value = true
 }
 
 function confirmBooking() {
   if (interviewer.value && canConfirm.value) {
-    store.book(interviewer.value, chosenKind.value, `${dateLabel.value} · ${chosenTime.value}`, price.value)
+    store.book(interviewer.value, chosenKind.value, `${dateLabel.value} · ${chosenTime.value}`, price.value, selectedElements.value.map(e => e.name))
     notifications.push({
       icon: 'mdi-calendar-check-outline',
       color: 'secondary',
@@ -250,6 +272,36 @@ function confirmBooking() {
             </VCol>
           </VRow>
 
+          <!-- Custom evaluation elements -->
+          <template v-if="interviewer.evalElements.length">
+            <VDivider class="my-3" />
+            <div class="text-subtitle-2 font-weight-bold mb-2">عناصر تقييم إضافية (اختياري)</div>
+            <div class="d-flex flex-column ga-2">
+              <div
+                v-for="el in interviewer.evalElements"
+                :key="el.id"
+                class="element-row pa-2 d-flex align-center ga-2 cursor-pointer"
+                :class="{ 'element-row--on': isSelected(el) }"
+                @click="toggleElement(el)"
+              >
+                <VCheckboxBtn :model-value="isSelected(el)" color="accent" density="compact" @click.stop="toggleElement(el)" />
+                <div class="flex-grow-1">
+                  <div class="text-body-2 font-weight-bold">{{ el.name }}</div>
+                  <div class="text-caption text-medium-emphasis">{{ el.description }}</div>
+                </div>
+                <div class="d-flex align-center ga-1">
+                  <span class="text-body-2 font-weight-bold">+{{ el.price }}</span>
+                  <VMenu :close-on-content-click="false" location="top">
+                    <template #activator="{ props }">
+                      <VIcon v-bind="props" icon="mdi-information-outline" size="16" color="medium-emphasis" @click.stop />
+                    </template>
+                    <VCard max-width="300" class="pa-3 text-caption">{{ commissionNote }}</VCard>
+                  </VMenu>
+                </div>
+              </div>
+            </div>
+          </template>
+
           <VDivider class="my-3" />
 
           <VAlert :color="canConfirm ? 'success' : 'accent'" variant="tonal" density="compact">
@@ -259,6 +311,20 @@ function confirmBooking() {
                 <template v-else>اختر اليوم والفترة لتأكيد الموعد</template>
               </span>
               <span class="font-weight-bold">{{ price }} ريال</span>
+            </div>
+            <div class="d-flex align-center justify-space-between mt-1 text-caption text-medium-emphasis">
+              <span>الأساسي {{ basePrice }}<span v-if="elementsTotal"> + إضافات {{ elementsTotal }}</span> ريال</span>
+              <VMenu :close-on-content-click="false" location="top">
+                <template #activator="{ props }">
+                  <span v-bind="props" class="cursor-pointer d-flex align-center">
+                    <VIcon icon="mdi-information-outline" size="14" class="me-1" />العمولة
+                  </span>
+                </template>
+                <VCard max-width="320" class="pa-3">
+                  <div class="text-caption font-weight-bold mb-1">{{ commissionText }}</div>
+                  <div class="text-caption text-medium-emphasis">{{ commissionNote }}</div>
+                </VCard>
+              </VMenu>
             </div>
           </VAlert>
         </VCardText>
@@ -283,3 +349,15 @@ function confirmBooking() {
     <VBtn color="primary" class="mt-3" :to="{ name: 'interviewers' }">العودة للسوق</VBtn>
   </VCard>
 </template>
+
+<style scoped>
+.element-row {
+  border: 1px solid rgba(140, 163, 150, 0.2);
+  border-radius: var(--ui-radius);
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+.element-row--on {
+  border-color: rgb(var(--v-theme-accent));
+  background: rgba(var(--v-theme-accent), 0.08);
+}
+</style>

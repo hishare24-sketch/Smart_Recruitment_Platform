@@ -15,6 +15,17 @@ describe('mockAi.skillLevel', () => {
   })
 })
 
+describe('mockAi.suggestEvalElements', () => {
+  it('suggests priced elements tailored to the interviewer type', () => {
+    const tech = mockAi.suggestEvalElements('technical', ['Vue.js'])
+    expect(tech.length).toBeGreaterThan(0)
+    expect(tech[0].price).toBeGreaterThan(0)
+    expect(tech[0].description).toContain('Vue.js')
+    // unknown type falls back to a valid set
+    expect(mockAi.suggestEvalElements('unknown', []).length).toBeGreaterThan(0)
+  })
+})
+
 describe('mockAi.trustAnalysis', () => {
   it('suggests tips for weak factors', () => {
     const tips = mockAi.trustAnalysis([{ key: 'endorsements', label: 'التوصيات', value: 40 }])
