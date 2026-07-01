@@ -3,10 +3,14 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import PageHeader from '@/components/shared/PageHeader.vue'
 import { useResumesStore } from '@/stores/ResumesStore'
+import { useProfileStore } from '@/stores/ProfileStore'
+import { useAuthStore } from '@/stores/AuthStore'
 import { ai } from '@/services/ai'
 
 const router = useRouter()
 const resumesStore = useResumesStore()
+const profile = useProfileStore()
+const auth = useAuthStore()
 
 const step = ref(1)
 const totalSteps = 7
@@ -129,16 +133,55 @@ function regenerateSummary() {
   ]
   summary.value = variants[Math.floor(Math.random() * variants.length)]
 }
+
+// ————— Live preview: template + colours + fonts + sections applied instantly —————
+const SCHEME_COLORS: Record<string, string> = { blue: '#2563eb', green: '#16a34a', orange: '#ea580c', dark: '#334155' }
+const accentColor = computed(() => SCHEME_COLORS[colorScheme.value] ?? SCHEME_COLORS.blue)
+const fontPx = computed(() => ({ small: '13px', medium: '14.5px', large: '16px' }[fontSize.value] ?? '14.5px'))
+const isRtl = computed(() => language.value !== 'en')
+
+// Header layout variant per template
+const HEADER_MOD: Record<string, string> = { classic: 'line', modern: 'band', creative: 'band creative', academic: 'center line', executive: 'dark' }
+const headerMod = computed(() => (HEADER_MOD[selectedTemplate.value] ?? 'band').split(' ').map(m => `rp-header--${m}`).join(' '))
+
+const enabled = computed(() => Object.fromEntries(sections.value.map(s => [s.key, s.enabled])) as Record<string, boolean>)
+
+// Bilingual section labels — the language toggle updates the preview live
+const AR_L = { summary: 'الملخص المهني', skills: 'المهارات', experience: 'الخبرات العملية', education: 'التعليم', projects: 'المشاريع', certificates: 'الشهادات', languages: 'اللغات', hobbies: 'الاهتمامات', title: 'مطوّر واجهات أمامية' }
+const EN_L = { summary: 'Professional Summary', skills: 'Skills', experience: 'Experience', education: 'Education', projects: 'Projects', certificates: 'Certificates', languages: 'Languages', hobbies: 'Interests', title: 'Frontend Developer' }
+const L = computed(() => (language.value === 'en' ? EN_L : AR_L))
+
+// Real data from the candidate's profile (falls back to samples so the preview always looks complete)
+const displayName = computed(() => auth.authUser?.name ?? 'أحمد محمد')
+const headline = computed(() => profile.headline || L.value.title)
+const previewSkills = computed(() => (profile.skills.length ? profile.skills.map(s => s.name) : ['Vue.js', 'TypeScript', 'UI/UX', 'Node.js']))
+const previewExperiences = computed(() =>
+  profile.experiences.length
+    ? profile.experiences
+    : [{ id: 0, title: 'مطوّر واجهات أمامية أول', company: 'شركة تقنية', period: '2021 - الآن', desc: 'قيادة تطوير واجهات منتجات SaaS.' }],
+)
+const previewCertificates = computed(() =>
+  profile.certificates.length
+    ? profile.certificates
+    : [{ id: 0, name: 'Vue.js المحترف', issuer: 'منصّة تدريب', date: '2024' }],
+)
+const previewEducation = [{ degree: 'بكالوريوس علوم حاسب', school: 'جامعة الملك سعود', year: '2019' }]
+const previewProjects = [{ name: 'نظام تصميم موحّد', desc: 'مكتبة مكوّنات Vue قابلة لإعادة الاستخدام عبر 6 منتجات.' }]
+const previewLanguages = ['العربية — الأم', 'English — متقدّم']
+const previewHobbies = ['القراءة التقنية', 'التصوير', 'الشطرنج']
 </script>
 
 <template>
   <div>
     <PageHeader
       title="منشئ السيرة الذاتية الذكي"
-      subtitle="أنشئ سيرة احترافية من بيانات ملفك في خطوات قليلة"
+      subtitle="أنشئ سيرة احترافية من بيانات ملفك — بمعاينة حيّة تتحدّث فورًا"
       icon="mdi-file-account-outline"
     />
 
+    <VRow>
+      <!-- Left: wizard -->
+      <VCol cols="12" md="7">
     <!-- Stepper progress -->
     <VCard class="pa-4 mb-4">
       <div class="d-flex justify-space-between mb-2">
@@ -270,32 +313,13 @@ function regenerateSummary() {
         </VCard>
       </div>
 
-      <!-- Step 6: Preview -->
+      <!-- Step 6: AI review (the visual resume is live on the right) -->
       <div v-else-if="step === 6">
-        <h3 class="text-subtitle-1 font-weight-bold mb-4">المعاينة النهائية</h3>
-        <VCard variant="outlined" class="pa-6 mx-auto" max-width="600">
-          <div class="d-flex align-center ga-4 mb-4">
-            <VAvatar v-if="withPhoto" color="primary" size="72">
-              <VIcon icon="mdi-account" size="40" color="white" />
-            </VAvatar>
-            <div>
-              <div class="text-h6 font-weight-bold">أحمد محمد</div>
-              <div class="text-body-2 text-secondary">مطوّر واجهات أمامية</div>
-            </div>
-          </div>
-          <VDivider class="mb-3" />
-          <div class="text-caption font-weight-bold text-primary mb-1">الملخص المهني</div>
-          <p class="text-body-2 text-medium-emphasis">{{ summary }}</p>
-          <div class="text-caption font-weight-bold text-primary mb-1 mt-3">المهارات</div>
-          <div class="d-flex flex-wrap ga-1">
-            <VChip v-for="s in resumeSkills" :key="s" size="x-small" color="secondary" variant="tonal">
-              {{ s }}
-            </VChip>
-          </div>
-        </VCard>
+        <h3 class="text-subtitle-1 font-weight-bold mb-1">تحليل ورؤى الـ AI</h3>
+        <p class="text-caption text-medium-emphasis mb-4">راجع سيرتك الحيّة على اليمين، وحسّنها حسب توصيات الـ AI.</p>
 
         <!-- AI analysis -->
-        <VCard variant="tonal" color="secondary" class="pa-4 mt-4 mx-auto" max-width="600">
+        <VCard variant="tonal" color="secondary" class="pa-4">
           <div class="d-flex align-center justify-space-between mb-3 flex-wrap ga-2">
             <div class="d-flex align-center ga-2">
               <VIcon icon="mdi-robot-happy-outline" />
@@ -369,6 +393,110 @@ function regenerateSummary() {
       </div>
     </VCard>
 
+        <!-- Navigation -->
+        <div class="d-flex justify-space-between">
+          <VBtn variant="outlined" :disabled="step === 1" prepend-icon="mdi-arrow-right" @click="prev">
+            السابق
+          </VBtn>
+          <VBtn v-if="step < totalSteps" color="accent" append-icon="mdi-arrow-left" @click="next">
+            التالي
+          </VBtn>
+          <VBtn v-else color="success" prepend-icon="mdi-content-save" @click="saveResume">
+            حفظ في حسابي
+          </VBtn>
+        </div>
+      </VCol>
+
+      <!-- Right: live preview -->
+      <VCol cols="12" md="5">
+        <div class="preview-panel">
+          <div class="d-flex align-center justify-space-between mb-2">
+            <div class="d-flex align-center ga-2">
+              <VIcon icon="mdi-eye-outline" color="accent" size="18" />
+              <span class="text-subtitle-2 font-weight-bold">معاينة حيّة</span>
+              <VChip size="x-small" color="accent" variant="tonal" label>{{ templateName }}</VChip>
+            </div>
+            <span class="text-caption text-medium-emphasis">تتحدّث فورًا</span>
+          </div>
+
+          <div class="resume-preview" :style="{ '--rp-accent': accentColor, fontSize: fontPx }" :dir="isRtl ? 'rtl' : 'ltr'">
+            <!-- Header -->
+            <div class="rp-header" :class="headerMod">
+              <div class="d-flex align-center ga-3" :class="{ 'justify-center': selectedTemplate === 'academic' }">
+                <div v-if="withPhoto" class="rp-photo"><VIcon icon="mdi-account" /></div>
+                <div>
+                  <div class="rp-name">{{ displayName }}</div>
+                  <div class="rp-title">{{ headline }}</div>
+                  <div class="rp-contact">الرياض · {{ auth.authUser?.email || 'name@email.com' }}</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="rp-body">
+              <template v-if="enabled.summary">
+                <div class="rp-section-title">{{ L.summary }}</div>
+                <p class="rp-text">{{ summary }}</p>
+              </template>
+
+              <template v-if="enabled.skills">
+                <div class="rp-section-title">{{ L.skills }}</div>
+                <div class="rp-chips">
+                  <span v-for="s in previewSkills" :key="s" class="rp-chip">{{ s }}</span>
+                </div>
+              </template>
+
+              <template v-if="enabled.experience">
+                <div class="rp-section-title">{{ L.experience }}</div>
+                <div v-for="e in previewExperiences" :key="e.id" class="rp-item">
+                  <div class="rp-item-head">{{ e.title }} — {{ e.company }}</div>
+                  <div class="rp-item-sub">{{ e.period }}</div>
+                  <div v-if="e.desc" class="rp-text">{{ e.desc }}</div>
+                </div>
+              </template>
+
+              <template v-if="enabled.education">
+                <div class="rp-section-title">{{ L.education }}</div>
+                <div v-for="ed in previewEducation" :key="ed.degree" class="rp-item">
+                  <div class="rp-item-head">{{ ed.degree }}</div>
+                  <div class="rp-item-sub">{{ ed.school }} · {{ ed.year }}</div>
+                </div>
+              </template>
+
+              <template v-if="enabled.projects">
+                <div class="rp-section-title">{{ L.projects }}</div>
+                <div v-for="p in previewProjects" :key="p.name" class="rp-item">
+                  <div class="rp-item-head">{{ p.name }}</div>
+                  <div class="rp-text">{{ p.desc }}</div>
+                </div>
+              </template>
+
+              <template v-if="enabled.certificates">
+                <div class="rp-section-title">{{ L.certificates }}</div>
+                <div v-for="c in previewCertificates" :key="c.id" class="rp-item">
+                  <div class="rp-item-head">{{ c.name }}</div>
+                  <div class="rp-item-sub">{{ c.issuer }} · {{ c.date }}</div>
+                </div>
+              </template>
+
+              <template v-if="enabled.languages">
+                <div class="rp-section-title">{{ L.languages }}</div>
+                <div class="rp-chips">
+                  <span v-for="lang in previewLanguages" :key="lang" class="rp-chip">{{ lang }}</span>
+                </div>
+              </template>
+
+              <template v-if="enabled.hobbies">
+                <div class="rp-section-title">{{ L.hobbies }}</div>
+                <div class="rp-chips">
+                  <span v-for="h in previewHobbies" :key="h" class="rp-chip">{{ h }}</span>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+      </VCol>
+    </VRow>
+
     <!-- QR dialog -->
     <VDialog v-model="qrDialog" max-width="320">
       <VCard class="pa-4 text-center">
@@ -406,18 +534,127 @@ function regenerateSummary() {
     <VSnackbar :model-value="!!toastMsg" color="primary" location="top" timeout="3500" @update:model-value="toastMsg = ''">
       {{ toastMsg }}
     </VSnackbar>
-
-    <!-- Navigation -->
-    <div class="d-flex justify-space-between">
-      <VBtn variant="outlined" :disabled="step === 1" prepend-icon="mdi-arrow-right" @click="prev">
-        السابق
-      </VBtn>
-      <VBtn v-if="step < totalSteps" color="accent" append-icon="mdi-arrow-left" @click="next">
-        التالي
-      </VBtn>
-      <VBtn v-else color="success" prepend-icon="mdi-content-save" @click="saveResume">
-        حفظ في حسابي
-      </VBtn>
-    </div>
   </div>
 </template>
+
+<style scoped>
+.preview-panel {
+  position: sticky;
+  top: 84px;
+}
+@media (max-width: 959px) {
+  .preview-panel {
+    position: static;
+    margin-top: 8px;
+  }
+}
+
+/* The resume is a white "paper" document — fixed light colours in both app themes */
+.resume-preview {
+  background: #ffffff;
+  color: #1f2430;
+  border-radius: 12px;
+  overflow: hidden auto;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.16);
+  line-height: 1.5;
+  max-height: 78vh;
+}
+.rp-header {
+  padding: 18px 20px;
+}
+.rp-header--band {
+  background: var(--rp-accent);
+  color: #fff;
+}
+.rp-header--creative {
+  border-bottom-left-radius: 26px;
+}
+.rp-header--dark {
+  background: #1f2937;
+  color: #fff;
+}
+.rp-header--dark .rp-name {
+  color: var(--rp-accent);
+}
+.rp-header--line {
+  border-bottom: 3px solid var(--rp-accent);
+}
+.rp-header--center {
+  text-align: center;
+}
+.rp-name {
+  font-size: 1.4em;
+  font-weight: 800;
+}
+.rp-title {
+  font-size: 0.95em;
+  opacity: 0.9;
+}
+.rp-header--line .rp-title,
+.rp-header--center .rp-title {
+  color: var(--rp-accent);
+  opacity: 1;
+}
+.rp-contact {
+  font-size: 0.72em;
+  opacity: 0.8;
+  margin-top: 2px;
+}
+.rp-photo {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: #eef1f6;
+  color: var(--rp-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.rp-header--band .rp-photo,
+.rp-header--dark .rp-photo {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+.rp-body {
+  padding: 6px 20px 20px;
+}
+.rp-section-title {
+  color: var(--rp-accent);
+  font-weight: 800;
+  font-size: 0.72em;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  margin: 15px 0 6px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  padding-bottom: 3px;
+}
+.rp-text {
+  font-size: 0.86em;
+  color: #444b58;
+  margin: 0 0 4px;
+}
+.rp-item {
+  margin-bottom: 8px;
+}
+.rp-item-head {
+  font-weight: 700;
+  font-size: 0.9em;
+}
+.rp-item-sub {
+  font-size: 0.76em;
+  color: #6b7280;
+}
+.rp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.rp-chip {
+  font-size: 0.74em;
+  border: 1px solid var(--rp-accent);
+  color: var(--rp-accent);
+  border-radius: 999px;
+  padding: 1px 9px;
+}
+</style>
