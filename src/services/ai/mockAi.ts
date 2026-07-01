@@ -16,6 +16,7 @@ import type {
   RequestPerformance,
   ResumeReview,
   ReviewsDigest,
+  SearchIntent,
   SkillInsight,
   SkillLevelResult,
   TrustTip,
@@ -559,6 +560,53 @@ function translateText(text: string, to: 'ar' | 'en'): string {
   return 'مطوّر واجهات أمامية بخبرة 5 سنوات في بناء تطبيقات ويب حديثة وعالية الأداء باستخدام Vue.js و TypeScript. شغوف بتجربة المستخدم والحلول القابلة للتوسّع.'
 }
 
+// — Global search AI —
+function searchIntent(query: string): SearchIntent {
+  const q = query.trim()
+  if (!q)
+    return { scope: 'all', note: 'ابحث في كل الأقسام.' }
+  if (/مقيّم|مقيم|خبير|مقابلة تقييم/.test(q))
+    return { scope: 'interviewers', note: 'يبدو أنك تبحث عن مقيّمين معتمدين.' }
+  if (/وظيفة|مطلوب|توظيف|دوام|راتب/.test(q))
+    return { scope: 'opportunities', note: 'فهمت أنك تبحث عن فرص وظيفية.' }
+  if (/طلب|مشروع|استشارة|مهمة|تعاقد/.test(q))
+    return { scope: 'requests', note: 'يبدو أنك تبحث عن طلبات في السوق.' }
+  if (/شركة|جهة|مؤسسة/.test(q))
+    return { scope: 'companies', note: 'يبدو أنك تبحث عن جهات/شركات.' }
+  if (/مهارة|تصنيف/.test(q))
+    return { scope: 'skills', note: 'يبدو أنك تستكشف المهارات.' }
+  return { scope: 'all', note: `بحث موحّد عن «${q}» في كل الأقسام.` }
+}
+
+const KEYWORD_SYNONYMS: Record<string, string> = {
+  'برمجة جوال': 'تطوير تطبيقات',
+  'مبرمج': 'مطوّر',
+  'ديزاين': 'تصميم',
+  'فرونت': 'واجهات أمامية',
+  'باك': 'واجهات خلفية',
+  'ذكاء اصطناعي': 'تعلّم آلي',
+}
+function keywordAlternatives(query: string): string[] {
+  const q = query.trim().toLowerCase()
+  const out: string[] = []
+  for (const [k, v] of Object.entries(KEYWORD_SYNONYMS)) {
+    if (q.includes(k.toLowerCase()))
+      out.push(v)
+  }
+  return out.slice(0, 2)
+}
+
+function smartFilterChips(ctx: { section: string, skills: string[] }): { label: string, icon: string }[] {
+  const chips = [
+    { label: 'منافسة منخفضة (<5 متقدمين)', icon: 'mdi-account-arrow-down-outline' },
+    { label: 'جديد اليوم', icon: 'mdi-new-box' },
+    { label: 'جهات تقييمها 4.5★+', icon: 'mdi-star-check-outline' },
+  ]
+  if (ctx.skills.length)
+    chips.unshift({ label: `يناسب مهاراتك في ${ctx.skills[0]}`, icon: 'mdi-target' })
+  return chips
+}
+
 export const mockAi: AiService = {
   skillLevel,
   trustAnalysis,
@@ -593,4 +641,7 @@ export const mockAi: AiService = {
   resumeReview,
   resumeVsOpportunity,
   translateText,
+  searchIntent,
+  keywordAlternatives,
+  smartFilterChips,
 }

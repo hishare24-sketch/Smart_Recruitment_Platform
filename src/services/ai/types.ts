@@ -95,6 +95,13 @@ export interface ResumeReview {
   score: number // 0-100 resume strength
 }
 
+// — Global search AI —
+export type SearchScope = 'all' | 'requests' | 'opportunities' | 'interviewers' | 'users' | 'companies' | 'skills'
+export interface SearchIntent {
+  scope: SearchScope // the section the query most likely targets
+  note: string // human-readable interpretation of the intent
+}
+
 export interface SkillInsight {
   skill: string // weakest verified skill name
   confidence: number
@@ -172,4 +179,8 @@ export interface AiService {
   resumeReview: (summary: string, skills: string[]) => ResumeReview
   resumeVsOpportunity: (summary: string, opportunity: string) => string[]
   translateText: (text: string, to: 'ar' | 'en') => string
+  // — global search —
+  searchIntent: (query: string) => SearchIntent
+  keywordAlternatives: (query: string) => string[]
+  smartFilterChips: (ctx: { section: string, skills: string[] }) => { label: string, icon: string }[]
 }

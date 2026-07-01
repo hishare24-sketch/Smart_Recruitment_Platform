@@ -62,6 +62,26 @@ describe('mockAi resume helpers', () => {
   })
 })
 
+describe('mockAi global search helpers', () => {
+  it('infers search scope from the query wording', () => {
+    expect(mockAi.searchIntent('أبحث عن مقيّم React').scope).toBe('interviewers')
+    expect(mockAi.searchIntent('وظيفة مطوّر').scope).toBe('opportunities')
+    expect(mockAi.searchIntent('مشروع Laravel').scope).toBe('requests')
+    expect(mockAi.searchIntent('').scope).toBe('all')
+  })
+
+  it('suggests keyword alternatives via synonyms', () => {
+    expect(mockAi.keywordAlternatives('برمجة جوال')).toContain('تطوير تطبيقات')
+    expect(mockAi.keywordAlternatives('شيء غير معروف')).toEqual([])
+  })
+
+  it('proposes smart filter chips tuned to the user skills', () => {
+    const chips = mockAi.smartFilterChips({ section: 'requests', skills: ['Laravel'] })
+    expect(chips.length).toBeGreaterThan(0)
+    expect(chips[0].label).toContain('Laravel')
+  })
+})
+
 describe('mockAi.trustAnalysis', () => {
   it('suggests tips for weak factors', () => {
     const tips = mockAi.trustAnalysis([{ key: 'endorsements', label: 'التوصيات', value: 40 }])

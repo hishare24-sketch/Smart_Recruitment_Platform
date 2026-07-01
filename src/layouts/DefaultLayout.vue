@@ -6,6 +6,7 @@ import { useDisplay, useTheme } from 'vuetify'
 import { useAuthStore } from '@/stores/AuthStore'
 import { useNotificationsStore } from '@/stores/NotificationsStore'
 import { useMessagesStore } from '@/stores/MessagesStore'
+import GlobalSearchBar from '@/components/shared/GlobalSearchBar.vue'
 import { navForRole } from './navigation'
 
 const { t, locale } = useI18n()
@@ -119,6 +120,8 @@ const initials = computed(() => {
         </VBtn>
       </template>
     </VTooltip>
+
+    <GlobalSearchBar class="mx-2 d-none d-sm-flex" />
 
     <VSpacer />
 
