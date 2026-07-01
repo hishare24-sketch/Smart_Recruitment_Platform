@@ -8,6 +8,9 @@ import type { AdaptiveQuestion, InteractiveEvaluation, InterviewTrack } from '@/
 import { PATTERN_META, TRACK_META, interviewEngine } from '@/services/ai'
 import CodeChallenge from '../components/CodeChallenge.vue'
 import DecisionMatrix from '../components/DecisionMatrix.vue'
+import CustomerChat from '../components/CustomerChat.vue'
+import DataCleaning from '../components/DataCleaning.vue'
+import TaskOrdering from '../components/TaskOrdering.vue'
 import FreeAnswer from '../components/FreeAnswer.vue'
 
 const route = useRoute()
@@ -32,11 +35,21 @@ const isLast = computed(() => currentIndex.value === total.value - 1)
 const progress = computed(() => (total.value ? ((currentIndex.value + 1) / total.value) * 100 : 0))
 
 function widgetFor(pattern: string) {
-  if (pattern === 'live_case' || pattern === 'fill_code')
-    return CodeChallenge
-  if (pattern === 'strategic')
-    return DecisionMatrix
-  return FreeAnswer
+  switch (pattern) {
+    case 'live_case':
+    case 'fill_code':
+      return CodeChallenge
+    case 'strategic':
+      return DecisionMatrix
+    case 'angry_customer':
+      return CustomerChat
+    case 'dirty_data':
+      return DataCleaning
+    case 'reverse_plan':
+      return TaskOrdering
+    default:
+      return FreeAnswer
+  }
 }
 
 // ── per-question timer ──
