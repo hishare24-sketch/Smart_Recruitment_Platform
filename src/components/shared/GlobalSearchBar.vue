@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ai } from '@/services/ai'
 import { TAXONOMY } from '@/services/taxonomy'
@@ -13,6 +13,30 @@ const listening = ref(false)
 
 const suggestions = computed(() => (focused.value ? ai.searchSuggestions(query.value) : []))
 const alternatives = computed(() => (query.value ? ai.keywordAlternatives(query.value) : []))
+const showDropdown = computed(() => focused.value && (suggestions.value.length > 0 || alternatives.value.length > 0))
+
+// The suggestions list is teleported to <body> so it escapes the app-bar's
+// `overflow: hidden`; its position is anchored to the field on every open/resize.
+const wrapEl = ref<HTMLElement>()
+const dropdownStyle = ref<Record<string, string>>({})
+function updateDropdownPos() {
+  const field = wrapEl.value?.querySelector('.v-field') as HTMLElement | null
+  if (!field)
+    return
+  const r = field.getBoundingClientRect()
+  dropdownStyle.value = {
+    position: 'fixed',
+    top: `${r.bottom + 6}px`,
+    left: `${r.left}px`,
+    width: `${r.width}px`,
+  }
+}
+function onFocus() {
+  focused.value = true
+  nextTick(updateDropdownPos)
+}
+onMounted(() => window.addEventListener('resize', updateDropdownPos))
+onBeforeUnmount(() => window.removeEventListener('resize', updateDropdownPos))
 
 const scopes: { value: SearchScope, title: string }[] = [
   { value: 'all', title: 'الكل' },
@@ -85,7 +109,7 @@ function startVoice() {
 </script>
 
 <template>
-  <div class="global-search position-relative flex-grow-1" style="max-width: 560px">
+  <div ref="wrapEl" class="global-search position-relative flex-grow-1" style="max-width: 560px">
     <VTextField
       v-model="query"
       placeholder="ابحث في المنصة كاملة: طلبات، فرص، مقيّمون، مهارات..."
@@ -96,7 +120,7 @@ function startVoice() {
       flat
       rounded="lg"
       bg-color="background"
-      @focus="focused = true"
+      @focus="onFocus"
       @blur="onBlur"
       @keydown.enter="go()"
     >
@@ -114,19 +138,21 @@ function startVoice() {
       </template>
     </VTextField>
 
-    <!-- Live suggestions -->
-    <VExpandTransition>
-      <VCard v-if="focused && (suggestions.length || alternatives.length)" class="position-absolute w-100 mt-1" style="z-index: 20" elevation="8">
-        <VList density="compact">
-          <VListSubheader v-if="alternatives.length" class="text-caption">هل تقصد</VListSubheader>
-          <VListItem v-for="alt in alternatives" :key="`alt-${alt}`" prepend-icon="mdi-lightbulb-on-outline" :title="alt" @mousedown="pick(alt)" />
-          <VListSubheader class="text-caption"><VIcon icon="mdi-robot-happy-outline" size="14" class="me-1" /> اقتراحات ذكية</VListSubheader>
-          <VListItem v-for="(s, i) in suggestions" :key="i" prepend-icon="mdi-magnify" :title="s" @mousedown="pick(s)" />
-        </VList>
-      </VCard>
-    </VExpandTransition>
+    <!-- Live suggestions — teleported to <body> to escape the app-bar clip -->
+    <Teleport to="body">
+      <VExpandTransition>
+        <VCard v-if="showDropdown" class="global-search__menu" :style="dropdownStyle" elevation="8" rounded="lg">
+          <VList density="compact">
+            <VListSubheader v-if="alternatives.length" class="text-caption">هل تقصد</VListSubheader>
+            <VListItem v-for="alt in alternatives" :key="`alt-${alt}`" prepend-icon="mdi-lightbulb-on-outline" :title="alt" @mousedown="pick(alt)" />
+            <VListSubheader class="text-caption"><VIcon icon="mdi-robot-happy-outline" size="14" class="me-1" /> اقتراحات ذكية</VListSubheader>
+            <VListItem v-for="(s, i) in suggestions" :key="i" prepend-icon="mdi-magnify" :title="s" @mousedown="pick(s)" />
+          </VList>
+        </VCard>
+      </VExpandTransition>
+    </Teleport>
 
-    <!-- Advanced search dialog -->
+    <!-- Advanced search dialog (teleported by VDialog itself) -->
     <VDialog v-model="advDialog" max-width="520">
       <VCard class="pa-2">
         <VCardTitle class="d-flex align-center ga-2"><VIcon icon="mdi-tune-variant" /> بحث متقدم</VCardTitle>
@@ -146,3 +172,12 @@ function startVoice() {
     </VDialog>
   </div>
 </template>
+
+<style scoped>
+/* Teleported to <body>; must clear the app bar (z-index ~1005) */
+.global-search__menu {
+  z-index: 2400;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+</style>

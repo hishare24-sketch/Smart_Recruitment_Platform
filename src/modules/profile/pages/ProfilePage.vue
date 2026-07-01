@@ -231,32 +231,35 @@ const heroStats = computed(() => [
     <VCard class="mb-5 overflow-hidden profile-hero">
       <div class="brand-gradient profile-hero__banner" />
       <VCardText class="pt-0">
-        <div class="d-flex align-end flex-wrap ga-4 profile-hero__row">
+        <!-- Avatar overlaps the banner; actions sit on the surface beside it -->
+        <div class="d-flex align-end justify-space-between ga-4 profile-hero__row">
           <VAvatar color="secondary" size="104" class="profile-hero__avatar">
             <span class="text-h4 text-white font-weight-bold">{{ initials }}</span>
           </VAvatar>
-          <div class="flex-grow-1 pb-2">
-            <div class="d-flex align-center ga-2 flex-wrap">
-              <h1 class="text-h5 font-weight-bold mb-0">{{ user?.name }}</h1>
-              <VTooltip text="هوية موثّقة" location="top">
-                <template #activator="{ props }">
-                  <VIcon v-bind="props" icon="mdi-check-decagram" color="primary" size="22" />
-                </template>
-              </VTooltip>
-            </div>
-            <div class="text-body-2 text-medium-emphasis mt-1">{{ profile.headline }}</div>
-            <div class="d-flex align-center ga-2 mt-2 flex-wrap">
-              <VChip size="small" color="primary" variant="tonal" prepend-icon="mdi-shield-account-outline" label>{{ roleLabel }}</VChip>
-              <VChip size="small" :color="trust.level.color" variant="tonal" prepend-icon="mdi-star-check-outline" label>
-                ثقة {{ trust.score }}% · {{ trust.level.label }}
-              </VChip>
-            </div>
-          </div>
-          <div class="d-flex ga-2 pb-2">
+          <div class="d-flex ga-2 flex-wrap">
             <VBtn color="primary" variant="outlined" prepend-icon="mdi-share-variant-outline" :to="{ name: 'public-resume', params: { token: 'me' } }">
               مشاركة الملف
             </VBtn>
             <VBtn color="accent" prepend-icon="mdi-pencil" @click="openEdit">تعديل</VBtn>
+          </div>
+        </div>
+
+        <!-- Name & identity — on the card surface, clear of the banner -->
+        <div class="mt-3">
+          <div class="d-flex align-center ga-2 flex-wrap">
+            <h1 class="text-h5 font-weight-bold mb-0">{{ user?.name }}</h1>
+            <VTooltip text="هوية موثّقة" location="top">
+              <template #activator="{ props }">
+                <VIcon v-bind="props" icon="mdi-check-decagram" color="primary" size="22" />
+              </template>
+            </VTooltip>
+          </div>
+          <div class="text-body-2 text-medium-emphasis mt-1">{{ profile.headline }}</div>
+          <div class="d-flex align-center ga-2 mt-2 flex-wrap">
+            <VChip size="small" color="primary" variant="tonal" prepend-icon="mdi-shield-account-outline" label>{{ roleLabel }}</VChip>
+            <VChip size="small" :color="trust.level.color" variant="tonal" prepend-icon="mdi-star-check-outline" label>
+              ثقة {{ trust.score }}% · {{ trust.level.label }}
+            </VChip>
           </div>
         </div>
 
@@ -336,40 +339,44 @@ const heroStats = computed(() => [
               <span class="text-subtitle-2 font-weight-bold">{{ group.category?.label ?? 'أخرى' }}</span>
               <VChip size="x-small" variant="tonal" label>{{ group.skills.length }}</VChip>
             </div>
-            <VCard v-for="skill in group.skills" :key="skill.id" variant="outlined" class="pa-3 mb-3">
-              <div class="d-flex justify-space-between align-center mb-2">
-                <div class="d-flex align-center ga-2">
-                  <span class="text-body-1 font-weight-bold">{{ skill.name }}</span>
-                  <VChip size="x-small" :color="confidenceColor(skillConfidence(skill))" label>{{ levelOf(skill) }}</VChip>
-                </div>
-              <div class="d-flex align-center ga-1">
-                <VBtn icon="mdi-plus" variant="text" size="x-small" color="accent" @click="openAddProof(skill)" />
-                <VBtn icon="mdi-information-outline" variant="text" size="x-small" @click="openDetail(skill)" />
-                <VBtn icon="mdi-delete-outline" variant="text" size="x-small" color="error" @click="profile.removeSkill(skill.id)" />
-              </div>
-            </div>
+            <VRow dense>
+              <VCol v-for="skill in group.skills" :key="skill.id" cols="12" md="6">
+                <VCard variant="outlined" class="pa-3 h-100">
+                  <div class="d-flex justify-space-between align-center mb-2">
+                    <div class="d-flex align-center ga-2">
+                      <span class="text-body-1 font-weight-bold">{{ skill.name }}</span>
+                      <VChip size="x-small" :color="confidenceColor(skillConfidence(skill))" label>{{ levelOf(skill) }}</VChip>
+                    </div>
+                    <div class="d-flex align-center ga-1">
+                      <VBtn icon="mdi-plus" variant="text" size="x-small" color="accent" @click="openAddProof(skill)" />
+                      <VBtn icon="mdi-information-outline" variant="text" size="x-small" @click="openDetail(skill)" />
+                      <VBtn icon="mdi-delete-outline" variant="text" size="x-small" color="error" @click="profile.removeSkill(skill.id)" />
+                    </div>
+                  </div>
 
-            <!-- Proof source icons -->
-            <div class="d-flex align-center ga-1 mb-2">
-              <VTooltip v-for="p in skill.proofs" :key="p.id" :text="`${PROOF_META[p.type].label}: ${p.label}`" location="top">
-                <template #activator="{ props }">
-                  <VAvatar v-bind="props" :color="PROOF_META[p.type].color" variant="tonal" size="26" class="cursor-pointer" @click="openDetail(skill)">
-                    <VIcon :icon="PROOF_META[p.type].icon" size="15" />
-                  </VAvatar>
-                </template>
-              </VTooltip>
-              <VBtn variant="text" size="x-small" color="secondary" prepend-icon="mdi-account-star-outline" class="ms-1" @click="requestEndorsementProof(skill)">
-                طلب إثبات
-              </VBtn>
-            </div>
+                  <!-- Proof source icons -->
+                  <div class="d-flex align-center ga-1 mb-2 flex-wrap">
+                    <VTooltip v-for="p in skill.proofs" :key="p.id" :text="`${PROOF_META[p.type].label}: ${p.label}`" location="top">
+                      <template #activator="{ props }">
+                        <VAvatar v-bind="props" :color="PROOF_META[p.type].color" variant="tonal" size="26" class="cursor-pointer" @click="openDetail(skill)">
+                          <VIcon :icon="PROOF_META[p.type].icon" size="15" />
+                        </VAvatar>
+                      </template>
+                    </VTooltip>
+                    <VBtn variant="text" size="x-small" color="secondary" prepend-icon="mdi-account-star-outline" class="ms-1" @click="requestEndorsementProof(skill)">
+                      طلب إثبات
+                    </VBtn>
+                  </div>
 
-            <!-- Confidence bar -->
-            <div class="d-flex justify-space-between text-caption mb-1">
-              <span class="text-medium-emphasis">نسبة الثقة</span>
-              <span class="font-weight-bold" :class="`text-${confidenceColor(skillConfidence(skill))}`">{{ skillConfidence(skill) }}%</span>
-            </div>
-            <VProgressLinear :model-value="skillConfidence(skill)" :color="confidenceColor(skillConfidence(skill))" height="8" rounded />
-          </VCard>
+                  <!-- Confidence bar -->
+                  <div class="d-flex justify-space-between text-caption mb-1">
+                    <span class="text-medium-emphasis">نسبة الثقة</span>
+                    <span class="font-weight-bold" :class="`text-${confidenceColor(skillConfidence(skill))}`">{{ skillConfidence(skill) }}%</span>
+                  </div>
+                  <VProgressLinear :model-value="skillConfidence(skill)" :color="confidenceColor(skillConfidence(skill))" height="8" rounded />
+                </VCard>
+              </VCol>
+            </VRow>
           </template>
           <div v-if="!profile.skills.length" class="text-center text-medium-emphasis py-6">لا مهارات بعد — أضف أول مهارة</div>
         </VCard>
@@ -382,18 +389,20 @@ const heroStats = computed(() => [
             <h3 class="text-subtitle-1 font-weight-bold">الخبرات العملية ({{ profile.experiences.length }})</h3>
             <VBtn color="accent" size="small" prepend-icon="mdi-plus" @click="expDialog = true">إضافة خبرة</VBtn>
           </div>
-          <VTimeline side="end" density="compact" align="start">
-            <VTimelineItem v-for="exp in profile.experiences" :key="exp.id" dot-color="primary" size="small">
-              <div class="d-flex justify-space-between">
-                <div>
+          <VRow dense>
+            <VCol v-for="exp in profile.experiences" :key="exp.id" cols="12" md="6">
+              <VCard variant="outlined" class="pa-3 h-100 d-flex">
+                <VAvatar color="primary" variant="tonal" rounded="lg" class="me-3 flex-shrink-0"><VIcon icon="mdi-briefcase-outline" /></VAvatar>
+                <div class="flex-grow-1">
                   <div class="text-subtitle-2 font-weight-bold">{{ exp.title }}</div>
                   <div class="text-body-2 text-secondary">{{ exp.company }} · {{ exp.period }}</div>
                   <div class="text-body-2 text-medium-emphasis mt-1">{{ exp.desc }}</div>
                 </div>
-                <VBtn icon="mdi-delete-outline" variant="text" size="x-small" color="error" @click="profile.removeExperience(exp.id)" />
-              </div>
-            </VTimelineItem>
-          </VTimeline>
+                <VBtn icon="mdi-delete-outline" variant="text" size="x-small" color="error" class="flex-shrink-0" @click="profile.removeExperience(exp.id)" />
+              </VCard>
+            </VCol>
+          </VRow>
+          <div v-if="!profile.experiences.length" class="text-center text-medium-emphasis py-6">لا خبرات بعد — أضف أول خبرة</div>
         </VCard>
       </VWindowItem>
 
