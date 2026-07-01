@@ -51,7 +51,7 @@ const endorsements = [
           </div>
 
           <h3 class="text-subtitle-1 font-weight-bold mb-2">التوصيات</h3>
-          <VRow>
+          <VRow class="mb-4">
             <VCol v-for="e in endorsements" :key="e.name" cols="12" sm="6">
               <VCard variant="outlined" class="pa-3 d-flex align-center ga-3">
                 <VAvatar color="secondary" variant="tonal"><VIcon icon="mdi-account" /></VAvatar>
@@ -66,6 +66,22 @@ const endorsements = [
               </VCard>
             </VCol>
           </VRow>
+
+          <div class="d-flex align-center justify-space-between mb-2">
+            <h3 class="text-subtitle-1 font-weight-bold">السير الذاتية المُقدّمة</h3>
+            <VBtn variant="text" size="x-small" color="primary" prepend-icon="mdi-refresh" @click="snackbar = 'تم إرسال طلب سيرة ذاتية محدّثة للمرشح'">
+              طلب سيرة محدّثة
+            </VBtn>
+          </div>
+          <VCard variant="outlined" class="pa-3 d-flex align-center ga-3">
+            <VAvatar color="primary" variant="tonal" rounded="lg"><VIcon icon="mdi-file-account-outline" /></VAvatar>
+            <div class="flex-grow-1">
+              <div class="text-body-2 font-weight-bold">سيرة {{ candidate.name.split(' ')[0] }} - {{ candidate.title }}</div>
+              <div class="text-caption text-medium-emphasis">قالب حديث · عربي · قُدّمت مع الطلب</div>
+            </div>
+            <VBtn icon="mdi-eye-outline" variant="text" size="small" :to="{ name: 'public-resume', params: { token: String(candidate.id) } }" />
+            <VBtn icon="mdi-download" variant="text" size="small" />
+          </VCard>
         </VCard>
       </VCol>
 
