@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 
 export type RequestKind = 'job' | 'project' | 'consultation' | 'task'
 export type RequestStatus = 'reviewing' | 'accepted' | 'rejected' | 'done' | 'cancelled'
+export type RequestState = 'new' | 'reviewing' | 'accepted' | 'closed'
 
 export interface RequestBreakdown { skills: number, experience: number, location: number, duration: number }
 
@@ -11,7 +12,10 @@ export interface MarketRequest {
   title: string
   org: string
   orgInitial: string
+  orgRating: number // 0-5 organization reputation
+  orgReviews: number
   kind: RequestKind
+  state: RequestState // openness state shown as a colored icon
   field: string
   city: string
   remote: boolean
@@ -23,6 +27,7 @@ export interface MarketRequest {
   breakdown: RequestBreakdown
   applicants: number
   postedAt: string
+  postedOrder: number // higher = newer (for sorting)
   isNew?: boolean
   description: string
   deliverables: string[]
@@ -56,9 +61,17 @@ export const STATUS_META: Record<RequestStatus, { label: string, color: string }
   cancelled: { label: 'ملغي', color: 'medium-emphasis' },
 }
 
+// Request openness state (colored icon on the feed card)
+export const STATE_META: Record<RequestState, { label: string, color: string, icon: string }> = {
+  new: { label: 'جديد', color: 'success', icon: 'mdi-new-box' },
+  reviewing: { label: 'قيد المراجعة', color: 'warning', icon: 'mdi-progress-clock' },
+  accepted: { label: 'يستقبل عروضًا', color: 'info', icon: 'mdi-account-check-outline' },
+  closed: { label: 'مغلق', color: 'medium-emphasis', icon: 'mdi-lock-outline' },
+}
+
 const REQUESTS_SEED: MarketRequest[] = [
   {
-    id: 1, title: 'تطوير لوحة تحكم Vue 3 لمنصة SaaS', org: 'شركة تقنية المستقبل', orgInitial: 'ت',
+    id: 1, title: 'تطوير لوحة تحكم Vue 3 لمنصة SaaS', org: 'شركة تقنية المستقبل', orgInitial: 'ت', orgRating: 4.8, orgReviews: 42, state: 'new', postedOrder: 5,
     kind: 'project', field: 'تطوير الويب', city: 'الرياض', remote: true, duration: '3 أشهر', durationWeeks: 12,
     budget: '18,000 - 28,000 ريال', budgetValue: 28000, matchRate: 94,
     breakdown: { skills: 96, experience: 88, location: 100, duration: 82 }, applicants: 12, postedAt: 'قبل يومين', isNew: true,
@@ -67,7 +80,7 @@ const REQUESTS_SEED: MarketRequest[] = [
     skills: ['Vue.js', 'TypeScript', 'Vuetify', 'REST API'], avgResponseDays: 2,
   },
   {
-    id: 2, title: 'استشارة معمارية Frontend لتطبيق موجود', org: 'استوديو رؤية', orgInitial: 'ر',
+    id: 2, title: 'استشارة معمارية Frontend لتطبيق موجود', org: 'استوديو رؤية', orgInitial: 'ر', orgRating: 4.5, orgReviews: 28, state: 'reviewing', postedOrder: 4,
     kind: 'consultation', field: 'العمارة التقنية', city: 'جدة', remote: true, duration: 'أسبوعان', durationWeeks: 2,
     budget: '5,000 ريال', budgetValue: 5000, matchRate: 81,
     breakdown: { skills: 85, experience: 90, location: 70, duration: 78 }, applicants: 5, postedAt: 'قبل 4 أيام',
@@ -76,7 +89,7 @@ const REQUESTS_SEED: MarketRequest[] = [
     skills: ['Vue.js', 'Architecture', 'Performance'], avgResponseDays: 1,
   },
   {
-    id: 3, title: 'مطوّر واجهات أمامية أول (دوام كامل)', org: 'منصة عطاء', orgInitial: 'ع',
+    id: 3, title: 'مطوّر واجهات أمامية أول (دوام كامل)', org: 'منصة عطاء', orgInitial: 'ع', orgRating: 4.7, orgReviews: 63, state: 'accepted', postedOrder: 3,
     kind: 'job', field: 'تطوير الويب', city: 'الرياض', remote: false, duration: 'دائم', durationWeeks: 0,
     budget: '14,000 - 20,000 ريال/شهر', budgetValue: 20000, matchRate: 88,
     breakdown: { skills: 90, experience: 85, location: 100, duration: 75 }, applicants: 34, postedAt: 'قبل أسبوع',
@@ -85,7 +98,7 @@ const REQUESTS_SEED: MarketRequest[] = [
     skills: ['Vue.js', 'TypeScript', 'UI/UX', 'Testing'], avgResponseDays: 3,
   },
   {
-    id: 4, title: 'مهمة: تحويل تصميم Figma إلى مكوّنات', org: 'وكالة إبداع', orgInitial: 'إ',
+    id: 4, title: 'مهمة: تحويل تصميم Figma إلى مكوّنات', org: 'وكالة إبداع', orgInitial: 'إ', orgRating: 4.2, orgReviews: 15, state: 'new', postedOrder: 2,
     kind: 'task', field: 'واجهات المستخدم', city: 'عن بُعد', remote: true, duration: 'أسبوع', durationWeeks: 1,
     budget: '2,500 ريال', budgetValue: 2500, matchRate: 76,
     breakdown: { skills: 80, experience: 72, location: 100, duration: 90 }, applicants: 8, postedAt: 'أمس', isNew: true,
@@ -94,7 +107,7 @@ const REQUESTS_SEED: MarketRequest[] = [
     skills: ['Vue.js', 'CSS', 'Figma'], avgResponseDays: 1,
   },
   {
-    id: 5, title: 'بناء نظام تصميم (Design System) موحّد', org: 'بنك المستقبل الرقمي', orgInitial: 'ب',
+    id: 5, title: 'بناء نظام تصميم (Design System) موحّد', org: 'بنك المستقبل الرقمي', orgInitial: 'ب', orgRating: 4.9, orgReviews: 88, state: 'reviewing', postedOrder: 1,
     kind: 'project', field: 'أنظمة التصميم', city: 'الرياض', remote: true, duration: '4 أشهر', durationWeeks: 16,
     budget: '35,000 - 50,000 ريال', budgetValue: 50000, matchRate: 72,
     breakdown: { skills: 78, experience: 68, location: 100, duration: 60 }, applicants: 19, postedAt: 'قبل 3 أيام',

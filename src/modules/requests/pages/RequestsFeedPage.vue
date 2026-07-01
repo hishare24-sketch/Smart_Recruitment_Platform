@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import PageHeader from '@/components/shared/PageHeader.vue'
-import { KIND_META, useRequestsStore } from '@/stores/RequestsStore'
+import { KIND_META, STATE_META, useRequestsStore } from '@/stores/RequestsStore'
 import type { RequestKind } from '@/stores/RequestsStore'
 import { ai } from '@/services/ai'
 import EmptyState from '@/components/shared/EmptyState.vue'
@@ -20,7 +20,27 @@ const selectedField = ref<string | null>(null)
 const remoteOnly = ref(false)
 const maxWeeks = ref(20)
 const minBudget = ref(0)
-const smartSort = ref(true)
+
+// Side-sheet filter + sorting
+const filterDrawer = ref(false)
+const sortBy = ref<'match' | 'newest' | 'rating' | 'price'>('match')
+const sortOptions = [
+  { value: 'match', title: 'الأعلى تطابقًا' },
+  { value: 'newest', title: 'الأحدث' },
+  { value: 'rating', title: 'الأعلى تقييمًا' },
+  { value: 'price', title: 'الأقل سعرًا' },
+]
+const activeFilterCount = computed(() =>
+  selectedKinds.value.length + (selectedField.value ? 1 : 0) + (remoteOnly.value ? 1 : 0)
+  + (maxWeeks.value < 20 ? 1 : 0) + (minBudget.value > 0 ? 1 : 0),
+)
+function resetFilters() {
+  selectedKinds.value = []
+  selectedField.value = null
+  remoteOnly.value = false
+  maxWeeks.value = 20
+  minBudget.value = 0
+}
 
 function toggleKind(k: RequestKind) {
   selectedKinds.value = selectedKinds.value.includes(k)
@@ -29,7 +49,7 @@ function toggleKind(k: RequestKind) {
 }
 
 const filtered = computed(() => {
-  let list = store.requests.filter((r) => {
+  const list = store.requests.filter((r) => {
     if (search.value.trim() && !`${r.title} ${r.org} ${r.field} ${r.skills.join(' ')}`.includes(search.value.trim()))
       return false
     if (selectedKinds.value.length && !selectedKinds.value.includes(r.kind))
@@ -44,8 +64,14 @@ const filtered = computed(() => {
       return false
     return true
   })
-  list = smartSort.value ? [...list].sort((a, b) => b.matchRate - a.matchRate) : list
-  return list
+  const sorted = [...list]
+  switch (sortBy.value) {
+    case 'newest': sorted.sort((a, b) => b.postedOrder - a.postedOrder); break
+    case 'rating': sorted.sort((a, b) => b.orgRating - a.orgRating); break
+    case 'price': sorted.sort((a, b) => a.budgetValue - b.budgetValue); break
+    default: sorted.sort((a, b) => b.matchRate - a.matchRate)
+  }
+  return sorted
 })
 
 function matchColor(v: number) {
@@ -61,7 +87,6 @@ function applySuggestion(s: string) {
   searchFocused.value = false
 }
 function onSearchBlur() {
-  // delay so a suggestion click (mousedown) registers before the list closes
   setTimeout(() => (searchFocused.value = false), 200)
 }
 function open(id: number) {
@@ -120,117 +145,144 @@ function open(id: number) {
       </VExpandTransition>
     </div>
 
-    <VRow>
-      <!-- Filters -->
-      <VCol cols="12" md="3">
-        <VCard class="pa-4">
-          <div class="d-flex align-center justify-space-between mb-3">
-            <span class="text-subtitle-2 font-weight-bold">فلترة</span>
-            <VIcon icon="mdi-filter-variant" size="18" />
-          </div>
+    <!-- Toolbar: count · filter · sort -->
+    <div class="d-flex align-center justify-space-between flex-wrap ga-2 mb-3">
+      <span class="text-body-2 text-medium-emphasis">{{ filtered.length }} طلب</span>
+      <div class="d-flex align-center ga-2">
+        <VBtn variant="outlined" size="small" prepend-icon="mdi-filter-variant" @click="filterDrawer = true">
+          فلترة
+          <VChip v-if="activeFilterCount" color="accent" size="x-small" class="ms-1" label>{{ activeFilterCount }}</VChip>
+        </VBtn>
+        <VSelect
+          v-model="sortBy"
+          :items="sortOptions"
+          density="compact"
+          variant="outlined"
+          hide-details
+          prepend-inner-icon="mdi-sort"
+          style="max-width: 190px"
+        />
+      </div>
+    </div>
 
-          <div class="text-caption font-weight-bold mb-2">نوع الطلب</div>
-          <div class="d-flex flex-wrap ga-1 mb-4">
-            <VChip
-              v-for="k in kinds"
-              :key="k"
-              :color="selectedKinds.includes(k) ? KIND_META[k].color : undefined"
-              :variant="selectedKinds.includes(k) ? 'flat' : 'outlined'"
-              size="small"
-              :prepend-icon="KIND_META[k].icon"
-              @click="toggleKind(k)"
-            >
-              {{ KIND_META[k].label }}
+    <!-- AI proactive alert -->
+    <VAlert color="secondary" variant="tonal" density="comfortable" class="mb-4" border="start">
+      <template #prepend><VIcon icon="mdi-bell-ring-outline" /></template>
+      <span class="text-caption">يوجد طلب جديد من «شركة تقنية المستقبل» قد يعجبك — تطابق 94%.</span>
+    </VAlert>
+
+    <!-- Horizontal request cards -->
+    <VCard
+      v-for="r in filtered"
+      :key="r.id"
+      class="pa-4 mb-3 cursor-pointer"
+      @click="open(r.id)"
+    >
+      <div class="d-flex ga-4 flex-wrap flex-sm-nowrap align-center">
+        <!-- Org logo -->
+        <VAvatar :color="KIND_META[r.kind].color" size="56" rounded="lg">
+          <span class="text-h6 text-white font-weight-bold">{{ r.orgInitial }}</span>
+        </VAvatar>
+
+        <!-- Main info -->
+        <div class="flex-grow-1" style="min-width: 220px">
+          <div class="d-flex align-center ga-2 flex-wrap mb-1">
+            <VChip :color="KIND_META[r.kind].color" size="x-small" label :prepend-icon="KIND_META[r.kind].icon">
+              {{ KIND_META[r.kind].label }}
+            </VChip>
+            <VChip :color="STATE_META[r.state].color" size="x-small" variant="tonal" label :prepend-icon="STATE_META[r.state].icon">
+              {{ STATE_META[r.state].label }}
             </VChip>
           </div>
-
-          <VSelect
-            v-model="selectedField"
-            :items="store.fields"
-            label="المجال"
-            density="compact"
-            variant="outlined"
-            clearable
-            hide-details
-            class="mb-4"
-          />
-
-          <div class="text-caption font-weight-bold mb-1">المدة (حتى {{ maxWeeks }} أسبوع)</div>
-          <VSlider v-model="maxWeeks" :min="1" :max="20" :step="1" color="accent" hide-details class="mb-3" />
-
-          <div class="text-caption font-weight-bold mb-1">حد أدنى للمقابل ({{ minBudget.toLocaleString('en-US') }} ريال)</div>
-          <VSlider v-model="minBudget" :min="0" :max="50000" :step="2500" color="secondary" hide-details class="mb-3" />
-
-          <VSwitch v-model="remoteOnly" label="عن بُعد فقط" color="primary" density="compact" hide-details />
-        </VCard>
-
-        <!-- AI proactive alert -->
-        <VAlert color="secondary" variant="tonal" density="comfortable" class="mt-3" border="start">
-          <template #prepend><VIcon icon="mdi-bell-ring-outline" /></template>
-          <span class="text-caption">يوجد طلب جديد من «شركة تقنية المستقبل» قد يعجبك — تطابق 94%.</span>
-        </VAlert>
-      </VCol>
-
-      <!-- Results -->
-      <VCol cols="12" md="9">
-        <div class="d-flex align-center justify-space-between mb-3">
-          <span class="text-body-2 text-medium-emphasis">{{ filtered.length }} طلب</span>
-          <VBtn
-            :variant="smartSort ? 'flat' : 'outlined'"
-            :color="smartSort ? 'secondary' : undefined"
-            size="small"
-            prepend-icon="mdi-auto-fix"
-            @click="smartSort = !smartSort"
-          >
-            {{ smartSort ? 'مرتّب بالتطابق الذكي' : 'ترتيب افتراضي' }}
-          </VBtn>
+          <div class="text-subtitle-1 font-weight-bold mb-1">{{ r.title }}</div>
+          <div class="d-flex align-center ga-2 text-caption text-medium-emphasis mb-2 flex-wrap">
+            <span class="font-weight-bold">{{ r.org }}</span>
+            <span class="d-flex align-center"><VIcon icon="mdi-star" color="amber" size="14" class="me-1" />{{ r.orgRating }} ({{ r.orgReviews }})</span>
+            <span>· {{ r.field }}</span>
+          </div>
+          <div class="d-flex flex-wrap ga-1">
+            <VChip size="x-small" variant="tonal" prepend-icon="mdi-map-marker-outline">{{ r.remote ? 'عن بُعد' : r.city }}</VChip>
+            <VChip size="x-small" variant="tonal" prepend-icon="mdi-clock-outline">{{ r.duration }}</VChip>
+            <VChip size="x-small" variant="tonal" prepend-icon="mdi-cash">{{ r.budget }}</VChip>
+          </div>
         </div>
 
-        <VRow>
-          <VCol v-for="r in filtered" :key="r.id" cols="12" sm="6">
-            <VCard class="pa-4 h-100 d-flex flex-column cursor-pointer" @click="open(r.id)">
-              <div class="d-flex align-start justify-space-between mb-2">
-                <div class="d-flex align-center ga-2">
-                  <VChip :color="KIND_META[r.kind].color" size="x-small" label :prepend-icon="KIND_META[r.kind].icon">
-                    {{ KIND_META[r.kind].label }}
-                  </VChip>
-                  <VChip v-if="r.isNew" color="accent" size="x-small" label>جديد</VChip>
-                </div>
-                <VTooltip text="سبب التطابق: مهاراتك المُثبتة تغطّي المتطلبات الأساسية" location="top">
-                  <template #activator="{ props }">
-                    <VChip v-bind="props" :color="matchColor(r.matchRate)" size="small" label>
-                      {{ r.matchRate }}% تطابق
-                    </VChip>
-                  </template>
-                </VTooltip>
-              </div>
+        <!-- Match ring + action -->
+        <div class="text-center d-flex flex-column align-center" style="min-width: 84px">
+          <VTooltip text="نسبة التطابق الذكي مع مهاراتك المُثبتة" location="top">
+            <template #activator="{ props }">
+              <VProgressCircular v-bind="props" :model-value="r.matchRate" :color="matchColor(r.matchRate)" :size="58" :width="5">
+                <span class="text-caption font-weight-bold">{{ r.matchRate }}%</span>
+              </VProgressCircular>
+            </template>
+          </VTooltip>
+          <div class="text-caption text-medium-emphasis mt-1">تطابق</div>
+          <VChip v-if="store.hasApplied(r.id)" color="success" size="x-small" label prepend-icon="mdi-check" class="mt-1">مقدّم</VChip>
+        </div>
+      </div>
 
-              <div class="text-subtitle-1 font-weight-bold mb-1">{{ r.title }}</div>
-              <div class="text-caption text-medium-emphasis mb-3">{{ r.org }} · {{ r.field }}</div>
+      <VDivider class="my-2" />
+      <div class="d-flex align-center justify-space-between text-caption text-medium-emphasis">
+        <span><VIcon icon="mdi-account-group-outline" size="14" /> {{ r.applicants }} متقدم · {{ r.postedAt }}</span>
+        <span class="text-primary d-flex align-center">التفاصيل <VIcon icon="mdi-arrow-left" size="16" class="ms-1" /></span>
+      </div>
+    </VCard>
 
-              <div class="d-flex flex-wrap ga-1 mb-3 flex-grow-1">
-                <VChip size="x-small" variant="tonal" prepend-icon="mdi-map-marker-outline">{{ r.remote ? 'عن بُعد' : r.city }}</VChip>
-                <VChip size="x-small" variant="tonal" prepend-icon="mdi-clock-outline">{{ r.duration }}</VChip>
-                <VChip size="x-small" variant="tonal" prepend-icon="mdi-cash">{{ r.budget }}</VChip>
-              </div>
+    <VCard v-if="!filtered.length">
+      <EmptyState
+        icon="mdi-magnify-close"
+        title="لا طلبات مطابقة"
+        description="وسّع نطاق المدة أو المقابل، أو أزل بعض الفلاتر لعرض المزيد."
+      />
+    </VCard>
 
-              <div class="d-flex align-center justify-space-between">
-                <span class="text-caption text-medium-emphasis">{{ r.applicants }} متقدم · {{ r.postedAt }}</span>
-                <VChip v-if="store.hasApplied(r.id)" color="success" size="x-small" label prepend-icon="mdi-check">مقدّم</VChip>
-                <VIcon v-else icon="mdi-arrow-left-circle-outline" color="accent" />
-              </div>
-            </VCard>
-          </VCol>
-        </VRow>
+    <!-- Filter side sheet -->
+    <VNavigationDrawer v-model="filterDrawer" temporary location="end" width="330">
+      <div class="pa-4">
+        <div class="d-flex align-center justify-space-between mb-4">
+          <span class="text-subtitle-1 font-weight-bold"><VIcon icon="mdi-filter-variant" class="me-1" /> فلترة الطلبات</span>
+          <VBtn icon="mdi-close" variant="text" size="small" @click="filterDrawer = false" />
+        </div>
 
-        <VCard v-if="!filtered.length">
-          <EmptyState
-            icon="mdi-magnify-close"
-            title="لا طلبات مطابقة"
-            description="وسّع نطاق المدة أو المقابل، أو أزل بعض الفلاتر لعرض المزيد."
-          />
-        </VCard>
-      </VCol>
-    </VRow>
+        <div class="text-caption font-weight-bold mb-2">نوع الطلب</div>
+        <div class="d-flex flex-wrap ga-1 mb-4">
+          <VChip
+            v-for="k in kinds"
+            :key="k"
+            :color="selectedKinds.includes(k) ? KIND_META[k].color : undefined"
+            :variant="selectedKinds.includes(k) ? 'flat' : 'outlined'"
+            size="small"
+            :prepend-icon="KIND_META[k].icon"
+            @click="toggleKind(k)"
+          >
+            {{ KIND_META[k].label }}
+          </VChip>
+        </div>
+
+        <VSelect
+          v-model="selectedField"
+          :items="store.fields"
+          label="المجال"
+          density="compact"
+          variant="outlined"
+          clearable
+          hide-details
+          class="mb-4"
+        />
+
+        <div class="text-caption font-weight-bold mb-1">المدة (حتى {{ maxWeeks }} أسبوع)</div>
+        <VSlider v-model="maxWeeks" :min="1" :max="20" :step="1" color="accent" hide-details class="mb-3" />
+
+        <div class="text-caption font-weight-bold mb-1">حد أدنى للمقابل ({{ minBudget.toLocaleString('en-US') }} ريال)</div>
+        <VSlider v-model="minBudget" :min="0" :max="50000" :step="2500" color="secondary" hide-details class="mb-3" />
+
+        <VSwitch v-model="remoteOnly" label="عن بُعد فقط" color="primary" density="compact" hide-details class="mb-4" />
+
+        <div class="d-flex ga-2">
+          <VBtn variant="tonal" block @click="resetFilters">إعادة تعيين</VBtn>
+          <VBtn color="accent" block @click="filterDrawer = false">عرض ({{ filtered.length }})</VBtn>
+        </div>
+      </div>
+    </VNavigationDrawer>
   </div>
 </template>
