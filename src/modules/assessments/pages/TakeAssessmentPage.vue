@@ -3,9 +3,11 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import QuestionRenderer from '../components/QuestionRenderer.vue'
 import { QUESTION_TYPE_META, buildQuestions, getAssessmentById, scoreAnswer } from '../services/mockAssessments'
+import { useGamificationStore } from '@/stores/GamificationStore'
 
 const route = useRoute()
 const router = useRouter()
+const gamification = useGamificationStore()
 
 const assessment = computed(() => getAssessmentById(Number(route.params.id)))
 const size = computed(() => Number(route.query.size) || 10)
@@ -53,6 +55,7 @@ function finish() {
   const qs = questions.value
   const correct = qs.filter(q => scoreAnswer(q, answers.value[q.id])).length
   const score = totalQuestions.value ? Math.round((correct / totalQuestions.value) * 100) : 0
+  gamification.record('assessment', `أكملت اختبار ${assessment.value?.name ?? ''}`)
   router.replace({
     name: 'assessment-result',
     params: { id: route.params.id },

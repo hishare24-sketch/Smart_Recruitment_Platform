@@ -215,6 +215,25 @@ export const useGamificationStore = defineStore('gamification', () => {
   const activeChallenges = computed(() => challenges.value.filter(c => !c.done))
   const doneChallenges = computed(() => challenges.value.filter(c => c.done))
 
+  // Shared live leaderboard — peers have fixed totals so earning points climbs
+  // the user's rank. Single source of truth for every leaderboard in the app.
+  const LEADER_PEERS = [
+    { name: 'ليان الحربي', initial: 'ل', points: 460 },
+    { name: 'محمد القرني', initial: 'م', points: 330 },
+    { name: 'سارة الزهراني', initial: 'س', points: 165 },
+    { name: 'عبدالله المالكي', initial: 'ع', points: 90 },
+    { name: 'نورة المطيري', initial: 'ن', points: 40 },
+  ]
+  const leaderboard = computed(() =>
+    [
+      { name: 'أنت', initial: 'أ', points: points.value, you: true },
+      ...LEADER_PEERS.map(p => ({ ...p, you: false })),
+    ]
+      .sort((a, b) => b.points - a.points)
+      .map((r, i) => ({ ...r, rank: i + 1 })),
+  )
+  const myRank = computed(() => leaderboard.value.find(r => r.you)?.rank ?? 0)
+
   function badgeById(id: string) {
     return ALL_BADGES.find(b => b.id === id) ?? null
   }
@@ -223,6 +242,7 @@ export const useGamificationStore = defineStore('gamification', () => {
     points, streak, counters, challenges, lastReward, lastBadgeId,
     tier, nextTier, tierProgress, pointsToNext,
     badges, earnedCount, activeChallenges, doneChallenges,
+    leaderboard, myRank,
     record, checkIn, badgeById,
   }
 })

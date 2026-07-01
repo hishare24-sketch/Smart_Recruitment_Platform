@@ -14,23 +14,9 @@ const resumes = useResumesStore()
 const interviews = useInterviewsStore()
 const peer = usePeerRequestsStore()
 
-// Leaderboard — peers have fixed totals, so earning points genuinely climbs
-// the user past them (real progression, not a moving target).
-const PEERS = [
-  { name: 'ليان الحربي', initial: 'ل', points: 460 },
-  { name: 'محمد القرني', initial: 'م', points: 330 },
-  { name: 'سارة الزهراني', initial: 'س', points: 165 },
-  { name: 'عبدالله المالكي', initial: 'ع', points: 90 },
-  { name: 'نورة المطيري', initial: 'ن', points: 40 },
-]
-const leaderboard = computed(() => {
-  const rows = [
-    { name: 'أنت', initial: 'أ', points: g.points, you: true },
-    ...PEERS.map(p => ({ name: p.name, initial: p.initial, points: p.points, you: false })),
-  ]
-  return rows.sort((a, b) => b.points - a.points).map((r, i) => ({ ...r, rank: i + 1 }))
-})
-const myRank = computed(() => leaderboard.value.find(r => r.you)?.rank ?? 0)
+// Leaderboard comes from the shared gamification store (single source of truth)
+const leaderboard = computed(() => g.leaderboard)
+const myRank = computed(() => g.myRank)
 
 // First-week onboarding goals — completion derived from real app state
 const goals = computed(() => [

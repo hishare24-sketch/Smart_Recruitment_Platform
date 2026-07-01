@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import PageHeader from '@/components/shared/PageHeader.vue'
 import {
@@ -8,11 +8,13 @@ import {
   availableAssessments,
   challenges,
   completedAssessments,
-  leaderboard,
-  myPoints,
 } from '../services/mockAssessments'
+import { useGamificationStore } from '@/stores/GamificationStore'
 
 const router = useRouter()
+const g = useGamificationStore()
+// Points + leaderboard now come from the real gamification engine
+const leaderboard = computed(() => g.leaderboard)
 
 // Size picker dialog
 const sizeDialog = ref(false)
@@ -42,7 +44,7 @@ const allTypes = Object.values(QUESTION_TYPE_META)
       icon="mdi-clipboard-check-outline"
     >
       <template #actions>
-        <VChip color="accent" size="large" label prepend-icon="mdi-star-four-points">{{ myPoints.toLocaleString('en-US') }} نقطة</VChip>
+        <VChip color="accent" size="large" label prepend-icon="mdi-star-four-points">{{ g.points.toLocaleString('en-US') }} نقطة</VChip>
       </template>
     </PageHeader>
 
