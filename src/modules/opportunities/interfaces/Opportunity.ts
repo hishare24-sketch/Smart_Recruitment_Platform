@@ -1,20 +1,37 @@
 export type EmploymentType = 'full_time' | 'part_time' | 'remote' | 'temporary' | 'task'
+export type ExperienceLevel = 'entry' | 'mid' | 'senior' | 'lead'
+
+export interface MatchBreakdown {
+  skills: number
+  experience: number
+  education: number
+  location: number
+}
 
 export interface Opportunity {
   id: number
   title: string
   company: string
-  companyLogo?: string
+  companyInitial: string
   location: string
+  city: string
   type: EmploymentType
+  level: ExperienceLevel
+  department: string
   matchRate: number
+  matchBreakdown: MatchBreakdown
   applicants: number
   postedAt: string
+  postedDaysAgo: number
   isNew?: boolean
   isFeatured?: boolean
-  salaryRange?: string
-  description?: string
-  skills?: string[]
+  salaryMin: number
+  salaryMax: number
+  description: string
+  responsibilities: string[]
+  requirements: string[]
+  benefits: string[]
+  skills: string[]
 }
 
 export const EMPLOYMENT_TYPE_LABELS: Record<EmploymentType, string> = {
@@ -23,4 +40,18 @@ export const EMPLOYMENT_TYPE_LABELS: Record<EmploymentType, string> = {
   remote: 'عن بُعد',
   temporary: 'مؤقت',
   task: 'مهمة',
+}
+
+export const EXPERIENCE_LEVEL_LABELS: Record<ExperienceLevel, string> = {
+  entry: 'مبتدئ',
+  mid: 'متوسط',
+  senior: 'خبير',
+  lead: 'قيادي',
+}
+
+export function formatSalary(min: number, max: number): string {
+  if (min === 0 && max === 0)
+    return 'حسب الاتفاق'
+  const fmt = (n: number) => n.toLocaleString('en-US')
+  return `${fmt(min)} - ${fmt(max)} ريال`
 }

@@ -1,44 +1,55 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { EMPLOYMENT_TYPE_LABELS } from '../interfaces/Opportunity'
+import { EMPLOYMENT_TYPE_LABELS, EXPERIENCE_LEVEL_LABELS, formatSalary } from '../interfaces/Opportunity'
 import { getOpportunityById, mockOpportunities } from '../services/mockOpportunities'
+import { useApplicationsStore } from '@/stores/ApplicationsStore'
+import { useSavedStore } from '@/stores/SavedStore'
 
 const route = useRoute()
 const router = useRouter()
+const applicationsStore = useApplicationsStore()
+const savedStore = useSavedStore()
 
 const opportunity = computed(() => getOpportunityById(Number(route.params.id)))
-const similar = computed(() => mockOpportunities.filter(o => o.id !== Number(route.params.id)).slice(0, 3))
+const similar = computed(() =>
+  mockOpportunities
+    .filter(o => o.id !== Number(route.params.id) && o.department === opportunity.value?.department)
+    .slice(0, 3),
+)
 
-const applied = ref(false)
+const applied = computed(() => (opportunity.value ? applicationsStore.hasApplied(opportunity.value.id) : false))
+const isSaved = computed(() => (opportunity.value ? savedStore.isSaved(opportunity.value.id) : false))
+
 const applyDialog = ref(false)
 const appliedSnackbar = ref(false)
 const selectedResume = ref<number | null>(1)
 
-// User's resumes to choose from when applying
 const resumes = [
   { id: 1, name: 'سيرة تقنية - حديث', template: 'حديث', lang: 'عربي' },
   { id: 2, name: 'Technical CV - Modern', template: 'Modern', lang: 'English' },
 ]
 
-// Match breakdown (mock detailed analysis)
-const matchBreakdown = [
-  { label: 'المهارات', value: 88 },
-  { label: 'الخبرات', value: 75 },
-  { label: 'التعليم', value: 90 },
-  { label: 'الموقع', value: 100 },
-]
+const breakdown = computed(() => {
+  const b = opportunity.value?.matchBreakdown
+  return [
+    { label: 'المهارات', value: b?.skills ?? 0 },
+    { label: 'الخبرات', value: b?.experience ?? 0 },
+    { label: 'التعليم', value: b?.education ?? 0 },
+    { label: 'الموقع', value: b?.location ?? 0 },
+  ]
+})
 
 function openApply() {
   applyDialog.value = true
 }
-
 function confirmApply() {
-  applied.value = true
+  const resume = resumes.find(r => r.id === selectedResume.value)?.name ?? 'سيرة'
+  if (opportunity.value)
+    applicationsStore.apply(opportunity.value, resume)
   applyDialog.value = false
   appliedSnackbar.value = true
 }
-
 function askAboutOpportunity() {
   router.push({ name: 'messages' })
 }
@@ -46,104 +57,98 @@ function askAboutOpportunity() {
 
 <template>
   <div v-if="opportunity">
-    <VBtn variant="text" prepend-icon="mdi-arrow-right" class="mb-3" @click="router.back()">
-      رجوع
-    </VBtn>
+    <VBtn variant="text" prepend-icon="mdi-arrow-right" class="mb-3" @click="router.back()">رجوع</VBtn>
 
     <VRow>
       <!-- Main -->
       <VCol cols="12" md="8">
         <VCard class="pa-5 mb-4">
-          <div class="d-flex align-start ga-4 mb-4">
-            <VAvatar color="primary" variant="tonal" rounded="lg" size="64">
-              <VIcon icon="mdi-domain" size="34" />
-            </VAvatar>
-            <div class="flex-grow-1">
-              <div class="d-flex align-center ga-2 flex-wrap">
-                <h1 class="text-h5 font-weight-bold">
-                  {{ opportunity.title }}
-                </h1>
-                <VChip v-if="opportunity.isFeatured" color="accent" size="small" label>
-                  مميزة
-                </VChip>
-              </div>
-              <div class="text-body-1 text-medium-emphasis">
-                {{ opportunity.company }}
+          <div class="d-flex align-start justify-space-between mb-4">
+            <div class="d-flex align-start ga-4">
+              <VAvatar color="primary" variant="tonal" rounded="lg" size="64">
+                <span class="text-h4 font-weight-bold">{{ opportunity.companyInitial }}</span>
+              </VAvatar>
+              <div>
+                <div class="d-flex align-center ga-2 flex-wrap">
+                  <h1 class="text-h5 font-weight-bold">{{ opportunity.title }}</h1>
+                  <VChip v-if="opportunity.isFeatured" color="accent" size="small" label>مميزة</VChip>
+                </div>
+                <div class="text-body-1 text-medium-emphasis">{{ opportunity.company }}</div>
               </div>
             </div>
+            <VBtn
+              :icon="isSaved ? 'mdi-bookmark' : 'mdi-bookmark-outline'"
+              :color="isSaved ? 'accent' : 'medium-emphasis'"
+              variant="text"
+              @click="savedStore.toggle(opportunity.id)"
+            />
           </div>
 
           <div class="d-flex flex-wrap ga-2 mb-4">
-            <VChip variant="tonal" prepend-icon="mdi-map-marker-outline">
-              {{ opportunity.location }}
-            </VChip>
-            <VChip variant="tonal" prepend-icon="mdi-briefcase-outline">
-              {{ EMPLOYMENT_TYPE_LABELS[opportunity.type] }}
-            </VChip>
-            <VChip variant="tonal" prepend-icon="mdi-cash">
-              {{ opportunity.salaryRange }}
-            </VChip>
-            <VChip variant="tonal" prepend-icon="mdi-account-multiple-outline">
-              {{ opportunity.applicants }} متقدم
-            </VChip>
+            <VChip variant="tonal" prepend-icon="mdi-map-marker-outline">{{ opportunity.location }}</VChip>
+            <VChip variant="tonal" prepend-icon="mdi-briefcase-outline">{{ EMPLOYMENT_TYPE_LABELS[opportunity.type] }}</VChip>
+            <VChip variant="tonal" prepend-icon="mdi-chart-line">{{ EXPERIENCE_LEVEL_LABELS[opportunity.level] }}</VChip>
+            <VChip variant="tonal" prepend-icon="mdi-cash">{{ formatSalary(opportunity.salaryMin, opportunity.salaryMax) }}</VChip>
+            <VChip variant="tonal" prepend-icon="mdi-account-multiple-outline">{{ opportunity.applicants }} متقدم</VChip>
           </div>
 
           <VDivider class="mb-4" />
 
-          <h3 class="text-subtitle-1 font-weight-bold mb-2">
-            وصف الفرصة
-          </h3>
-          <p class="text-body-2 text-medium-emphasis mb-4">
-            {{ opportunity.description }}
-          </p>
+          <h3 class="text-subtitle-1 font-weight-bold mb-2">وصف الفرصة</h3>
+          <p class="text-body-2 text-medium-emphasis mb-4">{{ opportunity.description }}</p>
 
-          <h3 class="text-subtitle-1 font-weight-bold mb-2">
-            المهارات المطلوبة
-          </h3>
-          <div class="d-flex flex-wrap ga-2">
-            <VChip v-for="skill in opportunity.skills" :key="skill" color="secondary" variant="tonal" size="small">
-              {{ skill }}
+          <h3 class="text-subtitle-1 font-weight-bold mb-2">المسؤوليات</h3>
+          <VList density="compact" class="py-0 mb-3">
+            <VListItem v-for="r in opportunity.responsibilities" :key="r" class="px-0">
+              <template #prepend><VIcon icon="mdi-circle-small" /></template>
+              <VListItemTitle class="text-body-2">{{ r }}</VListItemTitle>
+            </VListItem>
+          </VList>
+
+          <h3 class="text-subtitle-1 font-weight-bold mb-2">المتطلبات</h3>
+          <VList density="compact" class="py-0 mb-3">
+            <VListItem v-for="r in opportunity.requirements" :key="r" class="px-0">
+              <template #prepend><VIcon icon="mdi-check-circle-outline" color="success" size="18" /></template>
+              <VListItemTitle class="text-body-2">{{ r }}</VListItemTitle>
+            </VListItem>
+          </VList>
+
+          <h3 class="text-subtitle-1 font-weight-bold mb-2">المزايا</h3>
+          <div class="d-flex flex-wrap ga-2 mb-4">
+            <VChip v-for="b in opportunity.benefits" :key="b" color="success" variant="tonal" size="small" prepend-icon="mdi-gift-outline">
+              {{ b }}
             </VChip>
+          </div>
+
+          <h3 class="text-subtitle-1 font-weight-bold mb-2">المهارات المطلوبة</h3>
+          <div class="d-flex flex-wrap ga-2">
+            <VChip v-for="skill in opportunity.skills" :key="skill" color="secondary" variant="tonal" size="small">{{ skill }}</VChip>
           </div>
         </VCard>
 
         <!-- Similar -->
-        <h3 class="text-h6 font-weight-bold mb-3">
-          فرص مشابهة
-        </h3>
-        <VRow>
-          <VCol v-for="opp in similar" :key="opp.id" cols="12" sm="4">
-            <VCard class="pa-3 cursor-pointer" @click="router.push({ name: 'opportunity-details', params: { id: opp.id } })">
-              <div class="text-subtitle-2 font-weight-bold text-truncate">
-                {{ opp.title }}
-              </div>
-              <div class="text-caption text-medium-emphasis">
-                {{ opp.company }}
-              </div>
-              <VChip color="success" size="x-small" label class="mt-2">
-                {{ opp.matchRate }}% تطابق
-              </VChip>
-            </VCard>
-          </VCol>
-        </VRow>
+        <template v-if="similar.length">
+          <h3 class="text-h6 font-weight-bold mb-3">فرص مشابهة</h3>
+          <VRow>
+            <VCol v-for="opp in similar" :key="opp.id" cols="12" sm="4">
+              <VCard class="pa-3 cursor-pointer" height="100%" @click="router.push({ name: 'opportunity-details', params: { id: opp.id } })">
+                <div class="text-subtitle-2 font-weight-bold text-truncate">{{ opp.title }}</div>
+                <div class="text-caption text-medium-emphasis">{{ opp.company }}</div>
+                <VChip color="success" size="x-small" label class="mt-2">{{ opp.matchRate }}% تطابق</VChip>
+              </VCard>
+            </VCol>
+          </VRow>
+        </template>
       </VCol>
 
       <!-- Sidebar -->
       <VCol cols="12" md="4">
-        <!-- Apply card -->
         <VCard class="pa-5 mb-4">
           <div class="text-center mb-3">
-            <VProgressCircular
-              :model-value="opportunity.matchRate"
-              :size="110"
-              :width="10"
-              color="success"
-            >
+            <VProgressCircular :model-value="opportunity.matchRate" :size="110" :width="10" color="success">
               <span class="text-h5 font-weight-bold">{{ opportunity.matchRate }}%</span>
             </VProgressCircular>
-            <div class="text-body-2 text-medium-emphasis mt-2">
-              نسبة تطابقك مع الفرصة
-            </div>
+            <div class="text-body-2 text-medium-emphasis mt-2">نسبة تطابقك مع الفرصة</div>
           </div>
 
           <VBtn
@@ -161,12 +166,9 @@ function askAboutOpportunity() {
           </VBtn>
         </VCard>
 
-        <!-- Match breakdown -->
         <VCard class="pa-5">
-          <div class="text-subtitle-1 font-weight-bold mb-3">
-            تحليل التطابق
-          </div>
-          <div v-for="item in matchBreakdown" :key="item.label" class="mb-3">
+          <div class="text-subtitle-1 font-weight-bold mb-3">تحليل التطابق</div>
+          <div v-for="item in breakdown" :key="item.label" class="mb-3">
             <div class="d-flex justify-space-between text-body-2 mb-1">
               <span>{{ item.label }}</span>
               <span class="font-weight-bold">{{ item.value }}%</span>
@@ -174,7 +176,7 @@ function askAboutOpportunity() {
             <VProgressLinear :model-value="item.value" color="primary" height="6" rounded />
           </div>
           <VAlert type="info" variant="tonal" density="compact" class="mt-2 text-caption">
-            لتحسين تطابقك: أضف شهادة في {{ opportunity.skills?.[0] }} وأكمل اختبار المهارات ذي الصلة.
+            لتحسين تطابقك: أضف شهادة في {{ opportunity.skills[0] }} وأكمل اختبار المهارات ذي الصلة.
           </VAlert>
         </VCard>
       </VCol>
@@ -214,7 +216,6 @@ function askAboutOpportunity() {
       </VCard>
     </VDialog>
 
-    <!-- Applied confirmation -->
     <VSnackbar v-model="appliedSnackbar" color="success" timeout="4000">
       تم إرسال طلبك بنجاح!
       <template #actions>
@@ -225,11 +226,7 @@ function askAboutOpportunity() {
 
   <VCard v-else class="pa-12 text-center">
     <VIcon icon="mdi-alert-circle-outline" size="64" color="error" />
-    <div class="text-h6 mt-3">
-      الفرصة غير موجودة
-    </div>
-    <VBtn color="primary" class="mt-3" :to="{ name: 'opportunities' }">
-      العودة للفرص
-    </VBtn>
+    <div class="text-h6 mt-3">الفرصة غير موجودة</div>
+    <VBtn color="primary" class="mt-3" :to="{ name: 'opportunities' }">العودة للفرص</VBtn>
   </VCard>
 </template>

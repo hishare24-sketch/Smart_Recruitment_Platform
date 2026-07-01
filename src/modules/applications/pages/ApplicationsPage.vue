@@ -3,20 +3,10 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import PageHeader from '@/components/shared/PageHeader.vue'
 import StatCard from '@/components/shared/StatCard.vue'
+import { useApplicationsStore } from '@/stores/ApplicationsStore'
+import type { ApplicationStatus } from '@/stores/ApplicationsStore'
 
-type AppStatus = 'submitted' | 'reviewing' | 'interview' | 'rejected' | 'accepted'
-
-interface Application {
-  id: number
-  opportunityId: number
-  title: string
-  company: string
-  appliedAt: string
-  status: AppStatus
-  resume: string
-}
-
-const statusMeta: Record<AppStatus, { label: string, color: string, icon: string }> = {
+const statusMeta: Record<ApplicationStatus, { label: string, color: string, icon: string }> = {
   submitted: { label: 'تم التقديم', color: 'info', icon: 'mdi-send-check-outline' },
   reviewing: { label: 'قيد المراجعة', color: 'secondary', icon: 'mdi-file-search-outline' },
   interview: { label: 'مقابلة', color: 'success', icon: 'mdi-calendar-check-outline' },
@@ -25,27 +15,21 @@ const statusMeta: Record<AppStatus, { label: string, color: string, icon: string
 }
 
 const router = useRouter()
-const filter = ref<AppStatus | 'all'>('all')
-
-const applications = ref<Application[]>([
-  { id: 1, opportunityId: 1, title: 'مطوّر واجهات أمامية (Vue.js)', company: 'شركة تقنية المستقبل', appliedAt: 'قبل يومين', status: 'interview', resume: 'سيرة تقنية - حديث' },
-  { id: 2, opportunityId: 2, title: 'مهندس ذكاء اصطناعي', company: 'مجموعة الابتكار', appliedAt: 'قبل 3 أيام', status: 'reviewing', resume: 'سيرة تقنية - حديث' },
-  { id: 3, opportunityId: 4, title: 'محلل بيانات', company: 'بنك المعرفة', appliedAt: 'قبل أسبوع', status: 'submitted', resume: 'Technical CV - Modern' },
-  { id: 4, opportunityId: 5, title: 'مدير تسويق رقمي', company: 'علامة تجارية ناشئة', appliedAt: 'قبل أسبوعين', status: 'rejected', resume: 'سيرة تقنية - حديث' },
-])
+const store = useApplicationsStore()
+const filter = ref<ApplicationStatus | 'all'>('all')
 
 const filtered = computed(() =>
-  filter.value === 'all' ? applications.value : applications.value.filter(a => a.status === filter.value),
+  filter.value === 'all' ? store.applications : store.applications.filter(a => a.status === filter.value),
 )
 
 const stats = computed(() => [
-  { title: 'إجمالي الطلبات', value: applications.value.length, icon: 'mdi-file-send-outline', color: 'primary' },
-  { title: 'قيد المراجعة', value: applications.value.filter(a => a.status === 'reviewing').length, icon: 'mdi-file-search-outline', color: 'secondary' },
-  { title: 'مقابلات', value: applications.value.filter(a => a.status === 'interview').length, icon: 'mdi-calendar-check-outline', color: 'success' },
-  { title: 'مقبولة', value: applications.value.filter(a => a.status === 'accepted').length, icon: 'mdi-check-decagram-outline', color: 'accent' },
+  { title: 'إجمالي الطلبات', value: store.count, icon: 'mdi-file-send-outline', color: 'primary' },
+  { title: 'قيد المراجعة', value: store.byStatus('reviewing').length, icon: 'mdi-file-search-outline', color: 'secondary' },
+  { title: 'مقابلات', value: store.byStatus('interview').length, icon: 'mdi-calendar-check-outline', color: 'success' },
+  { title: 'مقبولة', value: store.byStatus('accepted').length, icon: 'mdi-check-decagram-outline', color: 'accent' },
 ])
 
-const filterChips: { value: AppStatus | 'all', label: string }[] = [
+const filterChips: { value: ApplicationStatus | 'all', label: string }[] = [
   { value: 'all', label: 'الكل' },
   { value: 'submitted', label: 'تم التقديم' },
   { value: 'reviewing', label: 'قيد المراجعة' },
@@ -57,11 +41,7 @@ const filterChips: { value: AppStatus | 'all', label: string }[] = [
 
 <template>
   <div>
-    <PageHeader
-      title="طلباتي"
-      subtitle="تابع حالة تقديماتك على الفرص"
-      icon="mdi-file-send-outline"
-    />
+    <PageHeader title="طلباتي" subtitle="تابع حالة تقديماتك على الفرص" icon="mdi-file-send-outline" />
 
     <VRow class="mb-2">
       <VCol v-for="s in stats" :key="s.title" cols="6" md="3">
@@ -85,20 +65,31 @@ const filterChips: { value: AppStatus | 'all', label: string }[] = [
     <VCard v-if="filtered.length">
       <VList lines="two">
         <template v-for="(app, i) in filtered" :key="app.id">
-          <VListItem @click="router.push({ name: 'opportunity-details', params: { id: app.opportunityId } })">
+          <VListItem>
             <template #prepend>
               <VAvatar :color="statusMeta[app.status].color" variant="tonal" rounded="lg">
                 <VIcon :icon="statusMeta[app.status].icon" />
               </VAvatar>
             </template>
-            <VListItemTitle class="font-weight-bold">{{ app.title }}</VListItemTitle>
+            <VListItemTitle class="font-weight-bold cursor-pointer" @click="router.push({ name: 'opportunity-details', params: { id: app.opportunityId } })">
+              {{ app.title }}
+            </VListItemTitle>
             <VListItemSubtitle>
               {{ app.company }} · قُدّم {{ app.appliedAt }} · بـ «{{ app.resume }}»
             </VListItemSubtitle>
             <template #append>
-              <VChip :color="statusMeta[app.status].color" size="small" label>
-                {{ statusMeta[app.status].label }}
-              </VChip>
+              <div class="d-flex align-center ga-2">
+                <VChip :color="statusMeta[app.status].color" size="small" label>{{ statusMeta[app.status].label }}</VChip>
+                <VMenu>
+                  <template #activator="{ props }">
+                    <VBtn v-bind="props" icon="mdi-dots-vertical" variant="text" size="small" />
+                  </template>
+                  <VList density="compact">
+                    <VListItem prepend-icon="mdi-eye-outline" title="عرض الفرصة" @click="router.push({ name: 'opportunity-details', params: { id: app.opportunityId } })" />
+                    <VListItem prepend-icon="mdi-delete-outline" title="سحب الطلب" base-color="error" @click="store.withdraw(app.id)" />
+                  </VList>
+                </VMenu>
+              </div>
             </template>
           </VListItem>
           <VDivider v-if="i < filtered.length - 1" />

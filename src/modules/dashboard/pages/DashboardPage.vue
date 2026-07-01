@@ -2,24 +2,28 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/AuthStore'
+import { useApplicationsStore } from '@/stores/ApplicationsStore'
+import { useSavedStore } from '@/stores/SavedStore'
 import StatCard from '@/components/shared/StatCard.vue'
 import OpportunityCard from '@/modules/opportunities/components/OpportunityCard.vue'
 import { mockOpportunities } from '@/modules/opportunities/services/mockOpportunities'
 
 const { t } = useI18n()
 const authStore = useAuthStore()
+const applicationsStore = useApplicationsStore()
+const savedStore = useSavedStore()
 
 const userName = computed(() => authStore.authUser?.name ?? '')
 const isCompany = computed(() => authStore.role === 'company')
 
-const recommended = computed(() => mockOpportunities.slice(0, 4))
+const recommended = computed(() => [...mockOpportunities].sort((a, b) => b.matchRate - a.matchRate).slice(0, 4))
 
-const seekerStats = [
-  { title: t('dashboard.availableOpportunities'), value: 142, icon: 'mdi-briefcase-search-outline', color: 'primary' },
-  { title: t('dashboard.incomingWishes'), value: 6, icon: 'mdi-hand-heart-outline', color: 'accent' },
+const seekerStats = computed(() => [
+  { title: 'طلباتي النشطة', value: applicationsStore.count, icon: 'mdi-file-send-outline', color: 'primary' },
+  { title: 'الفرص المحفوظة', value: savedStore.count, icon: 'mdi-bookmark-outline', color: 'accent' },
   { title: t('dashboard.receivedEndorsements'), value: 11, icon: 'mdi-account-star-outline', color: 'secondary' },
   { title: t('dashboard.completedAssessments'), value: 4, icon: 'mdi-clipboard-check-outline', color: 'success' },
-]
+])
 
 const companyStats = [
   { title: 'الفرص المنشورة', value: 18, icon: 'mdi-briefcase-outline', color: 'primary' },
@@ -28,7 +32,7 @@ const companyStats = [
   { title: 'مقابلات مجدولة', value: 5, icon: 'mdi-calendar-clock-outline', color: 'success' },
 ]
 
-const stats = computed(() => (isCompany.value ? companyStats : seekerStats))
+const stats = computed(() => (isCompany.value ? companyStats : seekerStats.value))
 
 const wishes = [
   { company: 'شركة الحلول الذكية', amount: '16,000 ريال', duration: '6 أشهر', status: 'جديد', statusColor: 'accent' },
