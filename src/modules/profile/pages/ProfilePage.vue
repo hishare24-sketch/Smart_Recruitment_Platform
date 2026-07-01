@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useAuthStore } from '@/stores/AuthStore'
-import { useProfileStore } from '@/stores/ProfileStore'
+import { PROOF_META, skillConfidence, skillLevelLabel, useProfileStore } from '@/stores/ProfileStore'
+import type { ProofType, Skill } from '@/stores/ProfileStore'
 import { useResumesStore } from '@/stores/ResumesStore'
+import { ai } from '@/services/ai'
 
 const authStore = useAuthStore()
 const profile = useProfileStore()
@@ -19,6 +21,51 @@ function saveSkill() {
   newSkillName.value = ''
   newSkillLevel.value = 3
   skillDialog.value = false
+}
+
+// Skill helpers
+function confidenceColor(v: number) {
+  if (v >= 70)
+    return 'success'
+  if (v >= 40)
+    return 'warning'
+  return 'error'
+}
+function levelOf(skill: Skill) {
+  return skillLevelLabel(skill)
+}
+
+// Add-proof dialog
+const proofDialog = ref(false)
+const proofSkill = ref<Skill | null>(null)
+const proofType = ref<ProofType>('project')
+const proofLabel = ref('')
+const proofTypeOptions = (Object.keys(PROOF_META) as ProofType[])
+  .filter(t => t !== 'self')
+  .map(value => ({ value, title: `${PROOF_META[value].label} (+${PROOF_META[value].weight})` }))
+
+function openAddProof(skill: Skill) {
+  proofSkill.value = skill
+  proofType.value = 'project'
+  proofLabel.value = ''
+  proofDialog.value = true
+}
+function saveProof() {
+  if (proofSkill.value && proofLabel.value.trim())
+    profile.addProof(proofSkill.value.id, proofType.value, proofLabel.value.trim())
+  proofDialog.value = false
+}
+function requestEndorsementProof(skill: Skill) {
+  proofSnackbar.value = ai.suggestProofRequest(skill.name)
+}
+const proofSnackbar = ref('')
+
+// Skill detail dialog
+const detailDialog = ref(false)
+const detailSkill = ref<Skill | null>(null)
+function openDetail(skill: Skill) {
+  detailSkill.value = skill
+  detailDialog.value = true
 }
 
 // Add-experience dialog
@@ -49,9 +96,14 @@ const privacySettings = ref([
   { label: 'ظهور نتائج الاختبارات', value: 'private' },
   { label: 'ظهور الرغبات الواردة', value: 'private' },
   { label: 'ظهور السير الذاتية', value: 'public' },
+  { label: 'ظهور المهارات', value: 'public' },
+  { label: 'ظهور الإثباتات', value: 'companies' },
+  { label: 'ظهور نسبة الثقة', value: 'public' },
   { label: 'إشعارات التواصل', value: 'public' },
   { label: 'مشاركة البيانات للتحليل', value: 'public' },
 ])
+const proofRequestEnabled = ref(true)
+const interviewsForCompanies = ref(true)
 const privacyOptions = [
   { value: 'public', title: 'عام' },
   { value: 'companies', title: 'لأصحاب العمل' },
@@ -119,20 +171,46 @@ const profileCompletion = computed(() => {
       <!-- Skills -->
       <VWindowItem value="skills">
         <VCard class="pa-5">
-          <div class="d-flex justify-space-between mb-4">
-            <h3 class="text-subtitle-1 font-weight-bold">المهارات ({{ profile.skills.length }})</h3>
+          <div class="d-flex justify-space-between mb-1">
+            <h3 class="text-subtitle-1 font-weight-bold">المهارات الموثّقة ({{ profile.skills.length }})</h3>
             <VBtn color="accent" size="small" prepend-icon="mdi-plus" @click="skillDialog = true">إضافة مهارة</VBtn>
           </div>
-          <div v-for="skill in profile.skills" :key="skill.id" class="mb-3">
-            <div class="d-flex justify-space-between align-center mb-1">
-              <span class="text-body-2 font-weight-medium">{{ skill.name }}</span>
+          <p class="text-caption text-medium-emphasis mb-4">كل مهارة مدعومة بإثباتات (اختبار، توصية، مشروع، شهادة) تحدّد نسبة الثقة والمستوى</p>
+
+          <VCard v-for="skill in profile.skills" :key="skill.id" variant="outlined" class="pa-3 mb-3">
+            <div class="d-flex justify-space-between align-center mb-2">
               <div class="d-flex align-center ga-2">
-                <VRating :model-value="skill.level" color="accent" density="compact" size="small" readonly />
+                <span class="text-body-1 font-weight-bold">{{ skill.name }}</span>
+                <VChip size="x-small" :color="confidenceColor(skillConfidence(skill))" label>{{ levelOf(skill) }}</VChip>
+              </div>
+              <div class="d-flex align-center ga-1">
+                <VBtn icon="mdi-plus" variant="text" size="x-small" color="accent" @click="openAddProof(skill)" />
+                <VBtn icon="mdi-information-outline" variant="text" size="x-small" @click="openDetail(skill)" />
                 <VBtn icon="mdi-delete-outline" variant="text" size="x-small" color="error" @click="profile.removeSkill(skill.id)" />
               </div>
             </div>
-            <VProgressLinear :model-value="skill.level * 20" color="primary" height="6" rounded />
-          </div>
+
+            <!-- Proof source icons -->
+            <div class="d-flex align-center ga-1 mb-2">
+              <VTooltip v-for="p in skill.proofs" :key="p.id" :text="`${PROOF_META[p.type].label}: ${p.label}`" location="top">
+                <template #activator="{ props }">
+                  <VAvatar v-bind="props" :color="PROOF_META[p.type].color" variant="tonal" size="26" class="cursor-pointer" @click="openDetail(skill)">
+                    <VIcon :icon="PROOF_META[p.type].icon" size="15" />
+                  </VAvatar>
+                </template>
+              </VTooltip>
+              <VBtn variant="text" size="x-small" color="secondary" prepend-icon="mdi-account-star-outline" class="ms-1" @click="requestEndorsementProof(skill)">
+                طلب إثبات
+              </VBtn>
+            </div>
+
+            <!-- Confidence bar -->
+            <div class="d-flex justify-space-between text-caption mb-1">
+              <span class="text-medium-emphasis">نسبة الثقة</span>
+              <span class="font-weight-bold" :class="`text-${confidenceColor(skillConfidence(skill))}`">{{ skillConfidence(skill) }}%</span>
+            </div>
+            <VProgressLinear :model-value="skillConfidence(skill)" :color="confidenceColor(skillConfidence(skill))" height="8" rounded />
+          </VCard>
           <div v-if="!profile.skills.length" class="text-center text-medium-emphasis py-6">لا مهارات بعد — أضف أول مهارة</div>
         </VCard>
       </VWindowItem>
@@ -256,6 +334,15 @@ const profileCompletion = computed(() => {
               <VBtn v-for="opt in privacyOptions" :key="opt.value" :value="opt.value" size="small">{{ opt.title }}</VBtn>
             </VBtnToggle>
           </div>
+          <VDivider class="my-2" />
+          <div class="d-flex align-center justify-space-between py-1">
+            <span class="text-body-2">السماح للآخرين بطلب إثبات مهارة مني</span>
+            <VSwitch v-model="proofRequestEnabled" color="secondary" hide-details density="compact" />
+          </div>
+          <div class="d-flex align-center justify-space-between py-1">
+            <span class="text-body-2">إتاحة نتائج مقابلاتي للجهات</span>
+            <VSwitch v-model="interviewsForCompanies" color="secondary" hide-details density="compact" />
+          </div>
         </VCard>
       </VWindowItem>
     </VWindow>
@@ -275,6 +362,59 @@ const profileCompletion = computed(() => {
         </VCardActions>
       </VCard>
     </VDialog>
+
+    <!-- Add proof dialog -->
+    <VDialog v-model="proofDialog" max-width="460">
+      <VCard class="pa-2">
+        <VCardTitle>إضافة إثبات لمهارة «{{ proofSkill?.name }}»</VCardTitle>
+        <VCardText>
+          <VSelect v-model="proofType" :items="proofTypeOptions" label="نوع الإثبات" class="mb-2" />
+          <VTextField v-model="proofLabel" label="الوصف / المرجع" placeholder="مثال: اختبار Vue — 90% أو رابط مشروع" />
+          <VAlert type="info" variant="tonal" density="compact" class="mt-2 text-caption">
+            كل إثبات يرفع نسبة الثقة في المهارة حسب قوته.
+          </VAlert>
+        </VCardText>
+        <VCardActions class="justify-end">
+          <VBtn variant="text" @click="proofDialog = false">إلغاء</VBtn>
+          <VBtn color="accent" :disabled="!proofLabel.trim()" @click="saveProof">إضافة الإثبات</VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
+
+    <!-- Skill detail dialog -->
+    <VDialog v-model="detailDialog" max-width="480">
+      <VCard v-if="detailSkill" class="pa-2">
+        <VCardTitle class="d-flex justify-space-between align-center">
+          <span>{{ detailSkill.name }}</span>
+          <VChip size="small" :color="confidenceColor(skillConfidence(detailSkill))" label>
+            {{ levelOf(detailSkill) }} · {{ skillConfidence(detailSkill) }}%
+          </VChip>
+        </VCardTitle>
+        <VCardText>
+          <div class="text-body-2 font-weight-bold mb-2">مصادر الإثبات ({{ detailSkill.proofs.length }})</div>
+          <VTimeline side="end" density="compact" align="start">
+            <VTimelineItem v-for="p in detailSkill.proofs" :key="p.id" :dot-color="PROOF_META[p.type].color" size="x-small">
+              <div class="d-flex align-center justify-space-between">
+                <div>
+                  <VChip size="x-small" :color="PROOF_META[p.type].color" variant="tonal" :prepend-icon="PROOF_META[p.type].icon" class="mb-1">
+                    {{ PROOF_META[p.type].label }} (+{{ PROOF_META[p.type].weight }})
+                  </VChip>
+                  <div class="text-body-2">{{ p.label }}</div>
+                </div>
+                <span class="text-caption text-medium-emphasis">{{ p.date }}</span>
+              </div>
+            </VTimelineItem>
+          </VTimeline>
+          <VBtn color="accent" variant="tonal" size="small" block prepend-icon="mdi-plus" @click="detailDialog = false; openAddProof(detailSkill)">
+            إضافة إثبات جديد
+          </VBtn>
+        </VCardText>
+      </VCard>
+    </VDialog>
+
+    <VSnackbar :model-value="!!proofSnackbar" color="secondary" timeout="4000" @update:model-value="proofSnackbar = ''">
+      {{ proofSnackbar }}
+    </VSnackbar>
 
     <!-- Add experience dialog -->
     <VDialog v-model="expDialog" max-width="480">
