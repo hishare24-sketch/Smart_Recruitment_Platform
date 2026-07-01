@@ -102,6 +102,22 @@ export interface SearchIntent {
   note: string // human-readable interpretation of the intent
 }
 
+// — Smart scheduling (interview booking) —
+export type DayPeriod = 'morning' | 'afternoon' | 'evening'
+export interface TimeSuggestion {
+  id: string
+  iso: string // YYYY-MM-DD
+  time: string // "10:00"
+  label: string // "الأحد 5 يوليو · 10:00 صباحًا"
+  period: DayPeriod
+  compatibility: number // 0-100
+  tag: string // "الأكثر توافقًا" / "متوافق" / "متاح"
+}
+export interface OptimalTimesResult {
+  suggestions: TimeSuggestion[] // 3 ranked slots
+  explanation: string // "لماذا هذه الأوقات؟"
+}
+
 // — Auto-classification (posting flows) —
 export interface AutoClassification {
   category?: string // taxonomy category id
@@ -190,6 +206,8 @@ export interface AiService {
   searchIntent: (query: string) => SearchIntent
   keywordAlternatives: (query: string) => string[]
   smartFilterChips: (ctx: { section: string, skills: string[] }) => { key: string, label: string, icon: string }[]
+  // — smart scheduling —
+  suggestOptimalTimes: (ctx: { availability: string[], candidatePref?: DayPeriod, fromISO?: string }) => OptimalTimesResult
   // — auto-classification —
   autoClassify: (text: string) => AutoClassification
 }

@@ -10,10 +10,41 @@ import AttachmentsDialog from '@/components/shared/AttachmentsDialog.vue'
 import TaxonomyTree from '@/components/shared/TaxonomyTree.vue'
 import { ALL_SKILLS, categorizeSkill } from '@/services/taxonomy'
 import { ai } from '@/services/ai'
+import type { DayPeriod, TimeSuggestion } from '@/services/ai'
 
 const router = useRouter()
 const store = useInterviewersStore()
 const profile = useProfileStore()
+
+// Reschedule flow — reuses the AI smart-time suggestions
+const reschedDialog = ref(false)
+const reschedName = ref('')
+const reschedBookingId = ref(0)
+const reschedTimes = ref<TimeSuggestion[]>([])
+const reschedExplanation = ref('')
+const reschedSnackbar = ref(false)
+function reschedColor(v: number) {
+  if (v >= 90)
+    return 'success'
+  if (v >= 84)
+    return 'warning'
+  return 'orange-darken-2'
+}
+function openReschedule(bookingId: number, interviewerId: number, interviewerName: string) {
+  const iv = store.getById(interviewerId)
+  const pref = (localStorage.getItem('candidateTimePref') as DayPeriod) || 'morning'
+  const res = ai.suggestOptimalTimes({ availability: iv?.availability ?? [], candidatePref: pref })
+  reschedTimes.value = res.suggestions
+  reschedExplanation.value = res.explanation
+  reschedName.value = interviewerName
+  reschedBookingId.value = bookingId
+  reschedDialog.value = true
+}
+function applyReschedule(s: TimeSuggestion) {
+  store.reschedule(reschedBookingId.value, s.label)
+  reschedDialog.value = false
+  reschedSnackbar.value = true
+}
 
 // Pre-interview attachments dialog
 const attachDialog = ref(false)
@@ -316,6 +347,15 @@ function open(id: number) {
                         مرفقات
                         <VChip v-if="b.attachments?.length" size="x-small" color="secondary" class="ms-1" label>{{ b.attachments.length }}</VChip>
                       </VBtn>
+                      <VBtn
+                        v-if="b.status !== 'completed' && b.status !== 'cancelled'"
+                        size="x-small"
+                        variant="tonal"
+                        prepend-icon="mdi-calendar-refresh-outline"
+                        @click="openReschedule(b.id, b.interviewerId, b.interviewerName)"
+                      >
+                        إعادة جدولة
+                      </VBtn>
                       <VChip v-if="b.report" color="success" size="small" label>{{ b.report.overall }}%</VChip>
                       <VChip :color="BOOKING_STATUS_META[b.status].color" size="small" label>{{ BOOKING_STATUS_META[b.status].label }}</VChip>
                     </div>
@@ -330,5 +370,52 @@ function open(id: number) {
     </VRow>
 
     <AttachmentsDialog v-model="attachDialog" :booking-id="attachBookingId" :interviewer-name="attachInterviewerName" />
+
+    <!-- Reschedule dialog — AI suggests 3 new optimal times -->
+    <VDialog v-model="reschedDialog" max-width="620">
+      <VCard class="pa-2">
+        <VCardTitle class="d-flex justify-space-between align-center">
+          <span class="text-body-1 font-weight-bold">إعادة جدولة مع {{ reschedName }}</span>
+          <VBtn icon="mdi-close" variant="text" size="small" @click="reschedDialog = false" />
+        </VCardTitle>
+        <VCardText>
+          <div class="d-flex align-center ga-2 mb-3">
+            <VIcon icon="mdi-robot-happy-outline" color="secondary" size="18" />
+            <span class="text-caption text-medium-emphasis">اقترح الـ AI مواعيد بديلة بناءً على تفضيلاتك وتوفّر المقيّم — اختر بنقرة:</span>
+          </div>
+          <VRow dense>
+            <VCol v-for="s in reschedTimes" :key="s.id" cols="12" sm="4">
+              <VCard variant="outlined" class="pa-3 h-100 cursor-pointer suggest-card" @click="applyReschedule(s)">
+                <VChip size="x-small" :color="reschedColor(s.compatibility)" label class="mb-2">{{ s.tag }}</VChip>
+                <div class="text-body-2 font-weight-bold mb-2">{{ s.label }}</div>
+                <div class="d-flex align-center justify-space-between text-caption mb-1">
+                  <span class="text-medium-emphasis">توافق</span>
+                  <span class="font-weight-bold" :class="`text-${reschedColor(s.compatibility)}`">{{ s.compatibility }}%</span>
+                </div>
+                <VProgressLinear :model-value="s.compatibility" :color="reschedColor(s.compatibility)" height="6" rounded />
+              </VCard>
+            </VCol>
+          </VRow>
+          <VAlert color="secondary" variant="tonal" density="compact" class="mt-3 text-caption" border="start">
+            <template #prepend><VIcon icon="mdi-lightbulb-on-outline" size="18" /></template>
+            {{ reschedExplanation }}
+          </VAlert>
+        </VCardText>
+      </VCard>
+    </VDialog>
+
+    <VSnackbar v-model="reschedSnackbar" color="success" timeout="4000">
+      تمت إعادة جدولة المقابلة — أُرسل الموعد الجديد للمقيّم للتأكيد.
+    </VSnackbar>
   </div>
 </template>
+
+<style scoped>
+.suggest-card {
+  transition: border-color 0.18s ease, transform 0.18s ease;
+}
+.suggest-card:hover {
+  border-color: rgba(var(--v-theme-secondary), 0.55);
+  transform: translateY(-2px);
+}
+</style>

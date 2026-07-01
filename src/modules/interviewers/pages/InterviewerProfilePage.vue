@@ -5,6 +5,8 @@ import { COMMISSION_NOTE, INTERVIEWER_TYPE_META, KIND_META, PLATFORM_COMMISSION,
 import type { CustomEvalElement, MarketInterviewKind } from '@/stores/InterviewersStore'
 import { useProfileStore } from '@/stores/ProfileStore'
 import { useNotificationsStore } from '@/stores/NotificationsStore'
+import { ai } from '@/services/ai'
+import type { DayPeriod, TimeSuggestion } from '@/services/ai'
 import ReviewsPanel from '@/components/shared/ReviewsPanel.vue'
 
 const route = useRoute()
@@ -25,6 +27,38 @@ const chosenKind = ref<MarketInterviewKind>('level')
 const chosenDate = ref<Date | null>(null)
 const chosenTime = ref('')
 const bookedSnackbar = ref(false)
+
+// AI smart scheduling — 3 optimal times based on both parties' preferences.
+// The candidate's preferred period is remembered across bookings (adaptive).
+const PREF_KEY = 'candidateTimePref'
+const candidatePref = ref<DayPeriod>((localStorage.getItem(PREF_KEY) as DayPeriod) || 'morning')
+const suggestedTimes = ref<TimeSuggestion[]>([])
+const timesExplanation = ref('')
+const showWhy = ref(false)
+const showFullCalendar = ref(false)
+const selectedSuggestionId = ref('')
+
+function compatColor(v: number) {
+  if (v >= 90)
+    return 'success'
+  if (v >= 84)
+    return 'warning'
+  return 'orange-darken-2'
+}
+function pickSuggestion(s: TimeSuggestion) {
+  chosenDate.value = new Date(`${s.iso}T00:00:00`)
+  chosenTime.value = s.time
+  candidatePref.value = s.period
+  selectedSuggestionId.value = s.id
+}
+function periodOfTime(time: string): DayPeriod {
+  const h = Number(time.split(':')[0])
+  if (h < 12)
+    return 'morning'
+  if (h < 17)
+    return 'afternoon'
+  return 'evening'
+}
 
 // Map Arabic weekday names → JS getDay() so the calendar only opens the interviewer's days
 const DAY_MAP: Record<string, number> = {
@@ -54,8 +88,10 @@ const timeSlots = computed(() => {
 })
 
 function pickTime(time: string, taken: boolean) {
-  if (!taken)
+  if (!taken) {
     chosenTime.value = time
+    selectedSuggestionId.value = '' // manual pick overrides the AI suggestion
+  }
 }
 
 const basePrice = computed(() => {
@@ -96,17 +132,35 @@ const dateLabel = computed(() => {
 })
 const canConfirm = computed(() => !!chosenDate.value && !!chosenTime.value)
 
+function refreshSuggestions() {
+  if (!interviewer.value)
+    return
+  const res = ai.suggestOptimalTimes({ availability: interviewer.value.availability, candidatePref: candidatePref.value })
+  suggestedTimes.value = res.suggestions
+  timesExplanation.value = res.explanation
+}
+
 function openBooking(kind?: MarketInterviewKind) {
   if (kind)
     chosenKind.value = kind
   chosenDate.value = null
   chosenTime.value = ''
   selectedElements.value = []
+  selectedSuggestionId.value = ''
+  showFullCalendar.value = false
+  showWhy.value = false
+  refreshSuggestions()
   bookDialog.value = true
 }
 
 function confirmBooking() {
   if (interviewer.value && canConfirm.value) {
+    // Remember the chosen period so future suggestions adapt to the candidate
+    const period = selectedSuggestionId.value
+      ? (suggestedTimes.value.find(s => s.id === selectedSuggestionId.value)?.period ?? periodOfTime(chosenTime.value))
+      : periodOfTime(chosenTime.value)
+    localStorage.setItem(PREF_KEY, period)
+
     store.book(interviewer.value, chosenKind.value, `${dateLabel.value} · ${chosenTime.value}`, price.value, selectedElements.value.map(e => e.name))
     notifications.push({
       icon: 'mdi-calendar-check-outline',
@@ -225,52 +279,102 @@ function confirmBooking() {
             class="mb-3"
           />
 
-          <VRow>
-            <!-- Calendar -->
-            <VCol cols="12" sm="7">
-              <div class="text-caption font-weight-bold mb-1">
-                <VIcon icon="mdi-calendar-month-outline" size="16" class="me-1" />اختر اليوم
-                <span class="text-medium-emphasis">(أيام المقيّم: {{ interviewer.availability.join('، ') }})</span>
-              </div>
-              <VDatePicker
-                v-model="chosenDate"
-                :allowed-dates="allowedDates"
-                :min="today"
-                color="primary"
-                show-adjacent-months
-                hide-header
-                width="100%"
-                @update:model-value="chosenTime = ''"
-              />
-            </VCol>
-
-            <!-- Time slots -->
-            <VCol cols="12" sm="5">
-              <div class="text-caption font-weight-bold mb-2">
-                <VIcon icon="mdi-clock-outline" size="16" class="me-1" />الفترات المتاحة
-              </div>
-              <div v-if="!chosenDate" class="text-caption text-medium-emphasis py-4 text-center">
-                اختر يومًا من الكالندر أولًا
-              </div>
-              <div v-else class="d-flex flex-wrap ga-2">
-                <VChip
-                  v-for="slot in timeSlots"
-                  :key="slot.time"
-                  :color="chosenTime === slot.time ? 'primary' : slot.taken ? 'error' : undefined"
-                  :variant="chosenTime === slot.time ? 'flat' : slot.taken ? 'tonal' : 'outlined'"
-                  :disabled="slot.taken"
-                  label
-                  @click="pickTime(slot.time, slot.taken)"
-                >
-                  <VIcon v-if="slot.taken" icon="mdi-lock-outline" size="13" start />
-                  {{ slot.time }}
-                </VChip>
-              </div>
-              <div v-if="chosenDate" class="text-caption text-medium-emphasis mt-2">
-                <VIcon icon="mdi-information-outline" size="13" /> الفترات الحمراء محجوزة
-              </div>
+          <!-- AI smart time suggestions -->
+          <div class="d-flex align-center ga-2 mb-1">
+            <VIcon icon="mdi-robot-happy-outline" color="secondary" size="18" />
+            <span class="text-subtitle-2 font-weight-bold">الأوقات المقترحة لك</span>
+            <VChip size="x-small" color="secondary" variant="tonal" label>AI</VChip>
+          </div>
+          <div class="text-caption text-medium-emphasis mb-3">مرتّبة حسب نسبة التوافق بين تفضيلاتك وأيام توفّر المقيّم — اختر بنقرة واحدة.</div>
+          <VRow dense>
+            <VCol v-for="s in suggestedTimes" :key="s.id" cols="12" sm="4">
+              <VCard
+                variant="outlined"
+                class="pa-3 h-100 suggest-card cursor-pointer"
+                :class="{ 'suggest-card--on': selectedSuggestionId === s.id }"
+                @click="pickSuggestion(s)"
+              >
+                <div class="d-flex align-center justify-space-between mb-1">
+                  <VChip size="x-small" :color="compatColor(s.compatibility)" label>{{ s.tag }}</VChip>
+                  <VIcon v-if="selectedSuggestionId === s.id" icon="mdi-check-circle" color="success" size="18" />
+                </div>
+                <div class="text-body-2 font-weight-bold mb-2">{{ s.label }}</div>
+                <div class="d-flex align-center justify-space-between text-caption mb-1">
+                  <span class="text-medium-emphasis">توافق</span>
+                  <span class="font-weight-bold" :class="`text-${compatColor(s.compatibility)}`">{{ s.compatibility }}%</span>
+                </div>
+                <VProgressLinear :model-value="s.compatibility" :color="compatColor(s.compatibility)" height="6" rounded />
+              </VCard>
             </VCol>
           </VRow>
+
+          <div class="d-flex align-center flex-wrap ga-1 mt-2">
+            <VBtn variant="text" size="small" color="secondary" prepend-icon="mdi-lightbulb-on-outline" @click="showWhy = !showWhy">
+              لماذا هذه الأوقات؟
+            </VBtn>
+            <VBtn variant="text" size="small" prepend-icon="mdi-calendar-edit-outline" @click="showFullCalendar = !showFullCalendar">
+              {{ showFullCalendar ? 'إخفاء الجدول الكامل' : 'أقترح وقتًا آخر' }}
+            </VBtn>
+          </div>
+          <VExpandTransition>
+            <VAlert v-if="showWhy" color="secondary" variant="tonal" density="comfortable" class="mt-2" border="start">
+              <template #prepend><VIcon icon="mdi-robot-happy-outline" /></template>
+              <span class="text-caption">{{ timesExplanation }}</span>
+            </VAlert>
+          </VExpandTransition>
+
+          <!-- Full calendar — collapsed by default (AI suggestions are the primary path) -->
+          <VExpandTransition>
+            <div v-if="showFullCalendar">
+              <VDivider class="my-3" />
+              <VRow>
+                <!-- Calendar -->
+                <VCol cols="12" sm="7">
+                  <div class="text-caption font-weight-bold mb-1">
+                    <VIcon icon="mdi-calendar-month-outline" size="16" class="me-1" />اختر اليوم
+                    <span class="text-medium-emphasis">(أيام المقيّم: {{ interviewer.availability.join('، ') }})</span>
+                  </div>
+                  <VDatePicker
+                    v-model="chosenDate"
+                    :allowed-dates="allowedDates"
+                    :min="today"
+                    color="primary"
+                    show-adjacent-months
+                    hide-header
+                    width="100%"
+                    @update:model-value="chosenTime = ''; selectedSuggestionId = ''"
+                  />
+                </VCol>
+
+                <!-- Time slots -->
+                <VCol cols="12" sm="5">
+                  <div class="text-caption font-weight-bold mb-2">
+                    <VIcon icon="mdi-clock-outline" size="16" class="me-1" />الفترات المتاحة
+                  </div>
+                  <div v-if="!chosenDate" class="text-caption text-medium-emphasis py-4 text-center">
+                    اختر يومًا من الكالندر أولًا
+                  </div>
+                  <div v-else class="d-flex flex-wrap ga-2">
+                    <VChip
+                      v-for="slot in timeSlots"
+                      :key="slot.time"
+                      :color="chosenTime === slot.time ? 'primary' : slot.taken ? 'error' : undefined"
+                      :variant="chosenTime === slot.time ? 'flat' : slot.taken ? 'tonal' : 'outlined'"
+                      :disabled="slot.taken"
+                      label
+                      @click="pickTime(slot.time, slot.taken)"
+                    >
+                      <VIcon v-if="slot.taken" icon="mdi-lock-outline" size="13" start />
+                      {{ slot.time }}
+                    </VChip>
+                  </div>
+                  <div v-if="chosenDate" class="text-caption text-medium-emphasis mt-2">
+                    <VIcon icon="mdi-information-outline" size="13" /> الفترات الحمراء محجوزة
+                  </div>
+                </VCol>
+              </VRow>
+            </div>
+          </VExpandTransition>
 
           <!-- Custom evaluation elements -->
           <template v-if="interviewer.evalElements.length">
@@ -359,5 +463,16 @@ function confirmBooking() {
 .element-row--on {
   border-color: rgb(var(--v-theme-accent));
   background: rgba(var(--v-theme-accent), 0.08);
+}
+.suggest-card {
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+.suggest-card:hover {
+  border-color: rgba(var(--v-theme-secondary), 0.55);
+  transform: translateY(-2px);
+}
+.suggest-card--on {
+  border-color: rgb(var(--v-theme-success));
+  background: rgba(var(--v-theme-success), 0.08);
 }
 </style>

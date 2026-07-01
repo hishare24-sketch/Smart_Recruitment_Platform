@@ -327,6 +327,14 @@ export const useInterviewersStore = defineStore('interviewers', () => {
     if (b)
       b.ratingGiven = stars
   }
+  // Reschedule a booking to a new datetime (keeps it scheduled)
+  function reschedule(id: number, datetime: string) {
+    const b = bookings.value.find(x => x.id === id)
+    if (b && b.status !== 'completed' && b.status !== 'cancelled') {
+      b.datetime = datetime
+      b.status = 'scheduled'
+    }
+  }
 
   // Pre-interview attachments (candidate → interviewer)
   let nextAttachmentId = 500
@@ -392,7 +400,7 @@ export const useInterviewersStore = defineStore('interviewers', () => {
 
   return {
     interviewers, bookings, agenda, pricing, myEvalElements, fields,
-    getById, recommendedFor, matchFor, book, rateBooking, addAttachment,
+    getById, recommendedFor, matchFor, book, rateBooking, reschedule, addAttachment,
     completedReports, trustValue,
     getAgendaItem, acceptRequest, declineRequest, completeSession, setPrice,
     addEvalElement, removeEvalElement,

@@ -23,6 +23,9 @@ import type {
   TrustTip,
   UploadAnalysis,
   VideoAnalysis,
+  DayPeriod,
+  OptimalTimesResult,
+  TimeSuggestion,
 } from './types'
 import { ALL_SKILLS, TAXONOMY, categorizeSkill, getCategory } from '@/services/taxonomy'
 
@@ -636,6 +639,63 @@ function autoClassify(text: string): AutoClassification {
   return { category, categoryLabel: getCategory(category)?.label, suggestedSkills }
 }
 
+// — Smart scheduling: suggest 3 optimal interview times —
+const AR_WEEKDAYS = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت']
+const AR_MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر']
+const AR_DAY_TO_IDX: Record<string, number> = {
+  'الأحد': 0, 'الإثنين': 1, 'الاثنين': 1, 'الثلاثاء': 2, 'الأربعاء': 3, 'الخميس': 4, 'الجمعة': 5, 'السبت': 6,
+}
+const PERIOD_META: Record<DayPeriod, { time: string, label: string, name: string }> = {
+  morning: { time: '10:00', label: 'صباحًا', name: 'الفترة الصباحية' },
+  afternoon: { time: '15:00', label: 'عصرًا', name: 'فترة العصر' },
+  evening: { time: '20:00', label: 'مساءً', name: 'الفترة المسائية' },
+}
+
+function nextAvailableDates(allowed: Set<number>, fromISO: string | undefined, count: number): Date[] {
+  const out: Date[] = []
+  const start = fromISO ? new Date(fromISO) : new Date()
+  start.setHours(0, 0, 0, 0)
+  const d = new Date(start)
+  d.setDate(d.getDate() + 1) // start from tomorrow
+  let guard = 0
+  while (out.length < count && guard < 90) {
+    if (allowed.has(d.getDay()))
+      out.push(new Date(d))
+    d.setDate(d.getDate() + 1)
+    guard++
+  }
+  return out
+}
+
+function suggestOptimalTimes(ctx: { availability: string[], candidatePref?: DayPeriod, fromISO?: string }): OptimalTimesResult {
+  const allowed = new Set((ctx.availability ?? []).map(x => AR_DAY_TO_IDX[x]).filter(n => n !== undefined))
+  const days = allowed.size ? allowed : new Set([0, 1, 2, 3, 4]) // graceful fallback
+  const pref: DayPeriod = ctx.candidatePref ?? 'morning'
+  const periodsOrder: DayPeriod[] = [pref, ...(['morning', 'afternoon', 'evening'] as DayPeriod[]).filter(p => p !== pref)]
+  const dates = nextAvailableDates(days, ctx.fromISO, 3)
+  const comps = [96, 88, 81]
+  const tags = ['الأكثر توافقًا', 'متوافق', 'متاح']
+
+  const suggestions: TimeSuggestion[] = dates.map((d, i) => {
+    const period = periodsOrder[i] ?? 'morning'
+    const pm = PERIOD_META[period]
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    return {
+      id: `${iso}-${pm.time}`,
+      iso,
+      time: pm.time,
+      label: `${AR_WEEKDAYS[d.getDay()]} ${d.getDate()} ${AR_MONTHS[d.getMonth()]} · ${pm.time} ${pm.label}`,
+      period,
+      compatibility: comps[i] ?? 75,
+      tag: tags[i] ?? 'متاح',
+    }
+  })
+
+  const availText = (ctx.availability ?? []).join('، ') || 'مرن'
+  const explanation = `اخترنا هذه الأوقات بموازنة تفضيلك (${PERIOD_META[pref].name}) مع أيام توفّر المقيّم (${availText}). الخيار الأول يجمع بين فترتك المفضّلة وأقرب موعد متاح، لذا حصل على أعلى نسبة توافق — والباقي بدائل مرنة صباحية/مسائية.`
+  return { suggestions, explanation }
+}
+
 export const mockAi: AiService = {
   skillLevel,
   trustAnalysis,
@@ -673,5 +733,6 @@ export const mockAi: AiService = {
   searchIntent,
   keywordAlternatives,
   smartFilterChips,
+  suggestOptimalTimes,
   autoClassify,
 }
