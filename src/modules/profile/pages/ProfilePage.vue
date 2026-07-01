@@ -10,6 +10,7 @@ import { ai } from '@/services/ai'
 import TrustScoreCard from '@/components/shared/TrustScoreCard.vue'
 import ReviewsPanel from '@/components/shared/ReviewsPanel.vue'
 import { useReviewsStore } from '@/stores/ReviewsStore'
+import { ALL_SKILLS, TAXONOMY, categorizeSkill, getCategory } from '@/services/taxonomy'
 import { LEVEL_META, TYPE_META, useInterviewsStore } from '@/stores/InterviewsStore'
 import { KIND_META, useInterviewersStore } from '@/stores/InterviewersStore'
 import type { Booking } from '@/stores/InterviewersStore'
@@ -40,12 +41,28 @@ const tab = ref('skills')
 const skillDialog = ref(false)
 const newSkillName = ref('')
 const newSkillLevel = ref(3)
+const newSkillCategory = ref<string | undefined>(undefined)
+const categoryOptions = TAXONOMY.map(c => ({ value: c.id, title: c.label }))
+const categorySkillSuggestions = computed(() => getCategory(newSkillCategory.value)?.skills ?? ALL_SKILLS)
 function saveSkill() {
-  profile.addSkill(newSkillName.value, newSkillLevel.value)
+  profile.addSkill(newSkillName.value, newSkillLevel.value, newSkillCategory.value)
   newSkillName.value = ''
   newSkillLevel.value = 3
+  newSkillCategory.value = undefined
   skillDialog.value = false
 }
+
+// Group skills by taxonomy category (falling back to name-based classification)
+const skillGroups = computed(() => {
+  const map = new Map<string, Skill[]>()
+  for (const s of profile.skills) {
+    const catId = s.category ?? categorizeSkill(s.name) ?? 'other'
+    if (!map.has(catId))
+      map.set(catId, [])
+    map.get(catId)!.push(s)
+  }
+  return [...map.entries()].map(([catId, list]) => ({ category: getCategory(catId), skills: list }))
+})
 
 // Skill helpers
 function confidenceColor(v: number) {
@@ -313,12 +330,18 @@ const heroStats = computed(() => [
             </div>
           </VAlert>
 
-          <VCard v-for="skill in profile.skills" :key="skill.id" variant="outlined" class="pa-3 mb-3">
-            <div class="d-flex justify-space-between align-center mb-2">
-              <div class="d-flex align-center ga-2">
-                <span class="text-body-1 font-weight-bold">{{ skill.name }}</span>
-                <VChip size="x-small" :color="confidenceColor(skillConfidence(skill))" label>{{ levelOf(skill) }}</VChip>
-              </div>
+          <template v-for="group in skillGroups" :key="group.category?.id ?? 'other'">
+            <div class="d-flex align-center ga-2 mt-3 mb-2">
+              <VIcon :icon="group.category?.icon ?? 'mdi-shape-outline'" :color="group.category?.color ?? 'medium-emphasis'" size="20" />
+              <span class="text-subtitle-2 font-weight-bold">{{ group.category?.label ?? 'أخرى' }}</span>
+              <VChip size="x-small" variant="tonal" label>{{ group.skills.length }}</VChip>
+            </div>
+            <VCard v-for="skill in group.skills" :key="skill.id" variant="outlined" class="pa-3 mb-3">
+              <div class="d-flex justify-space-between align-center mb-2">
+                <div class="d-flex align-center ga-2">
+                  <span class="text-body-1 font-weight-bold">{{ skill.name }}</span>
+                  <VChip size="x-small" :color="confidenceColor(skillConfidence(skill))" label>{{ levelOf(skill) }}</VChip>
+                </div>
               <div class="d-flex align-center ga-1">
                 <VBtn icon="mdi-plus" variant="text" size="x-small" color="accent" @click="openAddProof(skill)" />
                 <VBtn icon="mdi-information-outline" variant="text" size="x-small" @click="openDetail(skill)" />
@@ -347,6 +370,7 @@ const heroStats = computed(() => [
             </div>
             <VProgressLinear :model-value="skillConfidence(skill)" :color="confidenceColor(skillConfidence(skill))" height="8" rounded />
           </VCard>
+          </template>
           <div v-if="!profile.skills.length" class="text-center text-medium-emphasis py-6">لا مهارات بعد — أضف أول مهارة</div>
         </VCard>
       </VWindowItem>
@@ -550,7 +574,15 @@ const heroStats = computed(() => [
       <VCard class="pa-2">
         <VCardTitle>إضافة مهارة</VCardTitle>
         <VCardText>
-          <VTextField v-model="newSkillName" label="اسم المهارة" class="mb-3" />
+          <VSelect v-model="newSkillCategory" :items="categoryOptions" label="التصنيف" clearable class="mb-3" />
+          <VCombobox
+            v-model="newSkillName"
+            :items="categorySkillSuggestions"
+            label="اسم المهارة"
+            :hint="newSkillCategory ? 'اختر من الاقتراحات أو اكتب مهارة جديدة' : 'اختر تصنيفًا لاقتراح مهارات، أو اكتب مباشرة'"
+            persistent-hint
+            class="mb-3"
+          />
           <div class="text-body-2 mb-1">المستوى</div>
           <VRating v-model="newSkillLevel" color="accent" />
         </VCardText>

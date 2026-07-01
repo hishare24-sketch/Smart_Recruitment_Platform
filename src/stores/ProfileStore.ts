@@ -16,6 +16,7 @@ export interface Skill {
   name: string
   selfLevel: number
   proofs: SkillProof[]
+  category?: string // taxonomy category id
 }
 
 export interface Experience { id: number, title: string, company: string, period: string, desc: string }
@@ -137,13 +138,14 @@ export const useProfileStore = defineStore('profile', () => {
   }
   watch([headline, summary, skills, experiences, certificates], persist, { deep: true })
 
-  function addSkill(name: string, selfLevel: number) {
+  function addSkill(name: string, selfLevel: number, category?: string) {
     if (!name.trim())
       return
     skills.value.push({
       id: nextId++,
       name: name.trim(),
       selfLevel,
+      category,
       proofs: [{ id: nextProofId++, type: 'self', label: 'تقييم ذاتي', date: 'الآن' }],
     })
   }

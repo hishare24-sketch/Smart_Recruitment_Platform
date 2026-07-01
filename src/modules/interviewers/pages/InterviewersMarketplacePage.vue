@@ -7,6 +7,7 @@ import type { InterviewerType } from '@/stores/InterviewersStore'
 import { useProfileStore } from '@/stores/ProfileStore'
 import EmptyState from '@/components/shared/EmptyState.vue'
 import AttachmentsDialog from '@/components/shared/AttachmentsDialog.vue'
+import { ALL_SKILLS } from '@/services/taxonomy'
 
 const router = useRouter()
 const store = useInterviewersStore()
@@ -32,8 +33,14 @@ const recommended = computed(() => store.recommendedFor(candidate.value))
 // Filters
 const types = Object.keys(INTERVIEWER_TYPE_META) as InterviewerType[]
 const selectedTypes = ref<InterviewerType[]>([])
+const selectedSkills = ref<string[]>([])
 const minRating = ref(0)
 const maxPrice = ref(500)
+
+// Skill options = interviewer specialties ∪ taxonomy skills (so a pick always matches something)
+const skillOptions = computed(() =>
+  [...new Set([...store.interviewers.flatMap(i => i.specialties), ...ALL_SKILLS])].sort(),
+)
 
 function toggleType(t: InterviewerType) {
   selectedTypes.value = selectedTypes.value.includes(t)
@@ -44,6 +51,8 @@ function toggleType(t: InterviewerType) {
 const filtered = computed(() =>
   store.interviewers.filter((iv) => {
     if (selectedTypes.value.length && !selectedTypes.value.includes(iv.type))
+      return false
+    if (selectedSkills.value.length && !iv.specialties.some(s => selectedSkills.value.includes(s)))
       return false
     if (iv.rating < minRating.value)
       return false
@@ -121,6 +130,19 @@ function open(id: number) {
               {{ INTERVIEWER_TYPE_META[t].label }}
             </VChip>
           </div>
+          <div class="text-caption font-weight-bold mb-1">المهارات</div>
+          <VAutocomplete
+            v-model="selectedSkills"
+            :items="skillOptions"
+            multiple
+            chips
+            closable-chips
+            clearable
+            density="compact"
+            placeholder="مثال: Python، React"
+            hide-details
+            class="mb-4"
+          />
           <div class="text-caption font-weight-bold mb-1">أدنى تقييم ({{ minRating }}★)</div>
           <VSlider v-model="minRating" :min="0" :max="5" :step="0.5" color="warning" hide-details class="mb-3" />
           <div class="text-caption font-weight-bold mb-1">أعلى سعر بداية ({{ maxPrice }} ريال)</div>
