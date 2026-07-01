@@ -73,6 +73,24 @@ export const routes: RouteRecordRaw[] = [
     meta: { layout: 'default' },
   },
   {
+    path: '/requests',
+    name: 'requests',
+    component: () => import('@/modules/requests/pages/RequestsFeedPage.vue'),
+    meta: { layout: 'default' },
+  },
+  {
+    path: '/requests/mine',
+    name: 'my-requests',
+    component: () => import('@/modules/requests/pages/MyRequestsPage.vue'),
+    meta: { layout: 'default' },
+  },
+  {
+    path: '/requests/:id',
+    name: 'request-details',
+    component: () => import('@/modules/requests/pages/RequestDetailsPage.vue'),
+    meta: { layout: 'default' },
+  },
+  {
     path: '/applications',
     name: 'applications',
     component: () => import('@/modules/applications/pages/ApplicationsPage.vue'),
