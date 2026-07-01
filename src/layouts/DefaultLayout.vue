@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useDisplay, useTheme } from 'vuetify'
@@ -79,6 +79,17 @@ const initials = computed(() => {
   const name = user.value?.name ?? '?'
   return name.trim().charAt(0).toUpperCase()
 })
+
+// Scroll-to-top FAB — appears after scrolling down a long page
+const showTop = ref(false)
+function onScroll() {
+  showTop.value = window.scrollY > 400
+}
+function scrollTop() {
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+onMounted(() => window.addEventListener('scroll', onScroll, { passive: true }))
+onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
 </script>
 
 <template>
@@ -201,4 +212,27 @@ const initials = computed(() => {
 
   <!-- Global reward toasts + badge-unlock celebrations -->
   <RewardFeedback />
+
+  <!-- Scroll to top -->
+  <VScaleTransition>
+    <VBtn
+      v-show="showTop"
+      icon="mdi-chevron-up"
+      color="primary"
+      size="small"
+      elevation="6"
+      class="scroll-top-fab"
+      aria-label="العودة للأعلى"
+      @click="scrollTop"
+    />
+  </VScaleTransition>
 </template>
+
+<style scoped>
+.scroll-top-fab {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  z-index: 1000;
+}
+</style>

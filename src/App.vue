@@ -53,10 +53,20 @@ const isDark = computed(() => theme.global.current.value.dark)
 <style scoped>
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.2s ease;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
-.fade-enter-from,
+.fade-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
 .fade-leave-to {
   opacity: 0;
+  transform: translateY(-4px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .fade-enter-from,
+  .fade-leave-to {
+    transform: none;
+  }
 }
 </style>
