@@ -30,10 +30,11 @@ export const ROLE_META: Record<UserRole, RoleMeta> = {
   company: { icon: 'mdi-office-building-outline', labelKey: 'company', home: 'dashboard', requestable: true, activation: 'instant' },
   endorser: { icon: 'mdi-hand-heart-outline', labelKey: 'endorser', home: 'endorser-home', requestable: false, activation: 'approval' },
   admin: { icon: 'mdi-shield-crown-outline', labelKey: 'admin', home: 'admin-dashboard', requestable: false, activation: 'approval' },
-  // أدوار توسعة النظام البيئي (وثيقة «شريك النجاح») — بموافقة المنصة ضبطًا للجودة
-  coach: { icon: 'mdi-compass-outline', labelKey: 'coach', home: 'coach-dashboard', requestable: true, activation: 'approval' },
-  trainer: { icon: 'mdi-school-outline', labelKey: 'trainer', home: 'trainer-dashboard', requestable: true, activation: 'approval' },
-  consultant: { icon: 'mdi-lightbulb-on-outline', labelKey: 'consultant', home: 'consultant-dashboard', requestable: true, activation: 'approval' },
+  // أدوار توسعة النظام البيئي — سياسة الانضمام الحالية: قبول تلقائي فوري
+  // (طابور اعتماد المدير جاهز؛ يكفي إرجاع activation إلى 'approval' لتفعيله)
+  coach: { icon: 'mdi-compass-outline', labelKey: 'coach', home: 'coach-dashboard', requestable: true, activation: 'instant' },
+  trainer: { icon: 'mdi-school-outline', labelKey: 'trainer', home: 'trainer-dashboard', requestable: true, activation: 'instant' },
+  consultant: { icon: 'mdi-lightbulb-on-outline', labelKey: 'consultant', home: 'consultant-dashboard', requestable: true, activation: 'instant' },
 }
 
 /** الأدوار المهنية القابلة للتعدد والتبديل (admin حساب منفصل، endorser يبقى كما هو حاليًا) */

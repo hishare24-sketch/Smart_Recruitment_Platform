@@ -9,7 +9,6 @@ import { useAuthStore } from '@/stores/AuthStore'
 import { useNotificationsStore } from '@/stores/NotificationsStore'
 import { useGamificationStore } from '@/stores/GamificationStore'
 import { useRoleProfilesStore } from '@/stores/RoleProfilesStore'
-import { useRoleRequestsStore } from '@/stores/RoleRequestsStore'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -48,7 +47,8 @@ function finish() {
   // Grant the interviewer role: the AI eligibility step is the approval gate.
   // A "reject" recommendation leaves the request pending (doc: approval role).
   authStore.requestRole('interviewer')
-  const approved = eligibility.value.recommendation !== 'reject'
+  // سياسة القبول التلقائي: يُعتمد المقيّم فور إكمال المعالج (تقرير الأهلية استشاري)
+  const approved = true
   // Seed the interviewer_profiles record from the wizard answers
   useRoleProfilesStore().updateInterviewer({
     specializations: [INTERVIEWER_TYPE_META[type.value].label],
@@ -69,17 +69,8 @@ function finish() {
       category: 'system',
     })
   }
-  if (!approved) {
-    // دون الحد الأدنى: يدخل الطلب طابور اعتماد المدير للمراجعة اليدوية
-    useRoleRequestsStore().add('interviewer', `أهلية AI: ${eligibility.value.score}% (${recLabel[eligibility.value.recommendation]})`, true)
-  }
   doneSnackbar.value = true
-  setTimeout(() => {
-    if (approved)
-      router.push({ name: 'interviewer-dashboard' })
-    else
-      router.push({ name: 'dashboard' })
-  }, 1300)
+  setTimeout(() => router.push({ name: 'interviewer-dashboard' }), 1300)
 }
 </script>
 

@@ -14,44 +14,45 @@ afterEach(() => {
 })
 
 describe('role approval pipeline', () => {
-  it('marks the ecosystem roles as approval-gated', () => {
-    for (const r of ['coach', 'trainer', 'consultant', 'interviewer'] as const)
-      expect(ROLE_META[r].activation).toBe('approval')
+  it('auto-accept policy: ecosystem roles activate instantly, wizard-gated interviewer stays approval', () => {
+    for (const r of ['coach', 'trainer', 'consultant'] as const)
+      expect(ROLE_META[r].activation).toBe('instant')
+    expect(ROLE_META.interviewer.activation).toBe('approval') // ينضم عبر معالج الاعتماد (يقبل تلقائيًا عند إكماله)
   })
 
-  it('queues my request pending and activates my role on admin approval', () => {
+  it('queues a pending request and activates my role on admin approval (mechanism stays ready)', () => {
     const auth = useAuthStore()
     auth.setAuthUser({ id: 1, uuid: 'u', name: 'أنا', email: 'x@x.com', token: 't', role: 'seeker', roles: defaultRoleEntries('seeker'), permissions: ROLE_PERMISSIONS.seeker })
-    auth.requestRole('coach') // approval → pending
-    expect(auth.hasRole('coach')).toBe(false)
+    auth.requestRole('interviewer') // approval → pending حتى المعالج/المدير
+    expect(auth.hasRole('interviewer')).toBe(false)
 
     const q = useRoleRequestsStore()
-    const req = q.add('coach', 'اختبار', true)
+    const req = q.add('interviewer', 'اختبار', true)
     expect(q.pending.some(r => r.id === req.id)).toBe(true)
     q.decide(req.id, true)
     expect(q.pending.some(r => r.id === req.id)).toBe(false)
-    expect(auth.hasRole('coach')).toBe(true) // الاعتماد فعّل الدور
+    expect(auth.hasRole('interviewer')).toBe(true) // الاعتماد فعّل الدور
   })
 
   it('rejection keeps the role inactive', () => {
     const auth = useAuthStore()
     auth.setAuthUser({ id: 1, uuid: 'u', name: 'أنا', email: 'x@x.com', token: 't', role: 'seeker', roles: defaultRoleEntries('seeker'), permissions: ROLE_PERMISSIONS.seeker })
-    auth.requestRole('trainer')
+    auth.requestRole('interviewer')
     const q = useRoleRequestsStore()
-    const req = q.add('trainer', 'اختبار', true)
+    const req = q.add('interviewer', 'اختبار', true)
     q.decide(req.id, false)
-    expect(auth.hasRole('trainer')).toBe(false)
-    expect(auth.ownsRole('trainer')).toBe(true) // يبقى معلقًا قابلًا لإعادة الطلب
+    expect(auth.hasRole('interviewer')).toBe(false)
+    expect(auth.ownsRole('interviewer')).toBe(true) // يبقى معلقًا قابلًا لإعادة الطلب
   })
 
   it('simulated platform review approves after the delay', () => {
     const auth = useAuthStore()
     auth.setAuthUser({ id: 1, uuid: 'u', name: 'أنا', email: 'x@x.com', token: 't', role: 'seeker', roles: defaultRoleEntries('seeker'), permissions: ROLE_PERMISSIONS.seeker })
-    auth.requestRole('consultant')
+    auth.requestRole('interviewer')
     const q = useRoleRequestsStore()
-    const req = q.add('consultant', 'اختبار', true)
+    const req = q.add('interviewer', 'اختبار', true)
     q.simulatePlatformReview(req.id)
     vi.advanceTimersByTime(11000)
-    expect(auth.hasRole('consultant')).toBe(true)
+    expect(auth.hasRole('interviewer')).toBe(true)
   })
 })
