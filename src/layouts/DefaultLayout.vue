@@ -9,6 +9,7 @@ import { useMessagesStore } from '@/stores/MessagesStore'
 import { useGamificationStore } from '@/stores/GamificationStore'
 import GlobalSearchBar from '@/components/shared/GlobalSearchBar.vue'
 import RewardFeedback from '@/components/shared/RewardFeedback.vue'
+import RoleSwitcher from '@/components/shared/RoleSwitcher.vue'
 import { usePeerRequestsStore } from '@/stores/PeerRequestsStore'
 import { navForRole } from './navigation'
 
@@ -178,8 +179,8 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
       </VBadge>
     </VBtn>
 
-    <!-- User menu -->
-    <VMenu>
+    <!-- User menu (eager: keeps RoleSwitcher dialogs mounted after the menu closes) -->
+    <VMenu eager>
       <template #activator="{ props }">
         <VBtn v-bind="props" variant="text" class="px-2 ms-2">
           <VAvatar color="secondary" size="36">
@@ -195,7 +196,9 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
           </div>
         </VBtn>
       </template>
-      <VList density="compact" min-width="200">
+      <VList density="compact" min-width="240">
+        <RoleSwitcher />
+        <VDivider />
         <VListItem :title="t('common.profile')" prepend-icon="mdi-account-outline" :to="{ name: 'profile' }" />
         <VListItem :title="t('common.settings')" prepend-icon="mdi-cog-outline" :to="{ name: 'settings' }" />
         <VDivider />

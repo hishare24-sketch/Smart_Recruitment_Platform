@@ -46,7 +46,31 @@
     "seeker": "Job Seeker",
     "company": "Employer",
     "endorser": "Endorser / Colleague",
-    "admin": "System Admin"
+    "admin": "System Admin",
+    "interviewer": "Certified Interviewer"
+  },
+  "roleSwitcher": {
+    "myRoles": "My Roles",
+    "active": "Active",
+    "pending": "Pending approval",
+    "requestNew": "Request a new role",
+    "requestTitle": "Add a role to your account",
+    "requestHint": "One profile, multiple roles — switch anytime.",
+    "seekerDesc": "Find opportunities, apply, and build your resume and trust.",
+    "interviewerDesc": "Evaluate candidates for a fee — requires passing eligibility.",
+    "companyDesc": "Post opportunities, receive applications, and hire top talent.",
+    "endorserDesc": "Endorse colleagues and vouch for skills you witnessed firsthand.",
+    "companyFormTitle": "Activate the employer role",
+    "companyName": "Company / organization name",
+    "industry": "Industry",
+    "companySize": "Company size",
+    "activate": "Activate role",
+    "startWizard": "Start certification wizard",
+    "switched": "Switched to: {role}",
+    "activated": "Role activated: {role}",
+    "pendingNote": "Your request is under review — the role activates on approval.",
+    "extraRoles": "Additional roles (optional)",
+    "extraRolesHint": "You can activate more roles now or later from your account menu."
   },
   "nav": {
     "dashboard": "Dashboard",

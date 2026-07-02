@@ -5,8 +5,12 @@ import PageHeader from '@/components/shared/PageHeader.vue'
 import { INTERVIEWER_TYPE_META, KIND_META } from '@/stores/InterviewersStore'
 import type { InterviewerType, MarketInterviewKind } from '@/stores/InterviewersStore'
 import { ai } from '@/services/ai'
+import { useAuthStore } from '@/stores/AuthStore'
+import { useNotificationsStore } from '@/stores/NotificationsStore'
 
 const router = useRouter()
+const authStore = useAuthStore()
+const notifications = useNotificationsStore()
 const step = ref(1)
 
 // Step 1: qualifications
@@ -38,8 +42,28 @@ const pricing = computed(() =>
 
 const doneSnackbar = ref(false)
 function finish() {
+  // Grant the interviewer role: the AI eligibility step is the approval gate.
+  // A "reject" recommendation leaves the request pending (doc: approval role).
+  authStore.requestRole('interviewer')
+  const approved = eligibility.value.recommendation !== 'reject'
+  if (approved) {
+    authStore.activateRole('interviewer')
+    authStore.switchRole('interviewer')
+    notifications.push({
+      icon: 'mdi-star-check-outline',
+      color: 'success',
+      title: 'تم اعتمادك مقيّمًا',
+      body: 'فُعّل دور المقيّم المعتمد في حسابك — يمكنك التبديل إليه من قائمة حسابك.',
+      category: 'system',
+    })
+  }
   doneSnackbar.value = true
-  setTimeout(() => router.push({ name: 'interviewer-dashboard' }), 1300)
+  setTimeout(() => {
+    if (approved)
+      router.push({ name: 'interviewer-dashboard' })
+    else
+      router.push({ name: 'dashboard' })
+  }, 1300)
 }
 </script>
 

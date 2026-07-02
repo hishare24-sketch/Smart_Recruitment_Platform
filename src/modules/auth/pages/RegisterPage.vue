@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import type { UserRole } from '@/interfaces/Auth'
@@ -17,6 +17,15 @@ const roleOptions: { value: UserRole, icon: string }[] = [
 ]
 
 const role = ref<UserRole>('seeker')
+// Optional extra professional roles requested at sign-up (doc: multi-role platform)
+const extraRoles = ref<UserRole[]>([])
+const extraOptions = computed<{ value: UserRole, approval: boolean }[]>(() => {
+  if (role.value === 'endorser')
+    return []
+  return (['company', 'interviewer'] as UserRole[])
+    .filter(r => r !== role.value)
+    .map(r => ({ value: r, approval: r === 'interviewer' }))
+})
 const name = ref('')
 const email = ref('')
 const phone = ref('')
@@ -49,6 +58,8 @@ async function submit() {
       role: role.value,
     })
     authStore.setAuthUser(user)
+    // Extra roles chosen at sign-up: instant ones activate, approval ones stay pending
+    extraRoles.value.forEach(r => authStore.requestRole(r))
     // New seekers see the onboarding wizard; others go to their dashboard
     if (user.role === 'seeker')
       router.push({ name: 'onboarding' })
@@ -96,6 +107,34 @@ async function submit() {
         </VCard>
       </VCol>
     </VRow>
+    <p class="text-caption text-medium-emphasis mb-3">
+      {{ t(`roleSwitcher.${role}Desc`) }}
+    </p>
+
+    <!-- Optional extra roles (multi-role platform) -->
+    <template v-if="extraOptions.length">
+      <div class="text-body-2 font-weight-bold mb-1">
+        {{ t('roleSwitcher.extraRoles') }}
+      </div>
+      <VCheckbox
+        v-for="opt in extraOptions"
+        :key="opt.value"
+        v-model="extraRoles"
+        :value="opt.value"
+        density="compact"
+        hide-details
+      >
+        <template #label>
+          <span class="text-body-2">{{ t(`roles.${opt.value}`) }}</span>
+          <VChip v-if="opt.approval" size="x-small" color="warning" label class="ms-2">
+            {{ t('roleSwitcher.pending') }}
+          </VChip>
+        </template>
+      </VCheckbox>
+      <p class="text-caption text-medium-emphasis mt-1 mb-2">
+        {{ t('roleSwitcher.extraRolesHint') }}
+      </p>
+    </template>
 
     <VForm @submit.prevent="submit">
       <VTextField
