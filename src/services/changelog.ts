@@ -11,6 +11,7 @@ export interface ChangeItem {
 export const LATEST_CHANGES: { title: string, items: ChangeItem[] } = {
   title: 'تحديثات جديدة وصلت للتو',
   items: [
+    { icon: 'mdi-cog-transfer-outline', text: 'إدارة احترافية للاستبيانات: دورة حياة كاملة (مسودة→مجدول→نشط→موقوف→مغلق→مؤرشف) + استهداف جغرافي وديموغرافي + مجمع نقاط بحد قيمة + حصص مستبينين + استيراد شيت المدعوين', to: 'surveys' },
     { icon: 'mdi-card-account-details-star-outline', text: 'صفحتك التعريفية العامة /u/…: متابعون وتقييم وتعليقات بإشرافك + قصة وإنجازات ومعرض أعمال — والباقة (أساسية/احترافية/نخبة) تحدد ما يظهر', to: 'public-profile-manage' },
     { icon: 'mdi-view-dashboard-variant-outline', text: 'المركز الموحّد: كل أدوارك في شاشة واحدة — قرارات فورية ومواعيد ومؤشرات مع فلترة وفرز وتجميع وطرق عرض محفوظة', to: 'unified-hub' },
     { icon: 'mdi-storefront-outline', text: 'سوق الخبراء الموحّد: اكتشف المرشدين والمدربين والمستشارين واطلب خدمتهم مباشرة', to: 'experts-market' },

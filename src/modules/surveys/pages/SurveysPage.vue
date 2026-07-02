@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import PageHeader from '@/components/shared/PageHeader.vue'
-import { DEFAULT_SETTINGS, FREE_SURVEY_LIMIT, QUESTION_TYPE_META, generateQuestions, useSurveysStore } from '@/stores/SurveysStore'
+import { DEFAULT_SETTINGS, FREE_SURVEY_LIMIT, QUESTION_TYPE_META, SURVEY_STATUS_META, generateQuestions, useSurveysStore } from '@/stores/SurveysStore'
 import type { Survey, SurveyQuestion, SurveyQuestionType, SurveySettings } from '@/stores/SurveysStore'
 import { bankFor } from '../services/questionBanks'
 
@@ -182,11 +182,7 @@ function simulate() {
 }
 
 const snackbar = ref('')
-const STATUS_META: Record<Survey['status'], { label: string, color: string }> = {
-  active: { label: 'نشط', color: 'success' },
-  draft: { label: 'مسودة', color: 'warning' },
-  closed: { label: 'مغلق', color: 'surface-variant' },
-}
+const STATUS_META = SURVEY_STATUS_META
 </script>
 
 <template>
@@ -253,6 +249,11 @@ const STATUS_META: Record<Survey['status'], { label: string, color: string }> = 
             </td>
             <td class="text-no-wrap">
               <VBtn variant="text" size="small" color="primary" prepend-icon="mdi-chart-box-outline" @click="router.push({ name: 'survey-analysis', params: { id: s.id } })">التحليل</VBtn>
+              <VTooltip text="الإدارة الاحترافية: الجدولة والاستهداف والحوافز والمستبينون" location="top">
+                <template #activator="{ props }">
+                  <VBtn v-bind="props" icon="mdi-cog-transfer-outline" variant="text" size="small" color="accent" @click="router.push({ name: 'survey-admin', params: { id: s.id } })" />
+                </template>
+              </VTooltip>
               <VTooltip text="تعديل الأسئلة والإعدادات" location="top">
                 <template #activator="{ props }">
                   <VBtn v-bind="props" icon="mdi-pencil-outline" variant="text" size="small" @click="editSurvey(s)" />

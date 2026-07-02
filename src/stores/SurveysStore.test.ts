@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
-import { DEFAULT_SETTINGS, generateQuestions, useSurveysStore } from './SurveysStore'
+import { DEFAULT_SETTINGS, DEFAULT_TARGETING, STATUS_TRANSITIONS, generateQuestions, useSurveysStore } from './SurveysStore'
 
 beforeEach(() => {
   localStorage.clear()
@@ -39,6 +39,8 @@ describe('SurveysStore model', () => {
     const copy = s.duplicate(created.id)!
     expect(copy.title).toContain('نسخة')
     expect(copy.token).not.toBe(created.token)
+    // الإغلاق يمر عبر التفعيل — القفز من المسودة مباشرة ممنوع في دورة الحياة
+    s.setStatus(created.id, 'active')
     s.setStatus(created.id, 'closed')
     expect(s.byId(created.id)!.status).toBe('closed')
     s.remove(created.id)
@@ -127,6 +129,96 @@ describe('SurveysStore participation & rewards', () => {
     s.upgradePlan()
     expect(s.plan).toBe('pro')
     expect(s.canCreate).toBe(true)
+  })
+})
+
+describe('SurveysStore admin lifecycle', () => {
+  it('enforces valid lifecycle transitions only', () => {
+    const s = useSurveysStore()
+    const sv = s.add({ title: 'دورة', type: 'مخصص', audience: 'both', questions: [], settings: { ...DEFAULT_SETTINGS }, status: 'draft', owner: 'me' })
+    expect(s.setStatus(sv.id, 'paused')).toBe(false) // مسودة لا توقف
+    expect(s.setStatus(sv.id, 'scheduled')).toBe(true)
+    expect(s.setStatus(sv.id, 'active')).toBe(true)
+    expect(s.setStatus(sv.id, 'paused')).toBe(true)
+    expect(s.setStatus(sv.id, 'archived')).toBe(false) // الموقوف لا يؤرشف مباشرة
+    expect(s.setStatus(sv.id, 'closed')).toBe(true)
+    expect(s.setStatus(sv.id, 'archived')).toBe(true)
+    expect(STATUS_TRANSITIONS.archived).toHaveLength(0)
+  })
+
+  it('auto-activates scheduled surveys whose start date arrived and auto-closes expired ones', () => {
+    const s = useSurveysStore()
+    const today = new Date().toISOString().slice(0, 10)
+    const startable = s.add({ title: 'مجدول', type: 'مخصص', audience: 'both', questions: [], settings: { ...DEFAULT_SETTINGS, startsAt: today }, status: 'scheduled', owner: 'me' })
+    const expired = s.add({ title: 'منتهٍ', type: 'مخصص', audience: 'both', questions: [], settings: { ...DEFAULT_SETTINGS, closesAt: '2026-01-01' }, status: 'active', owner: 'me' })
+    s.syncLifecycle()
+    expect(s.byId(startable.id)!.status).toBe('active')
+    expect(s.byId(expired.id)!.status).toBe('closed')
+  })
+
+  it('closes the survey when the reward budget cannot cover the next participant', () => {
+    const s = useSurveysStore()
+    const sv = s.add({ title: 'محدود المجمع', type: 'مخصص', audience: 'both', questions: [{ id: 1, text: 'س', type: 'rating' }], settings: { ...DEFAULT_SETTINGS, rewardPoints: 30, rewardBudget: 50 }, status: 'active', owner: 'me' })
+    // الاستجابة الأولى تُقبل وتصرف 30 من مجمع 50
+    expect(s.submitResponse(sv.id, { 1: 5 }, { source: 'external', durationSec: 40 })).toBe(true)
+    expect(s.byId(sv.id)!.rewardsSpent).toBe(30)
+    // الثانية تتجاوز المجمع → تُرفض ويُغلق تلقائيًا
+    expect(s.submitResponse(sv.id, { 1: 4 }, { source: 'external', durationSec: 40 })).toBe(false)
+    expect(s.byId(sv.id)!.status).toBe('closed')
+  })
+
+  it('imports invitees from sheet rows, skips duplicates and empty rows', () => {
+    const s = useSurveysStore()
+    const sv = s.add({ title: 'مدعوون', type: 'مخصص', audience: 'both', questions: [], settings: { ...DEFAULT_SETTINGS }, status: 'active', owner: 'me' })
+    const added = s.importInvitees(sv.id, [
+      { name: 'سارة', contact: 'sara@x.com' },
+      { name: 'محمد', contact: '0550000001' },
+      { name: 'سارة مكررة', contact: 'sara@x.com' }, // مكرر
+      { name: '', contact: 'x@x.com' }, // فارغ
+    ], 'external')
+    expect(added).toBe(2)
+    expect(s.byId(sv.id)!.invitees).toHaveLength(2)
+    s.removeInvitee(sv.id, s.byId(sv.id)!.invitees[0].id)
+    expect(s.byId(sv.id)!.invitees).toHaveLength(1)
+  })
+
+  it('invites pending invitees and simulated responders update the funnel', () => {
+    vi.useFakeTimers()
+    const s = useSurveysStore()
+    const sv = s.add({ title: 'قُمع', type: 'مخصص', audience: 'both', questions: [{ id: 1, text: 'س', type: 'rating' }], settings: { ...DEFAULT_SETTINGS }, status: 'active', owner: 'me' })
+    s.importInvitees(sv.id, [
+      { name: 'أ', contact: 'a@x.com' },
+      { name: 'ب', contact: 'b@x.com' },
+      { name: 'ج', contact: 'c@x.com' },
+    ], 'internal')
+    const invited = s.inviteAll(sv.id)
+    expect(invited).toBe(3)
+    expect(s.adminFor(sv.id)!.invitees.invited).toBe(3)
+    vi.advanceTimersByTime(6000)
+    const funnel = s.adminFor(sv.id)!.invitees
+    expect(funnel.responded).toBe(2) // ثلثا المدعوين يستجيبون في المحاكاة
+    expect(s.responsesFor(sv.id).length).toBe(2)
+  })
+
+  it('exposes admin metrics (quota, budget, deadline) and migrates legacy storage', () => {
+    localStorage.setItem('surveys', JSON.stringify([
+      { id: 9, title: 'قديم', type: 'رضا المرشح', audience: 'both', questions: [], status: 'active' },
+    ]))
+    setActivePinia(createPinia())
+    const s = useSurveysStore()
+    const legacy = s.byId(9)!
+    expect(legacy.targeting).toEqual(DEFAULT_TARGETING)
+    expect(legacy.invitees).toEqual([])
+    expect(legacy.rewardsSpent).toBe(0)
+    expect(legacy.settings.rewardBudget).toBeNull()
+
+    legacy.settings.responseLimit = 10
+    legacy.settings.rewardBudget = 100
+    legacy.rewardsSpent = 25
+    const a = s.adminFor(9)!
+    expect(a.quota.limit).toBe(10)
+    expect(a.budget.pct).toBe(25)
+    expect(a.daysLeft).toBeNull()
   })
 })
 

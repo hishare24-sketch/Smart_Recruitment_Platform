@@ -40,10 +40,15 @@ export interface SurveySettings {
   showProgress: boolean
   shuffleQuestions: boolean
   oneQuestionPerPage: boolean
+  /** حد عدد المستبينين — null = بلا حد */
   responseLimit: number | null
+  /** بداية استقبال المشاركات — null = فور التفعيل */
+  startsAt: string | null // ISO date
   closesAt: string | null // ISO date
   /** نقاط تحفيزية لكل مشارك — تُخصم من محفظة المنشئ */
   rewardPoints: number
+  /** مجمع النقاط الكلي (حد القيمة) — null = بلا سقف؛ عند استنفاده يُغلق الاستبيان تلقائيًا */
+  rewardBudget: number | null
 }
 
 export const DEFAULT_SETTINGS: SurveySettings = {
@@ -54,11 +59,65 @@ export const DEFAULT_SETTINGS: SurveySettings = {
   shuffleQuestions: false,
   oneQuestionPerPage: true,
   responseLimit: null,
+  startsAt: null,
   closesAt: null,
   rewardPoints: 0,
+  rewardBudget: null,
 }
 
-export type SurveyStatus = 'draft' | 'active' | 'closed'
+// ===== الاستهداف الديموغرافي والجغرافي =====
+export interface SurveyTargeting {
+  /** فارغة = كل المناطق */
+  regions: string[]
+  gender: 'all' | 'male' | 'female'
+  ageMin: number | null
+  ageMax: number | null
+}
+
+export const DEFAULT_TARGETING: SurveyTargeting = { regions: [], gender: 'all', ageMin: null, ageMax: null }
+
+export const SURVEY_REGIONS = [
+  'الرياض', 'مكة المكرمة', 'المدينة المنورة', 'الشرقية', 'عسير', 'تبوك',
+  'القصيم', 'حائل', 'جازان', 'نجران', 'الباحة', 'الجوف', 'الحدود الشمالية', 'خارج السعودية',
+]
+
+export const GENDER_META: Record<SurveyTargeting['gender'], string> = {
+  all: 'الجميع',
+  male: 'ذكور',
+  female: 'إناث',
+}
+
+// ===== قائمة المستبينين (تُستورد من شيت CSV/Excel أو تُضاف يدويًا) =====
+export interface SurveyInvitee {
+  id: number
+  name: string
+  /** بريد أو جوال */
+  contact: string
+  source: 'internal' | 'external'
+  status: 'pending' | 'invited' | 'responded'
+}
+
+// ===== دورة الحالة الإدارية الكاملة =====
+export type SurveyStatus = 'draft' | 'scheduled' | 'active' | 'paused' | 'closed' | 'archived'
+
+export const SURVEY_STATUS_META: Record<SurveyStatus, { label: string, color: string, icon: string }> = {
+  draft: { label: 'مسودة', color: 'warning', icon: 'mdi-pencil-outline' },
+  scheduled: { label: 'مجدول', color: 'info', icon: 'mdi-calendar-clock-outline' },
+  active: { label: 'نشط', color: 'success', icon: 'mdi-play-circle-outline' },
+  paused: { label: 'موقوف مؤقتًا', color: 'orange', icon: 'mdi-pause-circle-outline' },
+  closed: { label: 'مغلق', color: 'surface-variant', icon: 'mdi-lock-outline' },
+  archived: { label: 'مؤرشف', color: 'secondary', icon: 'mdi-archive-outline' },
+}
+
+/** الانتقالات المسموحة في دورة الحياة */
+export const STATUS_TRANSITIONS: Record<SurveyStatus, SurveyStatus[]> = {
+  draft: ['scheduled', 'active'],
+  scheduled: ['active', 'draft'],
+  active: ['paused', 'closed'],
+  paused: ['active', 'closed'],
+  closed: ['active', 'archived'],
+  archived: [],
+}
 
 export interface Survey {
   id: number
@@ -68,6 +127,10 @@ export interface Survey {
   token: string // external share link key
   questions: SurveyQuestion[]
   settings: SurveySettings
+  targeting: SurveyTargeting
+  invitees: SurveyInvitee[]
+  /** مجموع النقاط المصروفة من مجمع الحوافز */
+  rewardsSpent: number
   status: SurveyStatus
   createdAt: string
   /** 'me' = من إنشاء المستخدم الحالي؛ 'platform' = استبيانات جهات أخرى متاحة للمشاركة */
@@ -110,23 +173,27 @@ const seedQuestions: SurveyQuestion[] = [
 ]
 
 const seed: Survey[] = [
-  { id: 1, title: 'رضا المرشحين - يونيو', type: 'رضا المرشح', audience: 'both', token: 'demo01sat', questions: seedQuestions, settings: { ...DEFAULT_SETTINGS }, status: 'active', createdAt: '2026-06-20', owner: 'me' },
+  { id: 1, title: 'رضا المرشحين - يونيو', type: 'رضا المرشح', audience: 'both', token: 'demo01sat', questions: seedQuestions, settings: { ...DEFAULT_SETTINGS, rewardPoints: 10, rewardBudget: 500, responseLimit: 50 }, targeting: { regions: ['الرياض', 'الشرقية'], gender: 'all', ageMin: 20, ageMax: 45 }, invitees: [
+    { id: 1, name: 'سارة العتيبي', contact: 'sara@demo.sa', source: 'internal', status: 'responded' },
+    { id: 2, name: 'محمد الحارثي', contact: '0551234567', source: 'external', status: 'invited' },
+    { id: 3, name: 'نورة القحطاني', contact: 'noura@mail.com', source: 'external', status: 'pending' },
+  ], rewardsSpent: 90, status: 'active', createdAt: '2026-06-20', owner: 'me' },
   { id: 2, title: 'احتياجات سوق التقنية', type: 'احتياجات السوق', audience: 'external', token: 'demo02mkt', questions: [
     { id: 1, text: 'ما المهارات الأكثر طلبًا لديكم؟', type: 'ranking', options: ['تطوير', 'تصميم', 'بيانات', 'تسويق'] },
     { id: 2, text: 'ما متوسط الرواتب المتوقعة؟', type: 'dropdown', options: ['أقل من 8 آلاف', '8-15 ألفًا', '15-25 ألفًا', 'أكثر من 25 ألفًا'] },
     { id: 3, text: 'كيف تقيّم توفّر المواهب؟', type: 'scale', scaleMin: 'نادر جدًا', scaleMax: 'متوفر بكثرة' },
-  ], settings: { ...DEFAULT_SETTINGS, anonymous: false }, status: 'active', createdAt: '2026-06-12', owner: 'me' },
+  ], settings: { ...DEFAULT_SETTINGS, anonymous: false }, targeting: { ...DEFAULT_TARGETING }, invitees: [], rewardsSpent: 0, status: 'active', createdAt: '2026-06-12', owner: 'me' },
 ]
 
 // استبيانات جهات أخرى منشورة داخل المنصة — تظهر لكل المستخدمين للمشاركة بمكافأة
 const platformSeed: Survey[] = [
-  { id: 101, title: 'تجربة التقديم على الفرص التقنية', type: 'رضا المرشح', audience: 'internal', token: 'pf01apply', owner: 'platform', ownerName: 'شركة تقنية المستقبل', status: 'active', createdAt: '2026-06-28', settings: { ...DEFAULT_SETTINGS, rewardPoints: 25 }, questions: [
+  { id: 101, title: 'تجربة التقديم على الفرص التقنية', type: 'رضا المرشح', audience: 'internal', token: 'pf01apply', owner: 'platform', ownerName: 'شركة تقنية المستقبل', status: 'active', createdAt: '2026-06-28', settings: { ...DEFAULT_SETTINGS, rewardPoints: 25 }, targeting: { ...DEFAULT_TARGETING }, invitees: [], rewardsSpent: 0, questions: [
     { id: 1, text: 'كيف تقيّم وضوح إعلانات الفرص لدينا؟', type: 'rating', required: true },
     { id: 2, text: 'ما مدى احتمال أن توصي زميلًا بالتقديم لدينا؟', type: 'nps', required: true },
     { id: 3, text: 'ما الذي يجذبك أكثر في عروض العمل؟', type: 'ranking', options: ['الراتب', 'المرونة', 'فرص التطور', 'ثقافة الفريق'] },
     { id: 4, text: 'ما الذي ينقص صفحات الفرص لدينا؟', type: 'longtext' },
   ] },
-  { id: 102, title: 'جودة تقارير المقيّمين المعتمدين', type: 'جودة الخدمة', audience: 'internal', token: 'pf02rep', owner: 'platform', ownerName: 'منظومة التوظيف الذكية', status: 'active', createdAt: '2026-06-25', settings: { ...DEFAULT_SETTINGS, rewardPoints: 15 }, questions: [
+  { id: 102, title: 'جودة تقارير المقيّمين المعتمدين', type: 'جودة الخدمة', audience: 'internal', token: 'pf02rep', owner: 'platform', ownerName: 'منظومة التوظيف الذكية', status: 'active', createdAt: '2026-06-25', settings: { ...DEFAULT_SETTINGS, rewardPoints: 15 }, targeting: { ...DEFAULT_TARGETING }, invitees: [], rewardsSpent: 0, questions: [
     { id: 1, text: 'قيّم وضوح تقارير المقيّمين التي اطلعت عليها', type: 'rating', required: true },
     { id: 2, text: 'قيّم الجوانب التالية في التقارير', type: 'matrix', rows: ['دقة التشخيص', 'عملية التوصيات', 'سهولة القراءة'] },
     { id: 3, text: 'هل السعر مقابل التقييم عادل؟', type: 'single', options: ['عادل', 'مرتفع قليلًا', 'مرتفع جدًا'] },
@@ -145,6 +212,9 @@ function load(): Survey[] {
       ...s,
       token: s.token ?? makeToken(),
       settings: { ...DEFAULT_SETTINGS, ...(s.settings ?? {}) },
+      targeting: { ...DEFAULT_TARGETING, ...(s.targeting ?? {}) },
+      invitees: s.invitees ?? [],
+      rewardsSpent: s.rewardsSpent ?? 0,
       questions: s.questions ?? [],
       audience: (['internal', 'external', 'both'].includes(s.audience as string) ? s.audience : 'both') as Survey['audience'],
       status: ((s.status === 'draft' ? 'draft' : s.status) ?? 'draft') as SurveyStatus,
@@ -264,8 +334,16 @@ export const useSurveysStore = defineStore('surveys', () => {
     }
   }
 
-  function add(survey: Omit<Survey, 'id' | 'token' | 'createdAt'>): Survey {
-    const s: Survey = { ...survey, id: nextId++, token: makeToken(), createdAt: new Date().toISOString().slice(0, 10) }
+  function add(survey: Omit<Survey, 'id' | 'token' | 'createdAt' | 'targeting' | 'invitees' | 'rewardsSpent'> & Partial<Pick<Survey, 'targeting' | 'invitees' | 'rewardsSpent'>>): Survey {
+    const s: Survey = {
+      targeting: { ...DEFAULT_TARGETING },
+      invitees: [],
+      rewardsSpent: 0,
+      ...survey,
+      id: nextId++,
+      token: makeToken(),
+      createdAt: new Date().toISOString().slice(0, 10),
+    }
     surveys.value.unshift(s)
     return s
   }
@@ -286,18 +364,140 @@ export const useSurveysStore = defineStore('surveys', () => {
     if (!s)
       return null
     // JSON round-trip: reactive proxies can't pass through structuredClone
-    const plain = JSON.parse(JSON.stringify({ title: s.title, type: s.type, audience: s.audience, questions: s.questions, settings: s.settings }))
+    const plain = JSON.parse(JSON.stringify({ title: s.title, type: s.type, audience: s.audience, questions: s.questions, settings: s.settings, targeting: s.targeting }))
     return add({ ...plain, title: `${s.title} (نسخة)`, status: 'draft', owner: 'me' })
   }
 
-  function setStatus(id: number, status: SurveyStatus) {
+  /** انتقال حالة مُتحقَّق منه وفق دورة الحياة الإدارية */
+  function setStatus(id: number, status: SurveyStatus): boolean {
     const s = byId(id)
+    if (!s || !STATUS_TRANSITIONS[s.status].includes(status))
+      return false
+    s.status = status
+    return true
+  }
+
+  /**
+   * مزامنة دورة الحياة تلقائيًا:
+   * مجدول حان موعده → نشط · نشط انتهى موعده/امتلأت حصته/استُنفد مجمعه → مغلق
+   */
+  function syncLifecycle() {
+    const today = new Date().toISOString().slice(0, 10)
+    const notifications = useNotificationsStore()
+    for (const s of surveys.value) {
+      if (s.status === 'scheduled' && s.settings.startsAt && s.settings.startsAt <= today) {
+        s.status = 'active'
+        if (s.owner === 'me')
+          notifications.push({ icon: 'mdi-play-circle-outline', color: 'success', title: 'انطلق استبيانك المجدول', body: `«${s.title}» بدأ استقبال المشاركات.`, category: 'system', actionTo: `/surveys/${s.id}/admin`, actionLabel: 'إدارة الاستبيان' })
+      }
+      if (s.status === 'active') {
+        const quotaFull = !!s.settings.responseLimit && responsesFor(s.id).length >= s.settings.responseLimit
+        const expired = !!s.settings.closesAt && s.settings.closesAt < today
+        const budgetOut = s.settings.rewardBudget != null && s.settings.rewardPoints > 0
+          && s.rewardsSpent + s.settings.rewardPoints > s.settings.rewardBudget
+        if (quotaFull || expired || budgetOut) {
+          s.status = 'closed'
+          if (s.owner === 'me') {
+            const reason = quotaFull ? 'اكتملت حصة المستبينين' : expired ? 'انتهى موعد المشاركة' : 'استُنفد مجمع النقاط التحفيزية'
+            notifications.push({ icon: 'mdi-lock-outline', color: 'warning', title: 'أُغلق استبيانك تلقائيًا', body: `«${s.title}» — ${reason}.`, category: 'system', actionTo: `/surveys/${s.id}/admin`, actionLabel: 'عرض النتائج' })
+          }
+        }
+      }
+    }
+  }
+  syncLifecycle()
+
+  // ===== قائمة المستبينين =====
+  let nextInviteeId = 900
+  /** استيراد صفوف من شيت (CSV): كل صف اسم + بريد/جوال */
+  function importInvitees(surveyId: number, rows: { name: string, contact: string }[], source: SurveyInvitee['source']): number {
+    const s = byId(surveyId)
+    if (!s)
+      return 0
+    let added = 0
+    for (const r of rows) {
+      const name = r.name.trim()
+      const contact = r.contact.trim()
+      if (!name || !contact || s.invitees.some(i => i.contact === contact))
+        continue // تخطي المكرر والفارغ
+      s.invitees.push({ id: nextInviteeId++, name, contact, source, status: 'pending' })
+      added++
+    }
+    return added
+  }
+  function removeInvitee(surveyId: number, inviteeId: number) {
+    const s = byId(surveyId)
     if (s)
-      s.status = status
+      s.invitees = s.invitees.filter(i => i.id !== inviteeId)
+  }
+  /** إرسال الدعوات للمعلّقين — وتُحاكى استجابة بعضهم لإبقاء العرض حيًّا */
+  function inviteAll(surveyId: number): number {
+    const s = byId(surveyId)
+    if (!s)
+      return 0
+    const pending = s.invitees.filter(i => i.status === 'pending')
+    pending.forEach(i => (i.status = 'invited'))
+    if (pending.length) {
+      useNotificationsStore().push({
+        icon: 'mdi-email-fast-outline',
+        color: 'info',
+        title: `أُرسلت ${pending.length} دعوة مشاركة`,
+        body: `«${s.title}» — ستصلك الاستجابات تباعًا.`,
+        category: 'system',
+        actionTo: `/surveys/${surveyId}/admin`,
+        actionLabel: 'متابعة الاستجابات',
+      })
+      // محاكاة: ثلثا المدعوين يستجيبون تباعًا
+      const responders = pending.filter((_, idx) => idx % 3 !== 2)
+      responders.forEach((inv, idx) => {
+        setTimeout(() => {
+          const sv = byId(surveyId)
+          if (!sv || sv.status !== 'active')
+            return
+          const ok = submitResponse(surveyId, Object.fromEntries(sv.questions.map(q => [q.id, sampleAnswer(q, idx + sv.invitees.length)])), {
+            source: inv.source,
+            durationSec: 95 + idx * 21,
+          })
+          if (ok) {
+            const cur = sv.invitees.find(i => i.id === inv.id)
+            if (cur)
+              cur.status = 'responded'
+          }
+        }, 1500 * (idx + 1))
+      })
+    }
+    return pending.length
+  }
+
+  /** لوحة قياس الإدارة: الحصة والمجمع وقُمع الدعوات والمهل */
+  function adminFor(surveyId: number) {
+    const s = byId(surveyId)
+    if (!s)
+      return null
+    const rs = responsesFor(surveyId)
+    const limit = s.settings.responseLimit
+    const budget = s.settings.rewardBudget
+    const today = new Date().toISOString().slice(0, 10)
+    const daysLeft = s.settings.closesAt
+      ? Math.max(0, Math.ceil((new Date(s.settings.closesAt).getTime() - new Date(today).getTime()) / 86400000))
+      : null
+    return {
+      quota: { used: rs.length, limit, pct: limit ? Math.min(100, Math.round((rs.length / limit) * 100)) : null },
+      budget: { spent: s.rewardsSpent, total: budget, pct: budget ? Math.min(100, Math.round((s.rewardsSpent / budget) * 100)) : null },
+      invitees: {
+        total: s.invitees.length,
+        pending: s.invitees.filter(i => i.status === 'pending').length,
+        invited: s.invitees.filter(i => i.status === 'invited').length,
+        responded: s.invitees.filter(i => i.status === 'responded').length,
+      },
+      daysLeft,
+      startsAt: s.settings.startsAt,
+    }
   }
 
   /** استلام استجابة حقيقية (من صفحة الإجابة الداخلية أو رابط المشاركة الخارجي) */
   function submitResponse(surveyId: number, answers: Record<number, AnswerValue>, meta: { source: 'internal' | 'external', durationSec: number, completed?: boolean, mine?: boolean }): boolean {
+    syncLifecycle() // قد يفعّل مجدولًا حان موعده أو يغلق منتهيًا قبل القبول
     const s = byId(surveyId)
     if (!s || s.status !== 'active')
       return false
@@ -306,6 +506,21 @@ export const useSurveysStore = defineStore('surveys', () => {
       return false
     if (meta.mine && hasParticipated(surveyId))
       return false // مشاركة واحدة لكل مستخدم
+    // حد القيمة: مجمع النقاط لا يغطي مكافأة مشارك جديد → يُغلق الاستبيان ولا تُقبل الاستجابة
+    if (s.settings.rewardBudget != null && s.settings.rewardPoints > 0 && !meta.mine
+      && s.rewardsSpent + s.settings.rewardPoints > s.settings.rewardBudget) {
+      s.status = 'closed'
+      useNotificationsStore().push({
+        icon: 'mdi-lock-outline',
+        color: 'warning',
+        title: 'أُغلق استبيانك تلقائيًا',
+        body: `«${s.title}» — استُنفد مجمع النقاط التحفيزية.`,
+        category: 'system',
+        actionTo: `/surveys/${s.id}/admin`,
+        actionLabel: 'عرض النتائج',
+      })
+      return false
+    }
     responses.value.push({
       id: nextResponseId++,
       surveyId,
@@ -330,6 +545,8 @@ export const useSurveysStore = defineStore('surveys', () => {
       })
       if (reward > 0 && !meta.mine) {
         const paid = useGamificationStore().spend(reward)
+        if (paid)
+          s.rewardsSpent += reward
         notifications.push({
           icon: 'mdi-wallet-outline',
           color: paid ? 'warning' : 'error',
@@ -364,8 +581,9 @@ export const useSurveysStore = defineStore('surveys', () => {
 
   return {
     surveys, responses,
-    byId, byToken, responsesFor, statsFor,
-    add, update, remove, duplicate, setStatus,
+    byId, byToken, responsesFor, statsFor, adminFor,
+    add, update, remove, duplicate, setStatus, syncLifecycle,
+    importInvitees, removeInvitee, inviteAll,
     submitResponse, simulateResponses,
     plan, mySurveys, canCreate, upgradePlan,
     participatable, hasParticipated,

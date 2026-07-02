@@ -350,6 +350,12 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('@/modules/surveys/pages/SurveyAnalysisPage.vue'),
     meta: { layout: 'default' },
   },
+  {
+    path: '/surveys/:id/admin',
+    name: 'survey-admin',
+    component: () => import('@/modules/surveys/pages/SurveyAdminPage.vue'),
+    meta: { layout: 'default' },
+  },
 
   // ===== Company =====
   {
