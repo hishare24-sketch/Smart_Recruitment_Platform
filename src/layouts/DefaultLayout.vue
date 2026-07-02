@@ -62,7 +62,7 @@ function onMenuClick() {
   else rail.value = !rail.value
 }
 
-const sections = computed(() => navSections(authStore.role))
+const sections = computed(() => navSections(authStore.role, { multiRole: authStore.activeRoles.length >= 2 }))
 
 // التحكم الكامل من القائمة الجانبية: ترويسة «مساحة الدور» تفتح مبدّل الأدوار inline
 const roleControlOpen = ref(false)

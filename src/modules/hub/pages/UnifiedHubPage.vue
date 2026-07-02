@@ -168,16 +168,40 @@ function isDecidable(item: WorkItem) {
 const kpiCards = computed(() => [
   { label: 'يحتاج قرارك', value: hub.kpis.actionCount, icon: 'mdi-gesture-tap-button', color: 'error' },
   { label: 'مواعيد قادمة', value: hub.kpis.upcomingCount, icon: 'mdi-calendar-clock-outline', color: 'info' },
-  { label: 'قيمة معلّقة', value: `${hub.kpis.pendingMoney} ﷼`, icon: 'mdi-cash-clock', color: 'warning' },
+  { label: 'أموال بانتظار قرارك', value: `${hub.kpis.pendingMoney} ﷼`, icon: 'mdi-cash-clock', color: 'warning' },
   { label: 'أرباحك عبر الأدوار', value: `${hub.kpis.earnings} ﷼`, icon: 'mdi-cash-multiple', color: 'success' },
 ])
+
+// —— وضوح أول زيارة: تحية بلغة الفائدة + بطاقة تعريف تُغلق مرة واحدة ——
+const greeting = computed(() => {
+  const parts: string[] = []
+  if (hub.kpis.actionCount)
+    parts.push(`${hub.kpis.actionCount} قرارات تنتظرك`)
+  if (hub.kpis.upcomingCount)
+    parts.push(`${hub.kpis.upcomingCount} مواعيد قادمة`)
+  const scope = hub.kpis.activeRoles > 1 ? ` عبر ${hub.kpis.activeRoles} أدوار` : ''
+  return parts.length ? `${parts.join(' و')}${scope}` : 'لا شيء يحتاج انتباهك الآن — كل شيء تحت السيطرة'
+})
+
+const INTRO_KEY = 'hubIntroSeen'
+const showIntro = ref(localStorage.getItem(INTRO_KEY) !== '1')
+function dismissIntro() {
+  showIntro.value = false
+  localStorage.setItem(INTRO_KEY, '1')
+}
+
+// —— كشف تدريجي: أدوات التصفية تُطوى حتى تكبر القائمة أو يطلبها المستخدم ——
+const controlsOpen = ref(hub.allItems.length > 8)
+const activeFiltersCount = computed(() =>
+  (roleFilter.value.length ? 1 : 0) + (urgencyFilter.value.length ? 1 : 0) + (query.value.trim() ? 1 : 0),
+)
 </script>
 
 <template>
   <div>
     <PageHeader
-      title="المركز الموحّد"
-      :subtitle="`كل أدوارك (${hub.kpis.activeRoles}) في شاشة واحدة — قرارات ومواعيد ومؤشرات`"
+      title="مركزك"
+      :subtitle="greeting"
       icon="mdi-view-dashboard-variant-outline"
     >
       <template #actions>
@@ -194,6 +218,22 @@ const kpiCards = computed(() => [
         </VMenu>
       </template>
     </PageHeader>
+
+    <!-- بطاقة تعريف أول زيارة — تُغلق وتُحفظ -->
+    <VCard v-if="showIntro" class="pa-4 mb-4" color="primary" variant="tonal">
+      <div class="d-flex align-start ga-3">
+        <VIcon icon="mdi-lightbulb-on-outline" size="22" class="mt-1" />
+        <div class="flex-grow-1">
+          <div class="text-body-2 font-weight-bold mb-2">هذه صفحتك الأولى كل يوم — ثلاث حقائق تكفيك:</div>
+          <div class="d-flex flex-column ga-1 text-body-2">
+            <span><VIcon icon="mdi-inbox-arrow-down-outline" size="16" class="me-1" />كل طلب أو موعد من <b>أي دور من أدوارك</b> يصل هنا تلقائيًا — لا حاجة للتنقل بين اللوحات.</span>
+            <span><VIcon icon="mdi-gesture-tap-button" size="16" class="me-1" />زرا <b>قبول/رفض</b> ينفّذان القرار فورًا في مكانه الصحيح، والسهم يفتح التفاصيل.</span>
+            <span><VIcon icon="mdi-open-in-app" size="16" class="me-1" />للعمل المتعمق افتح <b>اللوحة الكاملة</b> من بطاقة الدور بالأسفل.</span>
+          </div>
+        </div>
+        <VBtn icon="mdi-close" size="small" variant="text" @click="dismissIntro" />
+      </div>
+    </VCard>
 
     <!-- KPIs عابرة للأدوار -->
     <VRow v-if="sections.kpis" class="mb-1">
@@ -235,16 +275,28 @@ const kpiCards = computed(() => [
     <VCard v-if="sections.inbox" class="pa-4">
       <div class="d-flex align-center ga-2 mb-3 flex-wrap">
         <VIcon icon="mdi-inbox-full-outline" color="primary" />
-        <h2 class="text-subtitle-1 font-weight-bold">صندوق العمل الموحّد ({{ visibleItems.length }})</h2>
+        <h2 class="text-subtitle-1 font-weight-bold">صندوق العمل ({{ visibleItems.length }})</h2>
         <VSpacer />
+        <VBtn
+          size="small"
+          variant="tonal"
+          :color="controlsOpen || activeFiltersCount ? 'primary' : undefined"
+          :prepend-icon="controlsOpen ? 'mdi-chevron-up' : 'mdi-tune-variant'"
+          @click="controlsOpen = !controlsOpen"
+        >
+          تصفية وتنظيم
+          <VBadge v-if="activeFiltersCount" color="primary" :content="activeFiltersCount" inline class="ms-1" />
+        </VBtn>
         <VBtnToggle v-model="density" mandatory density="compact" variant="outlined" color="primary">
           <VBtn value="comfortable" size="x-small" icon="mdi-view-agenda-outline" />
           <VBtn value="compact" size="x-small" icon="mdi-view-headline" />
         </VBtnToggle>
       </div>
 
-      <!-- شريط الفلاتر -->
-      <VRow dense class="mb-2">
+      <VExpandTransition>
+        <div v-if="controlsOpen">
+          <!-- شريط الفلاتر -->
+          <VRow dense class="mb-2">
         <VCol cols="12" md="4">
           <VTextField v-model="query" placeholder="بحث بالاسم أو الموضوع..." prepend-inner-icon="mdi-magnify" density="compact" hide-details clearable />
         </VCol>
@@ -292,6 +344,8 @@ const kpiCards = computed(() => [
         <VBtn size="x-small" variant="tonal" color="secondary" prepend-icon="mdi-bookmark-plus-outline" @click="viewDialog = true">حفظ العرض</VBtn>
         <VBtn size="x-small" variant="text" prepend-icon="mdi-backup-restore" @click="resetControls">إعادة الضبط</VBtn>
       </div>
+        </div>
+      </VExpandTransition>
 
       <!-- المجموعات -->
       <template v-for="g in groups" :key="g.key">
@@ -324,12 +378,32 @@ const kpiCards = computed(() => [
                 </div>
               </div>
               <VChip size="x-small" :color="item.statusColor" label>{{ item.status }}</VChip>
-              <div class="d-flex ga-1">
+              <div class="d-flex ga-1 align-center">
                 <template v-if="isDecidable(item)">
                   <VBtn size="small" color="success" variant="tonal" prepend-icon="mdi-check" @click="resolve(item, true)">قبول</VBtn>
                   <VBtn icon="mdi-close" size="small" variant="text" color="error" @click="resolve(item, false)" />
+                  <VTooltip text="فتح التفاصيل" location="top">
+                    <template #activator="{ props }">
+                      <VBtn v-bind="props" icon="mdi-arrow-left-circle-outline" size="small" variant="text" color="primary" @click="open(item)" />
+                    </template>
+                  </VTooltip>
                 </template>
-                <VBtn icon="mdi-arrow-left-circle-outline" size="small" variant="text" color="primary" @click="open(item)" />
+                <!-- عنصر يحتاج قرارًا لكن إتمامه في صفحته (تمييز بصري صريح) -->
+                <VBtn
+                  v-else-if="item.urgency === 'action'"
+                  size="small"
+                  color="primary"
+                  variant="tonal"
+                  prepend-icon="mdi-open-in-app"
+                  @click="open(item)"
+                >
+                  إتمام في صفحته
+                </VBtn>
+                <VTooltip v-else text="فتح التفاصيل" location="top">
+                  <template #activator="{ props }">
+                    <VBtn v-bind="props" icon="mdi-arrow-left-circle-outline" size="small" variant="text" color="primary" @click="open(item)" />
+                  </template>
+                </VTooltip>
               </div>
             </div>
           </VCard>

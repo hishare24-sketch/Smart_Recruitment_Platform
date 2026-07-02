@@ -72,8 +72,12 @@ export function navForRole(role: UserRole | undefined): NavItem[] {
   return navItems.filter(item => item.roles.includes(role))
 }
 
-export function navSections(role: UserRole | undefined): { section: NavSection, items: NavItem[] }[] {
-  const items = navForRole(role)
+export function navSections(role: UserRole | undefined, opts: { multiRole?: boolean } = {}): { section: NavSection, items: NavItem[] }[] {
+  let items = navForRole(role)
+  // مالك عدة أدوار: «مركزك» هو الرئيسية — تُخفى لوحة الرئيسية القديمة من القائمة
+  // (تبقى متاحة كـ«اللوحة الكاملة» من بطاقة الدور في المركز)
+  if (opts.multiRole)
+    items = items.filter(i => i.to !== 'dashboard')
   return (['account', 'role'] as NavSection[])
     .map(section => ({ section, items: items.filter(i => i.section === section) }))
     .filter(g => g.items.length)
