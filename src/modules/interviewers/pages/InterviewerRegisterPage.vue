@@ -7,6 +7,7 @@ import type { InterviewerType, MarketInterviewKind } from '@/stores/Interviewers
 import { ai } from '@/services/ai'
 import { useAuthStore } from '@/stores/AuthStore'
 import { useNotificationsStore } from '@/stores/NotificationsStore'
+import { useGamificationStore } from '@/stores/GamificationStore'
 import { useRoleProfilesStore } from '@/stores/RoleProfilesStore'
 
 const router = useRouter()
@@ -58,6 +59,7 @@ function finish() {
   if (approved) {
     authStore.activateRole('interviewer')
     authStore.switchRole('interviewer')
+    useGamificationStore().record('roleActivated', 'فُعّل دور المقيّم المعتمد')
     notifications.push({
       icon: 'mdi-star-check-outline',
       color: 'success',

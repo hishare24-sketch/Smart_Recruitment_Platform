@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
+import { useAuthStore } from '@/stores/AuthStore'
 
 // Real gamification engine: points are awarded on genuine actions across the app,
 // unlocking badges, advancing weekly challenges, and keeping a daily streak.
@@ -9,6 +10,7 @@ export type GameAction
     | 'recommendation' | 'receiveRecommendation' | 'rateInterviewer'
     | 'project' | 'assessment' | 'peerRequest'
     | 'postOpportunity' | 'reviewCandidate'
+    | 'roleActivated'
 
 const ACTION_POINTS: Record<GameAction, number> = {
   profileComplete: 50,
@@ -23,6 +25,7 @@ const ACTION_POINTS: Record<GameAction, number> = {
   peerRequest: 10,
   postOpportunity: 40,
   reviewCandidate: 15,
+  roleActivated: 50,
 }
 const DAILY_LOGIN_POINTS = 5
 
@@ -67,13 +70,14 @@ export const TIERS: Tier[] = [
 ]
 
 // Badge catalogue — condition evaluated against live state (not persisted)
-const BADGE_CATALOG: (Badge & { check: (s: { points: number, counters: Counters, streak: number }) => boolean })[] = [
+const BADGE_CATALOG: (Badge & { check: (s: { points: number, counters: Counters, streak: number, activeRoles: number }) => boolean })[] = [
   { id: 'newcomer', name: 'أول خطوة', icon: 'mdi-flag-outline', desc: 'ابدأ رحلتك بأول 50 نقطة', check: s => s.points >= 50 },
   { id: 'skill_builder', name: 'باني المهارات', icon: 'mdi-hammer-wrench', desc: 'أضف 5 مهارات موثّقة', check: s => s.counters.skills >= 5 },
   { id: 'interviewer_pro', name: 'محاور نشط', icon: 'mdi-account-tie-voice', desc: 'أنجز 3 مقابلات', check: s => s.counters.interviews >= 3 },
   { id: 'trusted_voice', name: 'موصٍ موثوق', icon: 'mdi-comment-check-outline', desc: 'اكتب 3 توصيات', check: s => s.counters.recommendations >= 3 },
   { id: 'week_streak', name: 'أسبوع متواصل', icon: 'mdi-fire', desc: 'حافظ على سلسلة 7 أيام', check: s => s.streak >= 7 },
   { id: 'point_master', name: 'سيّد النقاط', icon: 'mdi-crown-outline', desc: 'اجمع 500 نقطة', check: s => s.points >= 500 },
+  { id: 'multi_expert', name: 'خبير متعدد', icon: 'mdi-account-group-outline', desc: 'فعّل دورين مهنيين أو أكثر', check: s => s.activeRoles >= 2 },
 ]
 export const ALL_BADGES: Badge[] = BADGE_CATALOG.map(({ id, name, icon, desc }) => ({ id, name, icon, desc }))
 
@@ -157,7 +161,12 @@ export const useGamificationStore = defineStore('gamification', () => {
   const earnedCount = computed(() => earnedBadgeIds.value.length)
 
   function recomputeBadges() {
-    const snap = { points: points.value, counters: counters.value, streak: streak.value.count }
+    const snap = {
+      points: points.value,
+      counters: counters.value,
+      streak: streak.value.count,
+      activeRoles: useAuthStore().activeRoles.length,
+    }
     for (const b of BADGE_CATALOG) {
       if (!earnedBadgeIds.value.includes(b.id) && b.check(snap)) {
         earnedBadgeIds.value.push(b.id)

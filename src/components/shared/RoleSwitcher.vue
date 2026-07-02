@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import type { UserRole } from '@/interfaces/Auth'
 import { ROLE_META, SWITCHABLE_ROLES, roleHome } from '@/services/roles'
 import { useAuthStore } from '@/stores/AuthStore'
+import { useGamificationStore } from '@/stores/GamificationStore'
 import { useNotificationsStore } from '@/stores/NotificationsStore'
 
 const { t } = useI18n()
@@ -50,6 +51,7 @@ function requestRole(r: UserRole) {
     return
   }
   authStore.requestRole(r)
+  useGamificationStore().record('roleActivated', t('roleSwitcher.activated', { role: t(`roles.${r}`) }))
   snackbar.value = t('roleSwitcher.activated', { role: t(`roles.${r}`) })
   switchTo(r)
 }
@@ -64,6 +66,7 @@ function activateCompany() {
     company_size: companySize.value ?? undefined,
   }))
   authStore.requestRole('company')
+  useGamificationStore().record('roleActivated', t('roleSwitcher.activated', { role: t('roles.company') }))
   companyDialog.value = false
   notifications.push({
     icon: 'mdi-office-building-outline',

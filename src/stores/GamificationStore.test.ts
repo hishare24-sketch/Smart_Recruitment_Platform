@@ -1,10 +1,35 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useGamificationStore } from './GamificationStore'
+import { useAuthStore } from './AuthStore'
+import { ROLE_PERMISSIONS, defaultRoleEntries } from '@/services/roles'
 
 beforeEach(() => {
   localStorage.clear()
   setActivePinia(createPinia())
+})
+
+describe('GamificationStore multi-expert badge', () => {
+  it('unlocks multi_expert when the user holds two active roles', () => {
+    const auth = useAuthStore()
+    auth.setAuthUser({
+      id: 1,
+      uuid: 'u-1',
+      name: 'اختبار',
+      email: 'x@site.com',
+      token: 't',
+      role: 'seeker',
+      roles: defaultRoleEntries('seeker'),
+      permissions: ROLE_PERMISSIONS.seeker,
+    })
+    const g = useGamificationStore()
+    g.record('skill')
+    expect(g.badges.find(b => b.id === 'multi_expert')?.earned).toBe(false)
+
+    auth.requestRole('company') // instant second active role
+    g.record('roleActivated')
+    expect(g.badges.find(b => b.id === 'multi_expert')?.earned).toBe(true)
+  })
 })
 
 describe('GamificationStore.record', () => {

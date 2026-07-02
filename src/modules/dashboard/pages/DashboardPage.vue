@@ -9,6 +9,7 @@ import { useCandidatesStore } from '@/stores/CandidatesStore'
 import { usePostedOpportunitiesStore } from '@/stores/PostedOpportunitiesStore'
 import { useTrustStore } from '@/stores/TrustStore'
 import { useProfileStore } from '@/stores/ProfileStore'
+import { useInterviewersStore } from '@/stores/InterviewersStore'
 import StatCard from '@/components/shared/StatCard.vue'
 import GamificationCard from '@/components/shared/GamificationCard.vue'
 import OpportunityCard from '@/modules/opportunities/components/OpportunityCard.vue'
@@ -89,6 +90,19 @@ const weeklyApplications = computed(() => {
   ]
   const max = Math.max(...weeks.map(w => w.value))
   return weeks.map(w => ({ ...w, pct: Math.round((w.value / max) * 100) }))
+})
+
+// — Smart cross-role agenda (doc §5.3): one schedule across my roles —
+const interviewersStore = useInterviewersStore()
+const crossRoleAgenda = computed(() => {
+  if (!authStore.hasRole('interviewer'))
+    return []
+  const asCandidate = interviewersStore.bookings
+    .filter(b => b.status === 'scheduled')
+    .map(b => ({ key: `b${b.id}`, title: `مقابلة مع ${b.interviewerName}`, datetime: b.datetime, roleLabel: 'كباحث', color: 'primary' }))
+  const asInterviewer = interviewersStore.agendaUpcoming
+    .map(a => ({ key: `a${a.id}`, title: `تقييم ${a.candidateName}`, datetime: a.datetime, roleLabel: 'كمقيّم', color: 'amber' }))
+  return [...asCandidate, ...asInterviewer].slice(0, 4)
 })
 
 // Most common skills among applicants
@@ -289,6 +303,21 @@ const aiSuggestions = [
           <VBtn variant="text" color="secondary" size="small" class="px-0" :to="{ name: 'analytics' }">
             التحليلات الكاملة
           </VBtn>
+        </VCard>
+
+        <!-- Smart cross-role agenda (multi-role users) -->
+        <VCard v-if="crossRoleAgenda.length" class="pa-4 mt-2 mb-4">
+          <div class="d-flex align-center ga-2 mb-2">
+            <VIcon icon="mdi-calendar-multiple" color="secondary" />
+            <span class="text-subtitle-1 font-weight-bold">أجندتك عبر الأدوار</span>
+          </div>
+          <div v-for="item in crossRoleAgenda" :key="item.key" class="d-flex align-center ga-2 py-2">
+            <VChip size="x-small" :color="item.color" label class="flex-shrink-0">{{ item.roleLabel }}</VChip>
+            <div class="flex-grow-1">
+              <div class="text-body-2 font-weight-bold">{{ item.title }}</div>
+              <div class="text-caption text-medium-emphasis">{{ item.datetime }}</div>
+            </div>
+          </div>
         </VCard>
 
         <!-- Gamification (all roles — points/level/streak/leaderboard are universal) -->

@@ -8,13 +8,53 @@ import { useResumesStore } from '@/stores/ResumesStore'
 import { useInterviewsStore } from '@/stores/InterviewsStore'
 import { usePeerRequestsStore } from '@/stores/PeerRequestsStore'
 import { useAuthStore } from '@/stores/AuthStore'
+import { useTrustStore } from '@/stores/TrustStore'
+import { useInterviewersStore } from '@/stores/InterviewersStore'
+import { usePostedOpportunitiesStore } from '@/stores/PostedOpportunitiesStore'
+import { SWITCHABLE_ROLES } from '@/services/roles'
 
 const g = useGamificationStore()
-const isCompany = computed(() => useAuthStore().role === 'company')
+const authStore = useAuthStore()
+const isCompany = computed(() => authStore.role === 'company')
 const profile = useProfileStore()
 const resumes = useResumesStore()
 const interviews = useInterviewsStore()
 const peer = usePeerRequestsStore()
+
+// Unified reputation across roles (doc §5.1) — one account, achievements from every role
+const trust = useTrustStore()
+const interviewersStore = useInterviewersStore()
+const postedStore = usePostedOpportunitiesStore()
+const ownedProRoles = computed(() => SWITCHABLE_ROLES.filter(r => authStore.ownsRole(r)))
+const reputationRows = computed(() => {
+  const rows: { role: string, icon: string, color: string, facts: string[] }[] = []
+  if (authStore.ownsRole('seeker')) {
+    rows.push({
+      role: 'كباحث عن عمل',
+      icon: 'mdi-account-search-outline',
+      color: 'primary',
+      facts: [`ثقة ${trust.score}%`, `${profile.skills.length} مهارات موثّقة`, `${interviews.completed.length} مقابلات`],
+    })
+  }
+  if (authStore.ownsRole('interviewer')) {
+    const s = interviewersStore.interviewerStats
+    rows.push({
+      role: 'كمقيّم معتمد',
+      icon: 'mdi-star-check-outline',
+      color: 'amber',
+      facts: [`${s.sessions} جلسات منفّذة`, `تقييم ${s.avgRating} ★`, `${s.earnings} ﷼ أرباح`],
+    })
+  }
+  if (authStore.ownsRole('company')) {
+    rows.push({
+      role: 'كجهة توظيف',
+      icon: 'mdi-office-building-outline',
+      color: 'secondary',
+      facts: [`${postedStore.publishedCount} فرص منشورة`, 'حساب نشط في سوق الطلبات'],
+    })
+  }
+  return rows
+})
 
 // Leaderboard comes from the shared gamification store (single source of truth)
 const leaderboard = computed(() => g.leaderboard)
@@ -43,6 +83,29 @@ const onboardingPct = computed(() => Math.round((goalsDone.value / goals.value.l
     <VRow>
       <VCol cols="12" md="7">
         <GamificationCard :show-link="false" />
+
+        <!-- Unified reputation across roles (multi-role accounts) -->
+        <VCard v-if="ownedProRoles.length > 1" class="pa-4 mt-4">
+          <div class="d-flex align-center ga-2 mb-1">
+            <VIcon icon="mdi-shield-star-outline" color="secondary" />
+            <h3 class="text-subtitle-1 font-weight-bold">السمعة الموحّدة</h3>
+            <VChip v-if="g.badges.find(b => b.id === 'multi_expert')?.earned" size="x-small" color="success" label class="ms-1" prepend-icon="mdi-account-group-outline">
+              خبير متعدد
+            </VChip>
+          </div>
+          <p class="text-caption text-medium-emphasis mb-3">حساب سمعة واحد يجمع إنجازاتك وتقييماتك من جميع أدوارك</p>
+          <div v-for="row in reputationRows" :key="row.role" class="d-flex align-center ga-3 py-2">
+            <VAvatar :color="row.color" variant="tonal" size="38">
+              <VIcon :icon="row.icon" size="20" />
+            </VAvatar>
+            <div>
+              <div class="text-body-2 font-weight-bold">{{ row.role }}</div>
+              <div class="d-flex flex-wrap ga-1 mt-1">
+                <VChip v-for="f in row.facts" :key="f" size="x-small" variant="tonal" :color="row.color" label>{{ f }}</VChip>
+              </div>
+            </div>
+          </div>
+        </VCard>
 
         <!-- Onboarding checklist (seeker journey) -->
         <VCard v-if="!isCompany" class="pa-4 mt-4">
