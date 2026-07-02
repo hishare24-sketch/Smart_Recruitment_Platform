@@ -6,6 +6,7 @@ import { useCandidatesStore } from '@/stores/CandidatesStore'
 import { KIND_META, useInterviewersStore } from '@/stores/InterviewersStore'
 import type { MarketInterviewKind } from '@/stores/InterviewersStore'
 import { useNotificationsStore } from '@/stores/NotificationsStore'
+import { useWishesStore } from '@/stores/WishesStore'
 
 const route = useRoute()
 const router = useRouter()
@@ -25,6 +26,35 @@ const activeReport = ref<typeof candidateReports[number] | null>(null)
 function openReport(r: typeof candidateReports[number]) {
   activeReport.value = r
   reportDialog.value = true
+}
+
+// Send a real wish to this candidate (lands in إدارة الرغبات + simulated reply)
+const wishesStore = useWishesStore()
+const wishDialog = ref(false)
+const wishForm = ref({ role: '', amount: '', duration: 'دائم', reason: '' })
+const DURATIONS = ['دائم', 'سنة', '6 أشهر', 'مهمة']
+function openWishDialog() {
+  wishForm.value = {
+    role: candidate.value?.appliedFor ?? candidate.value?.title ?? '',
+    amount: '',
+    duration: 'دائم',
+    reason: candidate.value ? `مهاراتك في ${candidate.value.skills.slice(0, 2).join(' و')} تطابق احتياجنا تمامًا.` : '',
+  }
+  wishDialog.value = true
+}
+function sendWish() {
+  if (!candidate.value)
+    return
+  wishesStore.sendWish({
+    candidateId: candidate.value.id,
+    candidateName: candidate.value.name,
+    role: wishForm.value.role,
+    amount: wishForm.value.amount || 'قابل للتفاوض',
+    duration: wishForm.value.duration,
+    reason: wishForm.value.reason,
+  })
+  wishDialog.value = false
+  snackbar.value = `أُرسلت رغبتك إلى ${candidate.value.name} — ستصلك استجابته كإشعار`
 }
 
 // Request interview via a certified interviewer
@@ -77,7 +107,7 @@ const endorsements = [
         <VCard class="pa-5 mb-4">
           <div class="d-flex align-center ga-4 mb-4">
             <VAvatar color="secondary" size="72">
-              <span class="text-h4 text-white font-weight-bold">{{ candidate.name.charAt(0) }}</span>
+              <span class="text-h4 font-weight-bold">{{ candidate.name.charAt(0) }}</span>
             </VAvatar>
             <div>
               <h1 class="text-h5 font-weight-bold">{{ candidate.name }}</h1>
@@ -156,7 +186,7 @@ const endorsements = [
             الحالة: {{ CANDIDATE_STATUS_META[candidate.status].label }}
           </VChip>
 
-          <VBtn color="accent" block class="mb-2" prepend-icon="mdi-hand-heart-outline" @click="snackbar = 'تم إرسال رغبة للمرشح'">إبداء رغبة</VBtn>
+          <VBtn color="accent" block class="mb-2" prepend-icon="mdi-hand-heart-outline" @click="openWishDialog">إبداء رغبة</VBtn>
           <VBtn color="primary" block class="mb-2" prepend-icon="mdi-account-tie-voice-outline" @click="requestInterviewDialog = true">طلب مقابلة</VBtn>
           <VBtn color="primary" variant="tonal" block class="mb-2" prepend-icon="mdi-calendar-clock-outline" @click="store.setStatus(candidate.id, 'interview'); snackbar = 'تمت دعوة المرشح لمقابلة'">جدولة مقابلة</VBtn>
           <VBtn color="secondary" variant="outlined" block class="mb-2" prepend-icon="mdi-message-outline" :to="{ name: 'messages' }">إرسال رسالة</VBtn>
@@ -232,6 +262,24 @@ const endorsements = [
         </VCardText>
         <VCardActions class="justify-end">
           <VBtn variant="text" @click="reportDialog = false">إغلاق</VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
+
+    <!-- Send-wish dialog -->
+    <VDialog v-model="wishDialog" max-width="480">
+      <VCard class="pa-2">
+        <VCardTitle>إبداء رغبة — {{ candidate?.name }}</VCardTitle>
+        <VCardText>
+          <VTextField v-model="wishForm.role" label="الدور المعروض" prepend-inner-icon="mdi-briefcase-outline" class="mb-3" />
+          <VTextField v-model="wishForm.amount" label="المقابل (مثال: 16,000 ريال)" prepend-inner-icon="mdi-cash-multiple" class="mb-3" />
+          <VSelect v-model="wishForm.duration" :items="DURATIONS" label="المدة" prepend-inner-icon="mdi-calendar-range-outline" class="mb-3" />
+          <VTextarea v-model="wishForm.reason" label="لماذا هذا المرشح؟" rows="2" auto-grow />
+        </VCardText>
+        <VCardActions>
+          <VSpacer />
+          <VBtn variant="text" @click="wishDialog = false">إلغاء</VBtn>
+          <VBtn color="accent" variant="flat" :disabled="!wishForm.role.trim()" prepend-icon="mdi-send" @click="sendWish">إرسال الرغبة</VBtn>
         </VCardActions>
       </VCard>
     </VDialog>
