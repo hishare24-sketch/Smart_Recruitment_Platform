@@ -51,3 +51,19 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          # Pages status polling occasionally exceeds the 10-minute default
+          # ("Timeout reached, aborting!") — give slow service days more room
+          # and tolerate more transient status-check errors before giving up.
+          timeout: 1800000
+          error_count: 15
+
+      # The service sometimes recovers within minutes — one automatic retry
+      # spares a manual re-push on transient Pages slowness.
+      - name: Retry deploy once on failure
+        if: failure()
+        id: deployment_retry
+        uses: actions/deploy-pages@v4
+        with:
+          timeout: 1800000
+          error_count: 15
