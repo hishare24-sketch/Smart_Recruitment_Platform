@@ -11,6 +11,8 @@ export interface NavItem {
 export const navItems: NavItem[] = [
   // المركز الموحّد — كل الأدوار المهنية في شاشة واحدة (أول عنصر لأنه نقطة البداية)
   { title: 'hub', icon: 'mdi-view-dashboard-variant-outline', to: 'unified-hub', roles: ['seeker', 'company', 'interviewer', 'coach', 'trainer', 'consultant'] },
+  // الصفحة التعريفية العامة — هوية كل مستخدم أمام العالم (كل الأدوار بلا استثناء)
+  { title: 'publicProfile', icon: 'mdi-card-account-details-star-outline', to: 'public-profile-manage', roles: ['seeker', 'company', 'interviewer', 'coach', 'trainer', 'consultant', 'endorser', 'admin'] },
   { title: 'dashboard', icon: 'mdi-view-dashboard-outline', to: 'dashboard', roles: ['seeker', 'company'] },
 
   // Wallet — high in the list: money must never hide below the fold

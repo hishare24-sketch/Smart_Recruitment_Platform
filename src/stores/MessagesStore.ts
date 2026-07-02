@@ -86,5 +86,19 @@ export const useMessagesStore = defineStore('messages', () => {
       c.messages.push({ from: 'me', text: text.trim(), time: 'الآن' })
   }
 
-  return { conversations, totalUnread, markRead, send }
+  /** محادثة جديدة واردة من طرف خارجي (مثل زائر الصفحة التعريفية) */
+  function startConversation(name: string, role: string, firstMessage: string): Conversation {
+    const c: Conversation = {
+      id: Math.max(0, ...conversations.value.map(x => x.id)) + 1,
+      name,
+      initial: name.trim().charAt(0),
+      role,
+      unread: 1,
+      messages: [{ from: 'them', text: firstMessage.trim(), time: 'الآن' }],
+    }
+    conversations.value.unshift(c)
+    return c
+  }
+
+  return { conversations, totalUnread, markRead, send, startConversation }
 })

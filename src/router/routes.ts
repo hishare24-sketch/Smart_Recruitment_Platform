@@ -35,6 +35,12 @@ export const routes: RouteRecordRaw[] = [
     meta: { layout: 'blank', public: true },
   },
   {
+    path: '/u/:slug',
+    name: 'public-user-profile',
+    component: () => import('@/modules/public/pages/PublicUserProfilePage.vue'),
+    meta: { layout: 'blank', public: true },
+  },
+  {
     path: '/resume/:token',
     name: 'public-resume',
     component: () => import('@/modules/public/pages/PublicResumePage.vue'),
@@ -70,6 +76,12 @@ export const routes: RouteRecordRaw[] = [
     path: '/profile',
     name: 'profile',
     component: () => import('@/modules/profile/pages/ProfilePage.vue'),
+    meta: { layout: 'default' },
+  },
+  {
+    path: '/my-public-profile',
+    name: 'public-profile-manage',
+    component: () => import('@/modules/profile/pages/PublicProfileManagePage.vue'),
     meta: { layout: 'default' },
   },
   {
