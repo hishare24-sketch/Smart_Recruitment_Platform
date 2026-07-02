@@ -74,3 +74,5 @@ vite.config.d.ts
 .stylelintcache
 .temp/
 .tmp/
+
+li*.html
