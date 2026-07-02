@@ -9,6 +9,9 @@ import { useSurveysStore } from '@/stores/SurveysStore'
 import { useWalletStore } from '@/stores/WalletStore'
 
 // ===== باقة الحساب الموحّدة — كل التمكين من مكان واحد =====
+// embedded: تُعرض داخل مركز الإعدادات بلا ترويسة مكررة
+withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
+
 const plan = useAccountPlanStore()
 const wallet = useWalletStore()
 const surveys = useSurveysStore()
@@ -51,6 +54,7 @@ const usage = computed(() => [
 <template>
   <div>
     <PageHeader
+      v-if="!embedded"
       title="باقة حسابك"
       subtitle="حساب واحد بكل الأدوار — والباقة وحدها تحدد التمكين والمزايا عبر كل المنصة"
       icon="mdi-crown-outline"
@@ -61,6 +65,13 @@ const usage = computed(() => [
         </VChip>
       </template>
     </PageHeader>
+    <VAlert v-if="embedded" color="secondary" variant="tonal" density="compact" border="start" class="mb-4">
+      <div class="d-flex align-center ga-2 flex-wrap">
+        <span class="text-body-2">حساب واحد بكل الأدوار — والباقة وحدها تحدد التمكين عبر كل المنصة.</span>
+        <VSpacer />
+        <VChip size="small" color="primary" variant="tonal" label prepend-icon="mdi-wallet-outline">رصيدك: {{ wallet.available }} ر.س</VChip>
+      </div>
+    </VAlert>
 
     <!-- بطاقات الباقات -->
     <VRow class="mb-2">

@@ -17,14 +17,14 @@ const ALL_ROLES: UserRole[] = ['seeker', 'company', 'interviewer', 'endorser', '
 export const navItems: NavItem[] = [
   // ===== حسابي الموحّد — نفس الأدوات لكل مستخدم أيًّا كان دوره (لا تشتيت) =====
   { title: 'hub', icon: 'mdi-view-dashboard-variant-outline', to: 'unified-hub', roles: ALL_ROLES, section: 'account' },
-  { title: 'publicProfile', icon: 'mdi-card-account-details-star-outline', to: 'public-profile-manage', roles: ALL_ROLES, section: 'account' },
   { title: 'wallet', icon: 'mdi-wallet-outline', to: 'wallet', roles: ALL_ROLES, section: 'account' },
-  { title: 'accountPlan', icon: 'mdi-crown-outline', to: 'account-plan', roles: ALL_ROLES, section: 'account' },
   { title: 'surveysHub', icon: 'mdi-poll', to: 'surveys-hub', roles: ALL_ROLES, section: 'account' },
   { title: 'unifiedAnalytics', icon: 'mdi-chart-multiple', to: 'unified-analytics', roles: ALL_ROLES, section: 'account' },
   { title: 'assistant', icon: 'mdi-robot-happy-outline', to: 'assistant', roles: ALL_ROLES, section: 'account' },
   { title: 'peerRequests', icon: 'mdi-swap-horizontal-circle-outline', to: 'peer-requests', roles: ALL_ROLES, section: 'account' },
   { title: 'achievements', icon: 'mdi-trophy-outline', to: 'achievements', roles: ALL_ROLES, section: 'account' },
+  // مركز الإعدادات — يضم صفحتي التعريفية وباقتي وكل تحكم الحساب
+  { title: 'settings', icon: 'mdi-cog-outline', to: 'settings', roles: ALL_ROLES, section: 'account' },
 
   // ===== مساحة الدور النشط =====
   { title: 'dashboard', icon: 'mdi-view-dashboard-outline', to: 'dashboard', roles: ['seeker', 'company'], section: 'role' },

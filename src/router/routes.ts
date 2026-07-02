@@ -78,17 +78,16 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('@/modules/profile/pages/ProfilePage.vue'),
     meta: { layout: 'default' },
   },
+  // انتقل التحكم إلى مركز الإعدادات — المساران القديمان يحوّلان إليه فتبقى كل الروابط حيّة
   {
     path: '/plan',
     name: 'account-plan',
-    component: () => import('@/modules/account/pages/AccountPlanPage.vue'),
-    meta: { layout: 'default' },
+    redirect: { path: '/settings', query: { tab: 'plan' } },
   },
   {
     path: '/my-public-profile',
     name: 'public-profile-manage',
-    component: () => import('@/modules/profile/pages/PublicProfileManagePage.vue'),
-    meta: { layout: 'default' },
+    redirect: { path: '/settings', query: { tab: 'publicProfile' } },
   },
   {
     path: '/reviews',
