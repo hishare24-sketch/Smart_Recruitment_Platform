@@ -47,6 +47,11 @@ function requestRole(r: UserRole) {
     router.push({ name: 'interviewer-register' })
     return
   }
+  if (r === 'coach' || r === 'trainer' || r === 'consultant') {
+    // القبول التلقائي مشروط بمسار الانضمام (بيانات + مرفقات + تزكيات)
+    router.push({ name: 'role-join', params: { role: r } })
+    return
+  }
   if (r === 'company') {
     companyDialog.value = true
     return

@@ -283,6 +283,12 @@ export const routes: RouteRecordRaw[] = [
 
   // ===== Ecosystem expert roles (coach / trainer / consultant) =====
   {
+    path: '/join/:role(coach|trainer|consultant)',
+    name: 'role-join',
+    component: () => import('@/modules/experts/pages/RoleJoinWizardPage.vue'),
+    meta: { layout: 'default' },
+  },
+  {
     path: '/coach',
     name: 'coach-dashboard',
     component: () => import('@/modules/experts/pages/CoachDashboardPage.vue'),
