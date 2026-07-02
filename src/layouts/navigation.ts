@@ -11,6 +11,9 @@ export interface NavItem {
 export const navItems: NavItem[] = [
   { title: 'dashboard', icon: 'mdi-view-dashboard-outline', to: 'dashboard', roles: ['seeker', 'company'] },
 
+  // Wallet — high in the list: money must never hide below the fold
+  { title: 'wallet', icon: 'mdi-wallet-outline', to: 'wallet', roles: ['seeker', 'company', 'interviewer', 'endorser', 'admin'] },
+
   // Admin
   { title: 'dashboard', icon: 'mdi-view-dashboard-outline', to: 'admin-dashboard', roles: ['admin'] },
   { title: 'users', icon: 'mdi-account-multiple-outline', to: 'admin-users', roles: ['admin'] },
@@ -50,8 +53,6 @@ export const navItems: NavItem[] = [
   { title: 'surveys', icon: 'mdi-poll', to: 'surveys', roles: ['admin', 'company', 'interviewer'] },
   // Participation is open to every user type
   { title: 'surveysParticipate', icon: 'mdi-comment-quote-outline', to: 'surveys-participate', roles: ['seeker', 'company', 'interviewer', 'endorser'] },
-  // Wallet — every user type has balances, methods and statements
-  { title: 'wallet', icon: 'mdi-wallet-outline', to: 'wallet', roles: ['seeker', 'company', 'interviewer', 'endorser', 'admin'] },
 ]
 
 export function navForRole(role: UserRole | undefined): NavItem[] {

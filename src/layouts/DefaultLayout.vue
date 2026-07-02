@@ -11,6 +11,7 @@ import GlobalSearchBar from '@/components/shared/GlobalSearchBar.vue'
 import RewardFeedback from '@/components/shared/RewardFeedback.vue'
 import RoleSwitcher from '@/components/shared/RoleSwitcher.vue'
 import { usePeerRequestsStore } from '@/stores/PeerRequestsStore'
+import { useWalletStore } from '@/stores/WalletStore'
 import { navForRole } from './navigation'
 
 const { t, locale } = useI18n()
@@ -34,6 +35,7 @@ const { mobile } = useDisplay()
 const authStore = useAuthStore()
 const notificationsStore = useNotificationsStore()
 const messagesStore = useMessagesStore()
+const walletStore = useWalletStore()
 
 // Daily streak check-in — runs once when an authenticated layout mounts
 useGamificationStore().checkIn()
@@ -199,6 +201,11 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
       <VList density="compact" min-width="240">
         <RoleSwitcher />
         <VDivider />
+        <VListItem :title="t('nav.wallet')" prepend-icon="mdi-wallet-outline" :to="{ name: 'wallet' }">
+          <template #append>
+            <VChip size="x-small" color="primary" variant="tonal" label>{{ walletStore.available.toLocaleString('ar') }} ر.س</VChip>
+          </template>
+        </VListItem>
         <VListItem :title="t('common.profile')" prepend-icon="mdi-account-outline" :to="{ name: 'profile' }" />
         <VListItem :title="t('common.settings')" prepend-icon="mdi-cog-outline" :to="{ name: 'settings' }" />
         <VDivider />
