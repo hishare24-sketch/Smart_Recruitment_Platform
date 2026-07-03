@@ -150,6 +150,17 @@ function sectionVisible(key: keyof PublicSections): boolean {
 /** رابط خريطة تفاعلية للموقع */
 const mapsUrl = computed(() => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.value.location)}`)
 
+/**
+ * تثبيت سياق Vuetify على قتامة ثيم الصفحة نفسه —
+ * وإلا ورث الزوار لوحة منصّتهم (فاتحة/داكنة) فظهر حبر داكن فوق بطاقات داكنة والعكس.
+ * undefined = ثيم المنصة (يتبع وضع الزائر كما هو مقصود).
+ */
+const pageTheme = computed(() => {
+  if (!pub.themeStyles)
+    return undefined
+  return pub.themeIsLight ? 'lightTheme' : 'darkTheme'
+})
+
 // —— شريط التنقّل الداخلي (العرض الكلاسيكي) ——
 const ANCHOR_LABELS: Partial<Record<keyof PublicSections, string>> = {
   story: 'قصتي',
@@ -352,7 +363,8 @@ function postComment() {
     :class="{ 'pp-themed': !!pub.themeStyles, 'pp-light': pub.themeIsLight, 'pp-motion': s.appearance.motion }"
     :style="[pub.themeStyles ?? {}, pageFontStyle]"
   >
-    <VContainer class="py-8" style="max-width: 880px">
+    <VThemeProvider :theme="pageTheme">
+      <VContainer class="py-8" style="max-width: 880px">
       <template v-if="isFound">
         <!-- الهيدر التسويقي -->
         <VCard class="overflow-hidden mb-4">
@@ -970,7 +982,8 @@ function postComment() {
           </VCardActions>
         </VCard>
       </VDialog>
-    </VContainer>
+      </VContainer>
+    </VThemeProvider>
   </div>
 </template>
 
@@ -1006,6 +1019,12 @@ function postComment() {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* رقائق «غير مختار» (color=surface-variant): اللون لون سطحٍ لا نص —
+   يُستبدل بنصف تركيز on-surface فيبقى مقروءًا في كل تركيبات الثيم/الوضع */
+.pp-page :deep(.v-chip.text-surface-variant) {
+  color: rgba(var(--v-theme-on-surface), 0.72) !important;
 }
 
 /* شريط التنقّل اللاصق */

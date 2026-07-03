@@ -646,6 +646,11 @@ function saved() {
 </template>
 
 <style scoped>
+/* رقائق «غير مختار» (color=surface-variant): اللون لون سطحٍ لا نص — كان شبه مختفٍ في الوضع الداكن */
+:deep(.v-chip.text-surface-variant) {
+  color: rgba(var(--v-theme-on-surface), 0.72) !important;
+}
+
 .theme-dot {
   display: inline-block;
   width: 14px;
