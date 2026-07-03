@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import type { UserRole } from '@/interfaces/Auth'
@@ -22,20 +22,93 @@ const s = computed(() => pub.state)
 const roleLabel = (r: UserRole) => t(`roles.${r}`)
 
 onMounted(() => {
-  if (isFound.value)
+  if (isFound.value) {
     pub.recordView()
+    animateStats()
+  }
 })
 
+// —— عدّاد تصاعدي لأرقام المصداقية عند التحميل (يتعطل مع إيقاف الحركة) ——
+const statDisplay = ref<Record<string, string | number>>({})
+function animateStats() {
+  pub.verifiedFacts.forEach((f) => {
+    const raw = String(f.value)
+    const target = Number.parseInt(raw.replace(/\D/g, ''), 10)
+    if (!s.value.appearance.motion || Number.isNaN(target)) {
+      statDisplay.value[f.label] = raw
+      return
+    }
+    const suffix = raw.replace(/^\d+/, '')
+    const t0 = performance.now()
+    const dur = 900
+    const step = (t: number) => {
+      const k = Math.min(1, (t - t0) / dur)
+      statDisplay.value[f.label] = `${Math.round(target * (1 - (1 - k) ** 3))}${suffix}`
+      if (k < 1)
+        requestAnimationFrame(step)
+    }
+    requestAnimationFrame(step)
+  })
+}
+
+// —— النبذة المزدوجة: مختصرة دائمًا + «اقرأ المزيد» للسرد الممتد ——
+const storyExpanded = ref(false)
+
+// —— خط الصفحة المختار: يُحمَّل من Google Fonts عند الحاجة ——
+watch(() => pub.fontFamily, (fam) => {
+  if (!fam)
+    return
+  const id = 'pp-font-link'
+  let link = document.getElementById(id) as HTMLLinkElement | null
+  if (!link) {
+    link = document.createElement('link')
+    link.id = id
+    link.rel = 'stylesheet'
+    document.head.appendChild(link)
+  }
+  link.href = `https://fonts.googleapis.com/css2?family=${fam.replace(/ /g, '+')}:wght@400;500;700&display=swap`
+}, { immediate: true })
+const pageFontStyle = computed(() => pub.fontFamily ? { fontFamily: `'${pub.fontFamily}', sans-serif` } : {})
+
+// —— توصية من زائر (تدخل مخفية حتى موافقة صاحب الصفحة) ——
+const testimonialDialog = ref(false)
+const tmAuthor = ref('')
+const tmRole = ref('')
+const tmText = ref('')
+const tmSent = ref(false)
+function sendTestimonial() {
+  if (!tmAuthor.value.trim() || !tmText.value.trim())
+    return
+  pub.submitTestimonial(tmAuthor.value.trim(), tmRole.value.trim(), tmText.value.trim())
+  tmSent.value = true
+  setTimeout(() => {
+    testimonialDialog.value = false
+    tmSent.value = false
+    tmAuthor.value = ''
+    tmRole.value = ''
+    tmText.value = ''
+  }, 1800)
+}
+
 // —— طرق العرض المتعددة: الزائر يختار كيف يقرأ الصفحة ——
-type ViewMode = 'classic' | 'compact' | 'resume'
+type ViewMode = 'classic' | 'compact' | 'visual' | 'academic' | 'resume'
 const viewMode = ref<ViewMode>('classic')
 
 /** الأقسام المسموحة لكل طريقة عرض — null تعني كل الأقسام */
 const MODE_SECTIONS: Record<ViewMode, readonly (keyof PublicSections)[] | null> = {
   classic: null,
   compact: ['stats', 'roles', 'achievements', 'skills'],
+  visual: ['stats', 'portfolio', 'skills', 'testimonials', 'roles'],
+  academic: ['stats', 'story', 'experience', 'skills'],
   resume: ['stats', 'story', 'achievements', 'experience', 'portfolio', 'testimonials', 'skills'],
 }
+
+/** ترتيب العمود الرئيسي — العرض المرئي يقدّم المعرض على كل شيء */
+const mainOrder = computed(() =>
+  viewMode.value === 'visual'
+    ? ['portfolio', ...s.value.sectionOrder.filter(k => k !== 'portfolio')] as typeof s.value.sectionOrder
+    : s.value.sectionOrder,
+)
 function sectionVisible(key: keyof PublicSections): boolean {
   const allowed = MODE_SECTIONS[viewMode.value]
   return (!allowed || allowed.includes(key)) && pub.canShow(key)
@@ -241,7 +314,7 @@ function postComment() {
   <div
     class="pp-page"
     :class="{ 'pp-themed': !!pub.themeStyles, 'pp-motion': s.appearance.motion }"
-    :style="pub.themeStyles ?? undefined"
+    :style="[pub.themeStyles ?? {}, pageFontStyle]"
   >
     <VContainer class="py-8" style="max-width: 880px">
       <template v-if="isFound">
@@ -249,7 +322,7 @@ function postComment() {
         <VCard class="overflow-hidden mb-4">
           <div class="brand-gradient pp-hero pa-6 pa-md-8" theme="darkTheme">
             <div class="d-flex align-center ga-4 flex-wrap">
-              <VAvatar color="rgba(255,255,255,0.15)" size="84" :rounded="avatarRounded">
+              <VAvatar color="rgba(255,255,255,0.15)" size="84" :rounded="avatarRounded" :class="{ 'pp-ring': s.appearance.avatarRing }">
                 <span class="text-h4 font-weight-bold text-white">{{ pub.displayName.trim().charAt(0) }}</span>
               </VAvatar>
               <div class="flex-grow-1">
@@ -328,7 +401,7 @@ function postComment() {
             <VRow dense class="text-center">
               <VCol v-for="f in pub.verifiedFacts" :key="f.label" cols="6" md="3">
                 <VIcon :icon="f.icon" color="primary" size="20" class="mb-1" />
-                <div class="text-subtitle-1 font-weight-bold">{{ f.value }}</div>
+                <div class="text-subtitle-1 font-weight-bold">{{ statDisplay[f.label] ?? f.value }}</div>
                 <div class="text-caption text-medium-emphasis">{{ f.label }}</div>
               </VCol>
             </VRow>
@@ -340,6 +413,8 @@ function postComment() {
           <VBtnToggle v-model="viewMode" density="compact" mandatory variant="outlined" divided>
             <VBtn value="classic" size="small" prepend-icon="mdi-view-dashboard-outline">كلاسيكي</VBtn>
             <VBtn value="compact" size="small" prepend-icon="mdi-card-text-outline">مختصر</VBtn>
+            <VBtn value="visual" size="small" prepend-icon="mdi-image-multiple-outline">مرئي</VBtn>
+            <VBtn value="academic" size="small" prepend-icon="mdi-school-outline">أكاديمي</VBtn>
             <VBtn value="resume" size="small" prepend-icon="mdi-file-account-outline">سيرة ذاتية</VBtn>
           </VBtnToggle>
           <VSpacer />
@@ -373,11 +448,26 @@ function postComment() {
         <VRow>
           <VCol cols="12" :md="viewMode === 'resume' ? 12 : 7">
             <!-- أقسام العمود الرئيسي بترتيب يختاره صاحب الصفحة -->
-            <template v-for="key in s.sectionOrder" :key="key">
-              <!-- القصة المهنية -->
+            <template v-for="key in mainOrder" :key="key">
+              <!-- القصة المهنية: نبذة مختصرة + «اقرأ المزيد» + هاشتاغات -->
               <VCard v-if="key === 'story' && sectionVisible('story')" id="pp-story" class="pa-5 mb-4">
                 <h2 class="text-subtitle-1 font-weight-bold mb-2">قصتي المهنية</h2>
-                <p class="text-body-2 mb-0" style="line-height: 2">{{ s.story }}</p>
+                <p v-if="s.bioShort" class="text-body-1 font-weight-medium mb-2" style="line-height: 1.9">{{ s.bioShort }}</p>
+                <p v-if="!s.bioShort || storyExpanded || viewMode === 'resume'" class="text-body-2 mb-0" style="line-height: 2">{{ s.story }}</p>
+                <VBtn
+                  v-if="s.bioShort && s.story && viewMode !== 'resume'"
+                  size="x-small"
+                  variant="text"
+                  color="primary"
+                  class="mt-1 no-print"
+                  :prepend-icon="storyExpanded ? 'mdi-chevron-up' : 'mdi-chevron-down'"
+                  @click="storyExpanded = !storyExpanded"
+                >
+                  {{ storyExpanded ? 'إخفاء' : 'اقرأ المزيد' }}
+                </VBtn>
+                <div v-if="s.keywords.length" class="d-flex flex-wrap ga-1 mt-3">
+                  <VChip v-for="k in s.keywords" :key="k" size="x-small" variant="tonal" color="secondary" label>#{{ k }}</VChip>
+                </div>
               </VCard>
 
               <!-- أبرز الإنجازات -->
@@ -464,6 +554,20 @@ function postComment() {
                 <p class="text-caption text-medium-emphasis mt-2 mb-0">انقر أي عمل لعرض تفاصيله.</p>
               </VCard>
             </template>
+
+            <!-- الشهادات والتعليم — خاص بالعرض الأكاديمي -->
+            <VCard v-if="viewMode === 'academic' && profile.certificates.length" class="pa-5 mb-4">
+              <h2 class="text-subtitle-1 font-weight-bold mb-3">
+                <VIcon icon="mdi-school-outline" color="info" size="20" class="me-1" />الشهادات والتعليم
+              </h2>
+              <div v-for="c in profile.certificates" :key="c.id" class="d-flex align-center ga-2 mb-2">
+                <VIcon icon="mdi-certificate-outline" color="info" size="18" />
+                <div class="flex-grow-1">
+                  <div class="text-body-2 font-weight-bold">{{ c.name }}</div>
+                  <div class="text-caption text-medium-emphasis">{{ c.issuer }} · {{ c.date }}</div>
+                </div>
+              </div>
+            </VCard>
           </VCol>
 
           <VCol cols="12" :md="viewMode === 'resume' ? 12 : 5">
@@ -475,13 +579,26 @@ function postComment() {
               <div v-for="tm in pub.visibleTestimonials" :key="tm.id" class="mb-3 pa-3 rounded-lg quote-tile">
                 <div class="d-flex align-center ga-2 mb-1">
                   <VAvatar size="28" color="secondary" variant="tonal"><span class="text-caption font-weight-bold">{{ tm.initial }}</span></VAvatar>
-                  <div>
+                  <div class="flex-grow-1">
                     <div class="text-body-2 font-weight-bold">{{ tm.author }}</div>
                     <div class="text-caption text-medium-emphasis">{{ tm.authorRole }}</div>
                   </div>
+                  <VBtn
+                    size="x-small"
+                    variant="text"
+                    :color="tm.visitorLiked ? 'error' : 'medium-emphasis'"
+                    :prepend-icon="tm.visitorLiked ? 'mdi-heart' : 'mdi-heart-outline'"
+                    class="no-print"
+                    @click="pub.toggleTestimonialLike(tm.id)"
+                  >
+                    {{ tm.likes || '' }}
+                  </VBtn>
                 </div>
                 <p class="text-body-2 mb-0">«{{ tm.excerpt }}»</p>
               </div>
+              <VBtn size="small" variant="tonal" color="amber" prepend-icon="mdi-comment-plus-outline" class="no-print" @click="testimonialDialog = true">
+                أوصِ به أنت أيضًا
+              </VBtn>
             </VCard>
 
             <!-- المهارات المختارة — نقاط القوة أولًا -->
@@ -616,6 +733,46 @@ function postComment() {
           </VCardActions>
         </VCard>
       </VDialog>
+      <!-- الشريط السفلي للجوال: إجراءات سريعة دائمة الحضور -->
+      <div v-if="isFound" class="pp-bottom-bar d-flex d-sm-none align-center ga-2 pa-2 no-print">
+        <VBtn v-if="s.contactEnabled" color="accent" size="small" class="flex-grow-1" prepend-icon="mdi-message-arrow-right-outline" @click="contactDialog = true">
+          تواصل
+        </VBtn>
+        <VBtn v-if="s.schedulingEnabled" size="small" variant="tonal" color="secondary" icon="mdi-calendar-clock-outline" @click="scheduleDialog = true" />
+        <VBtn
+          v-if="pub.canShow('followers')"
+          size="small"
+          variant="tonal"
+          :color="s.visitorFollows ? 'success' : 'primary'"
+          :icon="s.visitorFollows ? 'mdi-account-check-outline' : 'mdi-account-plus-outline'"
+          @click="pub.toggleFollow()"
+        />
+        <VBtn size="small" variant="tonal" color="primary" :icon="copied ? 'mdi-check' : 'mdi-share-variant-outline'" @click="share" />
+      </div>
+
+      <!-- توصية من زائر -->
+      <VDialog v-model="testimonialDialog" max-width="460">
+        <VCard class="pa-2">
+          <VCardTitle>أوصِ بـ{{ pub.displayName }}</VCardTitle>
+          <VCardText>
+            <template v-if="!tmSent">
+              <p class="text-caption text-medium-emphasis mb-3">عملت معه؟ شاركنا شهادتك — تظهر علنًا بعد موافقته.</p>
+              <VTextField v-model="tmAuthor" label="اسمك" class="mb-3" />
+              <VTextField v-model="tmRole" label="صفتك (زميل سابق، مدير...)" class="mb-3" />
+              <VTextarea v-model="tmText" label="توصيتك" rows="3" auto-grow counter="240" />
+            </template>
+            <VAlert v-else color="success" variant="tonal" border="start" density="compact">
+              شكرًا لتوصيتك! تظهر على الصفحة بعد موافقة صاحبها.
+            </VAlert>
+          </VCardText>
+          <VCardActions v-if="!tmSent">
+            <VSpacer />
+            <VBtn variant="text" @click="testimonialDialog = false">إلغاء</VBtn>
+            <VBtn color="amber" variant="flat" :disabled="!tmAuthor.trim() || !tmText.trim()" prepend-icon="mdi-send" @click="sendTestimonial">إرسال</VBtn>
+          </VCardActions>
+        </VCard>
+      </VDialog>
+
       <!-- تفاصيل عمل من المعرض -->
       <VDialog v-model="workDialog" max-width="520">
         <VCard v-if="activeWork" class="overflow-hidden">
@@ -777,6 +934,32 @@ function postComment() {
   position: sticky;
   top: 12px;
   z-index: 5;
+}
+
+/* إطار ملون حول الصورة الشخصية */
+.pp-ring {
+  border: 3px solid rgb(var(--v-theme-accent));
+}
+.pp-themed .pp-ring {
+  border-color: var(--pp-accent);
+}
+
+/* الشريط السفلي للجوال */
+.pp-bottom-bar {
+  position: fixed;
+  bottom: 0;
+  inset-inline: 0;
+  z-index: 6;
+  background: rgb(var(--v-theme-surface));
+  border-top: 1px solid rgba(128, 128, 128, 0.25);
+}
+.pp-themed .pp-bottom-bar {
+  background: var(--pp-surface);
+}
+@media (max-width: 599px) {
+  .pp-page {
+    padding-bottom: 64px;
+  }
 }
 
 /* نقطة الحالة المهنية */

@@ -193,14 +193,57 @@ describe('publicProfileStore', () => {
   })
 
   it('migrates old stored sessions to gain new appearance keys', () => {
-    // جلسة قديمة اختارت ثيمًا لكنها لا تعرف المفاتيح الأحدث
-    localStorage.setItem('publicProfile', JSON.stringify({ appearance: { theme: 'tech' } }))
+    // جلسة قديمة اختارت ثيمًا وتوصياتها لا تعرف حقلي الإعجاب
+    localStorage.setItem('publicProfile', JSON.stringify({
+      appearance: { theme: 'tech' },
+      testimonials: [{ id: 9, author: 'قديم', authorRole: 'زميل', initial: 'ق', excerpt: 'نص قديم', visible: true }],
+    }))
     setActivePinia(createPinia())
     const p = usePublicProfileStore()
     expect(p.state.appearance.theme).toBe('tech') // اختيار المستخدم محفوظ
     expect(p.state.appearance.experienceView).toBe('timeline') // والجديد يُلحق من الافتراضي
+    expect(p.state.appearance.font).toBe('default')
     expect(p.state.appearance.motion).toBe(true)
     expect(p.state.schedulingEnabled).toBe(true)
+    expect(p.state.testimonials[0].likes).toBe(0) // تطبيع الإعجابات
+    expect(p.state.testimonials[0].visitorLiked).toBe(false)
+  })
+
+  it('extends the custom theme with separate colors and saved templates', () => {
+    const p = usePublicProfileStore()
+    const plan = useAccountPlanStore()
+    plan.tier = 'free'
+    expect(p.saveThemeTemplate('قالبي')).toBe(false) // القوالب مع المخصص — احترافية فأعلى
+    plan.tier = 'pro'
+    p.setTheme('custom')
+    p.state.appearance.customBg = '#222222'
+    p.state.appearance.customText = '#FAFAFA'
+    expect(p.themeStyles!['--pp-bg']).toBe('#222222') // الألوان المنفصلة تصل للمتغيرات
+    expect(p.themeStyles!['--pp-text']).toBe('#FAFAFA')
+    expect(p.saveThemeTemplate('غروب')).toBe(true)
+    const t = p.state.savedThemes[0]
+    p.state.appearance.customBg = '#000000'
+    expect(p.applyThemeTemplate(t.id)).toBe(true) // التطبيق يسترجع ألوان القالب
+    expect(p.state.appearance.customBg).toBe('#222222')
+    p.removeThemeTemplate(t.id)
+    expect(p.state.savedThemes).toHaveLength(0)
+  })
+
+  it('lets visitors like and submit testimonials pending owner approval', () => {
+    const p = usePublicProfileStore()
+    const first = p.state.testimonials[0]
+    const likes = first.likes
+    p.toggleTestimonialLike(first.id)
+    expect(first.likes).toBe(likes + 1)
+    p.toggleTestimonialLike(first.id) // التبديل لا يضاعف العدّاد
+    expect(first.likes).toBe(likes)
+
+    const tm = p.submitTestimonial('عميل سابق', 'شريك مشروع', 'تعامل راقٍ والتزام كامل بالمواعيد.')
+    expect(tm.visible).toBe(false) // لا تظهر قبل موافقة صاحب الصفحة
+    expect(p.visibleTestimonials.some(x => x.id === tm.id)).toBe(false)
+    p.toggleTestimonial(tm.id)
+    expect(p.visibleTestimonials.some(x => x.id === tm.id)).toBe(true)
+    expect(useNotificationsStore().notifications[0].title).toContain('توصية')
   })
 
   it('reorders main sections within bounds and persists the order', async () => {

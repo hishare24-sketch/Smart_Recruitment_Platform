@@ -4,8 +4,8 @@ import PageHeader from '@/components/shared/PageHeader.vue'
 import { ACCOUNT_TIER_META, useAccountPlanStore } from '@/stores/AccountPlanStore'
 import { useNotificationsStore } from '@/stores/NotificationsStore'
 import { useProfileStore } from '@/stores/ProfileStore'
-import type { AvailabilityStatus, ProfileThemeKey } from '@/stores/PublicProfileStore'
-import { AVAILABILITY_META, PROFILE_THEMES, SECTION_TIER, usePublicProfileStore } from '@/stores/PublicProfileStore'
+import type { AvailabilityStatus, ProfileFont, ProfileThemeKey } from '@/stores/PublicProfileStore'
+import { AVAILABILITY_META, PROFILE_FONTS, PROFILE_THEMES, SECTION_TIER, usePublicProfileStore } from '@/stores/PublicProfileStore'
 import { useRoleProfilesStore } from '@/stores/RoleProfilesStore'
 
 // ===== إدارة الصفحة التعريفية — مقسومة لثلاث مهام واضحة: هويتي / محتواي / ظهوري =====
@@ -48,6 +48,25 @@ function pickTheme(key: ProfileThemeKey) {
 }
 
 const canCustomTheme = computed(() => plan.atLeast('pro'))
+
+/** حقول ألوان الثيم المخصص الأربعة */
+const CUSTOM_COLOR_FIELDS = [
+  { key: 'customColor', label: 'اللكنة (الأزرار والتمييز)' },
+  { key: 'customBg', label: 'الخلفية' },
+  { key: 'customSurface', label: 'البطاقات' },
+  { key: 'customText', label: 'النصوص' },
+] as const
+
+const FONT_CHOICES = Object.entries(PROFILE_FONTS).map(([value, f]) => ({ value: value as ProfileFont, title: f.label }))
+
+// حفظ الثيم الحالي كقالب
+const templateName = ref('')
+function saveTemplate() {
+  if (pub.saveThemeTemplate(templateName.value)) {
+    templateName.value = ''
+    saved()
+  }
+}
 
 /** المهارات المرشّحة كنقاط قوة — من المهارات المعروضة علنًا فقط */
 const featuredCandidates = computed(() => profile.skills.filter(sk => s.value.selectedSkillIds.includes(sk.id)))
@@ -177,7 +196,22 @@ function saved() {
               <VTextField v-model="s.tagline" label="عبارتك المؤثرة — جملة واحدة تلخّص رسالتك («أبني حلولًا تترك أثرًا»)" density="compact" prepend-inner-icon="mdi-format-quote-close" @blur="saved" />
             </VCol>
             <VCol cols="12">
-              <VTextarea v-model="s.story" label="قصتك المهنية — اكتبها بلغة النتائج لا الصفات" rows="4" auto-grow counter="600" @blur="saved" />
+              <VTextarea v-model="s.bioShort" label="نبذتك المختصرة — جملتان تظهران أولًا، والقصة الكاملة خلف «اقرأ المزيد»" rows="2" auto-grow counter="200" @blur="saved" />
+            </VCol>
+            <VCol cols="12">
+              <VTextarea v-model="s.story" label="قصتك المهنية الممتدة — اكتبها بلغة النتائج لا الصفات" rows="4" auto-grow counter="600" @blur="saved" />
+            </VCol>
+            <VCol cols="12">
+              <VCombobox
+                v-model="s.keywords"
+                label="كلمات مفتاحية (تظهر كهاشتاغات أسفل نبذتك)"
+                multiple
+                chips
+                closable-chips
+                density="compact"
+                hint="اكتب الكلمة واضغط Enter"
+                @update:model-value="saved"
+              />
             </VCol>
           </VRow>
         </VCard>
@@ -219,9 +253,27 @@ function saved() {
             <VCard class="pa-5 mb-4">
               <h2 class="text-subtitle-1 font-weight-bold mb-3"><VIcon icon="mdi-image-frame" size="20" color="secondary" class="me-1" />الصورة والحركة</h2>
               <p class="text-caption text-medium-emphasis mb-2">شكل صورتك الشخصية:</p>
-              <VBtnToggle :model-value="s.appearance.avatarShape" density="compact" mandatory variant="outlined" divided class="mb-4" @update:model-value="s.appearance.avatarShape = $event; saved()">
+              <VBtnToggle :model-value="s.appearance.avatarShape" density="compact" mandatory variant="outlined" divided class="mb-3" @update:model-value="s.appearance.avatarShape = $event; saved()">
                 <VBtn v-for="sh in AVATAR_SHAPES" :key="sh.value" :value="sh.value" size="small" :prepend-icon="sh.icon">{{ sh.label }}</VBtn>
               </VBtnToggle>
+              <VSwitch
+                v-model="s.appearance.avatarRing"
+                label="إطار ملون حول الصورة (بلون اللكنة)"
+                color="accent"
+                hide-details
+                density="compact"
+                class="mb-3"
+                @update:model-value="saved"
+              />
+              <VSelect
+                v-model="s.appearance.font"
+                :items="FONT_CHOICES"
+                label="خط الصفحة"
+                density="compact"
+                prepend-inner-icon="mdi-format-font"
+                class="mb-3"
+                @update:model-value="saved"
+              />
               <p class="text-caption text-medium-emphasis mb-2">نمط عرض الخبرات:</p>
               <VBtnToggle :model-value="s.appearance.experienceView" density="compact" mandatory variant="outlined" divided class="mb-4" @update:model-value="s.appearance.experienceView = $event; saved()">
                 <VBtn value="timeline" size="small" prepend-icon="mdi-timeline-clock-outline">محور زمني</VBtn>
@@ -286,8 +338,8 @@ function saved() {
                 </VCol>
               </VRow>
               <VDivider class="my-3" />
-              <!-- الثيم المخصص — ميزة الاحترافية -->
-              <div class="d-flex align-center ga-2 flex-wrap">
+              <!-- الثيم المخصص الموسع — ميزة الاحترافية -->
+              <div class="d-flex align-center ga-2 flex-wrap mb-2">
                 <VChip
                   :color="s.appearance.theme === 'custom' ? 'primary' : 'surface-variant'"
                   :variant="s.appearance.theme === 'custom' ? 'flat' : 'outlined'"
@@ -295,18 +347,35 @@ function saved() {
                   :disabled="!canCustomTheme"
                   @click="pickTheme('custom')"
                 >
-                  <VIcon icon="mdi-eyedropper-variant" start size="14" />ثيم مخصص بلوني
+                  <VIcon icon="mdi-eyedropper-variant" start size="14" />ثيم مخصص بألواني
                 </VChip>
-                <input
-                  v-if="canCustomTheme"
-                  v-model="s.appearance.customColor"
-                  type="color"
-                  class="color-input"
-                  :disabled="s.appearance.theme !== 'custom'"
-                  @change="saved"
-                >
                 <VChip v-if="!canCustomTheme" size="x-small" :color="ACCOUNT_TIER_META.pro.color" variant="tonal" label prepend-icon="mdi-lock-outline">
                   {{ ACCOUNT_TIER_META.pro.label }}
+                </VChip>
+              </div>
+              <template v-if="canCustomTheme && s.appearance.theme === 'custom'">
+                <div v-for="f in CUSTOM_COLOR_FIELDS" :key="f.key" class="d-flex align-center ga-2 py-1">
+                  <input v-model="s.appearance[f.key]" type="color" class="color-input" @change="saved">
+                  <span class="text-body-2">{{ f.label }}</span>
+                </div>
+                <!-- حفظ القالب وتطبيق المحفوظ -->
+                <div class="d-flex align-center ga-2 mt-2">
+                  <VTextField v-model="templateName" label="اسم القالب" density="compact" hide-details />
+                  <VBtn size="small" variant="tonal" color="primary" prepend-icon="mdi-content-save-outline" @click="saveTemplate">حفظ كقالب</VBtn>
+                </div>
+              </template>
+              <div v-if="s.savedThemes.length" class="d-flex flex-wrap ga-2 mt-3">
+                <VChip
+                  v-for="t in s.savedThemes"
+                  :key="t.id"
+                  size="small"
+                  variant="outlined"
+                  label
+                  closable
+                  @click="pub.applyThemeTemplate(t.id) && saved()"
+                  @click:close="pub.removeThemeTemplate(t.id)"
+                >
+                  <span class="theme-dot me-1" :style="{ background: t.accent }" />{{ t.name }}
                 </VChip>
               </div>
             </VCard>

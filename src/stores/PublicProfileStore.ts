@@ -40,6 +40,9 @@ export interface Testimonial {
   initial: string
   excerpt: string
   visible: boolean
+  /** إعجابات الزوار بالتوصية */
+  likes: number
+  visitorLiked: boolean
 }
 
 export interface ContactLinks {
@@ -116,18 +119,18 @@ function readableOn(hex: string): string {
   return lum > 150 ? '#101418' : '#FFFFFF'
 }
 
-function customPalette(accent: string): ProfileThemePalette {
+function customPalette(a: ProfileAppearance): ProfileThemePalette {
   return {
     label: 'المخصص',
     hint: 'لونك أنت',
-    bg: '#101418',
-    surface: '#1A2027',
-    text: '#ECEFF3',
-    muted: '#9AA6B2',
-    accent,
-    onAccent: readableOn(accent),
-    heroFrom: '#12161C',
-    heroTo: `${accent}59`,
+    bg: a.customBg,
+    surface: a.customSurface,
+    text: a.customText,
+    muted: `${a.customText}99`,
+    accent: a.customColor,
+    onAccent: readableOn(a.customColor),
+    heroFrom: a.customBg,
+    heroTo: `${a.customColor}59`,
   }
 }
 
@@ -151,15 +154,42 @@ export const AVAILABILITY_META: Record<AvailabilityStatus, { label: string, colo
   unavailable: { label: 'غير متاح حاليًا', color: 'error' },
 }
 
+/** خطوط الصفحة — تُحمَّل من Google Fonts عند الاختيار */
+export const PROFILE_FONTS = {
+  default: { label: 'خط المنصة', family: '' },
+  tajawal: { label: 'Tajawal — عصري', family: 'Tajawal' },
+  cairo: { label: 'Cairo — واضح', family: 'Cairo' },
+  almarai: { label: 'Almarai — ناعم', family: 'Almarai' },
+  amiri: { label: 'Amiri — كلاسيكي', family: 'Amiri' },
+} as const
+export type ProfileFont = keyof typeof PROFILE_FONTS
+
 export interface ProfileAppearance {
   theme: ProfileThemeKey
-  /** لون الثيم المخصص (hex) */
+  /** ألوان الثيم المخصص (hex): اللكنة والخلفية والبطاقات والنص */
   customColor: string
+  customBg: string
+  customSurface: string
+  customText: string
+  /** خط الصفحة — مستقل عن الثيم */
+  font: ProfileFont
   avatarShape: AvatarShape
-  /** تأثيرات الحركة (تلاشي/نبض) — قابلة للإيقاف */
+  /** إطار ملون حول الصورة الشخصية بلون اللكنة */
+  avatarRing: boolean
+  /** تأثيرات الحركة (تلاشي/نبض/عدّاد تصاعدي) — قابلة للإيقاف */
   motion: boolean
   /** نمط عرض الخبرات: محور زمني تفاعلي أو قائمة سردية */
   experienceView: 'timeline' | 'list'
+}
+
+/** قالب ثيم محفوظ من المستخدم (ميزة الاحترافية مع الثيم المخصص) */
+export interface SavedTheme {
+  id: number
+  name: string
+  accent: string
+  bg: string
+  surface: string
+  text: string
 }
 
 export interface Availability {
@@ -198,10 +228,16 @@ interface PublicProfileState {
   location: string
   /** السرد الممتد — قصة المستخدم بلغة النتائج لا لغة البيانات */
   story: string
+  /** النبذة المختصرة — جملتان تظهران قبل «اقرأ المزيد» */
+  bioShort: string
+  /** كلمات مفتاحية تظهر كهاشتاغات أسفل النبذة */
+  keywords: string[]
   /** العبارة المؤثرة — جملة قصيرة تلخّص الرسالة («أبني حلولًا تترك أثرًا») */
   tagline: string
   availability: Availability
   appearance: ProfileAppearance
+  /** قوالب ثيمات حفظها المستخدم */
+  savedThemes: SavedTheme[]
   /** ترتيب أقسام العمود الرئيسي كما يظهر للزوار */
   sectionOrder: OrderableSection[]
   /** المهارات الرئيسية «نقاط القوة» — حتى 5 مهارات تُبرز في أعلى المهارات */
@@ -239,9 +275,12 @@ const seed: PublicProfileState = {
   publicHeadline: 'مطوّر واجهات أمامية أول — Vue.js / TypeScript',
   location: 'الرياض، السعودية',
   story: 'أبني واجهات ويب سريعة وقابلة للتوسّع منذ خمس سنوات. أؤمن أن أفضل واجهة هي التي لا يلاحظها المستخدم — تعمل فحسب. عملت على منتجات وصلت لآلاف المستخدمين، وأبحث اليوم عن فريق يصنع منتجًا رقميًا مؤثرًا أنمو معه وأضيف إليه.',
+  bioShort: 'مطوّر واجهات يحوّل الأفكار إلى منتجات يستخدمها الآلاف — خمس سنوات من البناء بلا توقف.',
+  keywords: ['تطوير_ويب', 'Vue', 'قيادة_تقنية'],
   tagline: 'أبني حلولًا تقنية تترك أثرًا',
   availability: { status: 'available', message: 'منفتح على فرص Vue/TypeScript — عن بُعد أو في الرياض' },
-  appearance: { theme: 'platform', customColor: '#7B2FBE', avatarShape: 'circle', motion: true, experienceView: 'timeline' },
+  appearance: { theme: 'platform', customColor: '#7B2FBE', customBg: '#101418', customSurface: '#1A2027', customText: '#ECEFF3', font: 'default', avatarShape: 'circle', avatarRing: true, motion: true, experienceView: 'timeline' },
+  savedThemes: [],
   sectionOrder: ['story', 'achievements', 'experience', 'portfolio'],
   featuredSkillIds: [1, 2],
   contactEnabled: true,
@@ -263,9 +302,9 @@ const seed: PublicProfileState = {
     { id: 2, title: 'نظام تصميم مفتوح المصدر', desc: 'مكتبة مكوّنات RTL موثّقة بالكامل تستخدمها ثلاث شركات ناشئة.', tag: 'Design System' },
   ],
   testimonials: [
-    { id: 1, author: 'خالد العتيبي', authorRole: 'مدير هندسة سابق', initial: 'خ', excerpt: 'من أكثر المطورين الذين عملت معهم انضباطًا بالتسليم — يحوّل الغموض إلى خطة والخطة إلى منتج.', visible: true },
-    { id: 2, author: 'سارة الشمري', authorRole: 'زميلة عمل', initial: 'س', excerpt: 'مراجعاته للكود دروس مصغّرة؛ رفع مستوى الفريق كله خلال أشهر.', visible: true },
-    { id: 3, author: 'م. خالد الشمري', authorRole: 'مقيّم تقني معتمد', initial: 'خ', excerpt: 'اجتاز تقييمًا تقنيًا معمّقًا بأداء يضعه في أعلى 10% من المرشحين الذين قابلتهم.', visible: false },
+    { id: 1, author: 'خالد العتيبي', authorRole: 'مدير هندسة سابق', initial: 'خ', excerpt: 'من أكثر المطورين الذين عملت معهم انضباطًا بالتسليم — يحوّل الغموض إلى خطة والخطة إلى منتج.', visible: true, likes: 4, visitorLiked: false },
+    { id: 2, author: 'سارة الشمري', authorRole: 'زميلة عمل', initial: 'س', excerpt: 'مراجعاته للكود دروس مصغّرة؛ رفع مستوى الفريق كله خلال أشهر.', visible: true, likes: 2, visitorLiked: false },
+    { id: 3, author: 'م. خالد الشمري', authorRole: 'مقيّم تقني معتمد', initial: 'خ', excerpt: 'اجتاز تقييمًا تقنيًا معمّقًا بأداء يضعه في أعلى 10% من المرشحين الذين قابلتهم.', visible: false, likes: 0, visitorLiked: false },
   ],
   views: 128,
   shares: 9,
@@ -292,6 +331,9 @@ function load(): PublicProfileState {
       ...storedOrder.filter((k): k is OrderableSection => (ORDERABLE_SECTIONS as readonly string[]).includes(k)),
       ...ORDERABLE_SECTIONS.filter(k => !storedOrder.includes(k)),
     ]
+    // التوصيات المخزنة قديمًا لا تعرف حقلي الإعجاب — تُطبَّع بأصفار
+    const testimonials = ((stored.testimonials ?? base.testimonials) as Testimonial[])
+      .map(t => ({ ...t, likes: t.likes ?? 0, visitorLiked: t.visitorLiked ?? false }))
     return {
       ...base,
       ...stored,
@@ -300,6 +342,7 @@ function load(): PublicProfileState {
       availability: { ...base.availability, ...(stored.availability ?? {}) },
       appearance: { ...base.appearance, ...(stored.appearance ?? {}) },
       sectionOrder,
+      testimonials,
     }
   }
   catch {
@@ -361,7 +404,7 @@ export const usePublicProfileStore = defineStore('publicProfile', () => {
     if (a.theme === 'platform')
       return null
     const p = a.theme === 'custom'
-      ? customPalette(a.customColor)
+      ? customPalette(a)
       : a.theme === 'smart'
         ? smartPalette(systemDark.value, hourOfDay.value)
         : PROFILE_THEMES[a.theme]
@@ -383,6 +426,35 @@ export const usePublicProfileStore = defineStore('publicProfile', () => {
       return false
     state.value.appearance.theme = key
     return true
+  }
+
+  /** خط الصفحة المختار (اسم عائلة Google Fonts) — null يعني خط المنصة */
+  const fontFamily = computed(() => PROFILE_FONTS[state.value.appearance.font].family || null)
+
+  // —— قوالب الثيم المحفوظة (مع الثيم المخصص — احترافية فأعلى) ——
+  function saveThemeTemplate(name: string): boolean {
+    if (!useAccountPlanStore().atLeast('pro'))
+      return false
+    const a = state.value.appearance
+    state.value.savedThemes.push({
+      id: nextId++,
+      name: name.trim() || `قالبي ${state.value.savedThemes.length + 1}`,
+      accent: a.customColor,
+      bg: a.customBg,
+      surface: a.customSurface,
+      text: a.customText,
+    })
+    return true
+  }
+  function applyThemeTemplate(id: number): boolean {
+    const t = state.value.savedThemes.find(x => x.id === id)
+    if (!t || !setTheme('custom'))
+      return false
+    Object.assign(state.value.appearance, { customColor: t.accent, customBg: t.bg, customSurface: t.surface, customText: t.text })
+    return true
+  }
+  function removeThemeTemplate(id: number) {
+    state.value.savedThemes = state.value.savedThemes.filter(t => t.id !== id)
   }
 
   /** نقاط القوة: المهارات الرئيسية المميّزة من بين المهارات المعروضة علنًا */
@@ -463,6 +535,38 @@ export const usePublicProfileStore = defineStore('publicProfile', () => {
     const t = state.value.testimonials.find(x => x.id === id)
     if (t)
       t.visible = !t.visible
+  }
+  /** إعجاب زائر بتوصية — تبديل لا يضاعف العدّاد */
+  function toggleTestimonialLike(id: number) {
+    const t = state.value.testimonials.find(x => x.id === id)
+    if (!t)
+      return
+    t.visitorLiked = !t.visitorLiked
+    t.likes += t.visitorLiked ? 1 : -1
+  }
+  /** زائر يكتب توصية — تدخل مخفية حتى يوافق صاحب الصفحة (نفس دستور «بموافقتي») */
+  function submitTestimonial(author: string, authorRole: string, excerpt: string): Testimonial {
+    const tm: Testimonial = {
+      id: nextId++,
+      author: author.trim(),
+      authorRole: authorRole.trim() || 'زائر',
+      initial: author.trim().charAt(0),
+      excerpt: excerpt.trim(),
+      visible: false,
+      likes: 0,
+      visitorLiked: false,
+    }
+    state.value.testimonials.push(tm)
+    useNotificationsStore().push({
+      icon: 'mdi-comment-quote-outline',
+      color: 'warning',
+      title: 'توصية جديدة بانتظار موافقتك',
+      body: `${tm.author}: ${tm.excerpt.slice(0, 60)}${tm.excerpt.length > 60 ? '…' : ''}`,
+      category: 'endorsement',
+      actionTo: '/settings?tab=publicProfile',
+      actionLabel: 'مراجعة التوصية',
+    })
+    return tm
   }
   function toggleSkill(skillId: number) {
     const list = state.value.selectedSkillIds
@@ -627,8 +731,10 @@ export const usePublicProfileStore = defineStore('publicProfile', () => {
   return {
     state, displayName,
     verifiedFacts, publicSkills, visibleTestimonials, roleBadges,
-    availabilityMeta, themeStyles, setTheme,
+    availabilityMeta, themeStyles, setTheme, fontFamily,
+    saveThemeTemplate, applyThemeTemplate, removeThemeTemplate,
     featuredSkills, toggleFeaturedSkill, moveSection,
+    toggleTestimonialLike, submitTestimonial,
     recordView, recordShare,
     addAchievement, removeAchievement,
     addPortfolio, removePortfolio,
