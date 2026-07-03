@@ -222,6 +222,11 @@ function saved() {
               <VBtnToggle :model-value="s.appearance.avatarShape" density="compact" mandatory variant="outlined" divided class="mb-4" @update:model-value="s.appearance.avatarShape = $event; saved()">
                 <VBtn v-for="sh in AVATAR_SHAPES" :key="sh.value" :value="sh.value" size="small" :prepend-icon="sh.icon">{{ sh.label }}</VBtn>
               </VBtnToggle>
+              <p class="text-caption text-medium-emphasis mb-2">نمط عرض الخبرات:</p>
+              <VBtnToggle :model-value="s.appearance.experienceView" density="compact" mandatory variant="outlined" divided class="mb-4" @update:model-value="s.appearance.experienceView = $event; saved()">
+                <VBtn value="timeline" size="small" prepend-icon="mdi-timeline-clock-outline">محور زمني</VBtn>
+                <VBtn value="list" size="small" prepend-icon="mdi-format-list-text">قائمة سردية</VBtn>
+              </VBtnToggle>
               <VSwitch
                 v-model="s.appearance.motion"
                 label="تأثيرات الحركة (تلاشي البطاقات ونبض الحالة)"

@@ -158,6 +158,8 @@ export interface ProfileAppearance {
   avatarShape: AvatarShape
   /** تأثيرات الحركة (تلاشي/نبض) — قابلة للإيقاف */
   motion: boolean
+  /** نمط عرض الخبرات: محور زمني تفاعلي أو قائمة سردية */
+  experienceView: 'timeline' | 'list'
 }
 
 export interface Availability {
@@ -239,7 +241,7 @@ const seed: PublicProfileState = {
   story: 'أبني واجهات ويب سريعة وقابلة للتوسّع منذ خمس سنوات. أؤمن أن أفضل واجهة هي التي لا يلاحظها المستخدم — تعمل فحسب. عملت على منتجات وصلت لآلاف المستخدمين، وأبحث اليوم عن فريق يصنع منتجًا رقميًا مؤثرًا أنمو معه وأضيف إليه.',
   tagline: 'أبني حلولًا تقنية تترك أثرًا',
   availability: { status: 'available', message: 'منفتح على فرص Vue/TypeScript — عن بُعد أو في الرياض' },
-  appearance: { theme: 'platform', customColor: '#7B2FBE', avatarShape: 'circle', motion: true },
+  appearance: { theme: 'platform', customColor: '#7B2FBE', avatarShape: 'circle', motion: true, experienceView: 'timeline' },
   sectionOrder: ['story', 'achievements', 'experience', 'portfolio'],
   featuredSkillIds: [1, 2],
   contactEnabled: true,

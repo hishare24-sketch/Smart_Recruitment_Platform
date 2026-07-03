@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import type { UserRole } from '@/interfaces/Auth'
-import type { PublicSections } from '@/stores/PublicProfileStore'
+import type { PortfolioItem, PublicSections } from '@/stores/PublicProfileStore'
 import type { ProofType, Skill } from '@/stores/ProfileStore'
 import { ROLE_META } from '@/services/roles'
 import { useAccountPlanStore } from '@/stores/AccountPlanStore'
@@ -136,6 +136,24 @@ function sendSchedule() {
     meetName.value = ''
     meetTopic.value = ''
   }, 1600)
+}
+
+// —— معرض الأعمال: تصنيف وفلترة + نافذة تفاصيل + هوية بصرية لكل مشروع ——
+const activeTag = ref('')
+const portfolioTags = computed(() => [...new Set(s.value.portfolio.map(p => p.tag))])
+const filteredPortfolio = computed(() =>
+  activeTag.value ? s.value.portfolio.filter(p => p.tag === activeTag.value) : s.value.portfolio,
+)
+/** تدرّج لوني ثابت مشتق من وسم المشروع — هوية بصرية بلا صور حقيقية */
+function tagGradient(tag: string) {
+  const h = [...tag].reduce((a, c) => a + c.charCodeAt(0), 0) % 360
+  return `linear-gradient(135deg, hsl(${h}, 55%, 32%), hsl(${(h + 45) % 360}, 60%, 22%))`
+}
+const workDialog = ref(false)
+const activeWork = ref<PortfolioItem | null>(null)
+function openWork(p: PortfolioItem) {
+  activeWork.value = p
+  workDialog.value = true
 }
 
 // —— مشاركة ——
@@ -383,11 +401,21 @@ function postComment() {
                 <h2 class="text-subtitle-1 font-weight-bold mb-3">
                   <VIcon icon="mdi-briefcase-outline" color="secondary" size="20" class="me-1" />الخبرات
                 </h2>
-                <div v-for="e in profile.experiences" :key="e.id" class="mb-3">
-                  <div class="text-body-2 font-weight-bold">{{ e.title }} — {{ e.company }}</div>
-                  <div class="text-caption text-medium-emphasis">{{ e.period }}</div>
-                  <p class="text-body-2 mb-0">{{ e.desc }}</p>
-                </div>
+                <!-- المحور الزمني التفاعلي (السرد المهني) أو القائمة السردية — حسب اختيار صاحب الصفحة -->
+                <VTimeline v-if="s.appearance.experienceView === 'timeline'" side="end" density="compact" truncate-line="both">
+                  <VTimelineItem v-for="e in profile.experiences" :key="e.id" dot-color="secondary" size="x-small">
+                    <VChip size="x-small" color="secondary" variant="tonal" label class="mb-1" prepend-icon="mdi-calendar-range-outline">{{ e.period }}</VChip>
+                    <div class="text-body-2 font-weight-bold">{{ e.title }} — {{ e.company }}</div>
+                    <p class="text-body-2 mb-0">{{ e.desc }}</p>
+                  </VTimelineItem>
+                </VTimeline>
+                <template v-else>
+                  <div v-for="e in profile.experiences" :key="e.id" class="mb-3">
+                    <div class="text-body-2 font-weight-bold">{{ e.title }} — {{ e.company }}</div>
+                    <div class="text-caption text-medium-emphasis">{{ e.period }}</div>
+                    <p class="text-body-2 mb-0">{{ e.desc }}</p>
+                  </div>
+                </template>
               </VCard>
 
               <!-- معرض الأعمال -->
@@ -395,18 +423,45 @@ function postComment() {
                 <h2 class="text-subtitle-1 font-weight-bold mb-3">
                   <VIcon icon="mdi-palette-outline" color="accent" size="20" class="me-1" />معرض الأعمال
                 </h2>
+                <!-- فلترة حسب التصنيف -->
+                <div v-if="portfolioTags.length > 1" class="d-flex flex-wrap ga-2 mb-3 no-print">
+                  <VChip
+                    size="small"
+                    :color="activeTag === '' ? 'accent' : 'surface-variant'"
+                    :variant="activeTag === '' ? 'flat' : 'outlined'"
+                    label
+                    @click="activeTag = ''"
+                  >
+                    الكل ({{ s.portfolio.length }})
+                  </VChip>
+                  <VChip
+                    v-for="tg in portfolioTags"
+                    :key="tg"
+                    size="small"
+                    :color="activeTag === tg ? 'accent' : 'surface-variant'"
+                    :variant="activeTag === tg ? 'flat' : 'outlined'"
+                    label
+                    @click="activeTag = tg"
+                  >
+                    {{ tg }}
+                  </VChip>
+                </div>
                 <VRow dense>
-                  <VCol v-for="p in s.portfolio" :key="p.id" cols="12" sm="6">
-                    <VCard variant="outlined" class="pa-3 h-100">
-                      <VChip size="x-small" color="accent" variant="tonal" label class="mb-2">{{ p.tag }}</VChip>
-                      <div class="text-body-2 font-weight-bold mb-1">{{ p.title }}</div>
-                      <p class="text-caption text-medium-emphasis mb-2">{{ p.desc }}</p>
-                      <VBtn v-if="p.link" size="x-small" variant="tonal" color="primary" prepend-icon="mdi-open-in-new" :href="p.link" target="_blank" rel="noopener">
-                        عرض المشروع
-                      </VBtn>
+                  <VCol v-for="p in filteredPortfolio" :key="p.id" cols="12" sm="6">
+                    <VCard variant="outlined" class="h-100 overflow-hidden cursor-pointer work-card" @click="openWork(p)">
+                      <!-- هوية بصرية مشتقة من الوسم -->
+                      <div class="work-banner d-flex align-center justify-center" :style="{ background: tagGradient(p.tag) }">
+                        <VIcon icon="mdi-folder-image-outline" color="white" size="28" class="opacity-75" />
+                      </div>
+                      <div class="pa-3">
+                        <VChip size="x-small" color="accent" variant="tonal" label class="mb-2">{{ p.tag }}</VChip>
+                        <div class="text-body-2 font-weight-bold mb-1">{{ p.title }}</div>
+                        <p class="text-caption text-medium-emphasis mb-0 work-desc">{{ p.desc }}</p>
+                      </div>
                     </VCard>
                   </VCol>
                 </VRow>
+                <p class="text-caption text-medium-emphasis mt-2 mb-0">انقر أي عمل لعرض تفاصيله.</p>
               </VCard>
             </template>
           </VCol>
@@ -561,6 +616,29 @@ function postComment() {
           </VCardActions>
         </VCard>
       </VDialog>
+      <!-- تفاصيل عمل من المعرض -->
+      <VDialog v-model="workDialog" max-width="520">
+        <VCard v-if="activeWork" class="overflow-hidden">
+          <div class="work-banner-lg d-flex align-end pa-4" :style="{ background: tagGradient(activeWork.tag) }">
+            <div>
+              <VChip size="x-small" color="white" variant="outlined" label class="mb-1">{{ activeWork.tag }}</VChip>
+              <h2 class="text-h6 font-weight-bold text-white mb-0">{{ activeWork.title }}</h2>
+            </div>
+          </div>
+          <VCardText>
+            <p class="text-body-2" style="line-height: 1.9">{{ activeWork.desc }}</p>
+            <VBtn v-if="activeWork.link" size="small" variant="tonal" color="primary" prepend-icon="mdi-open-in-new" :href="activeWork.link" target="_blank" rel="noopener">
+              زيارة المشروع
+            </VBtn>
+            <p v-else class="text-caption text-medium-emphasis mb-0">لا رابط عامًا لهذا العمل.</p>
+          </VCardText>
+          <VCardActions>
+            <VSpacer />
+            <VBtn variant="text" @click="workDialog = false">إغلاق</VBtn>
+          </VCardActions>
+        </VCard>
+      </VDialog>
+
       <!-- تفاصيل إثباتات مهارة -->
       <VDialog v-model="proofsDialog" max-width="440">
         <VCard v-if="proofsSkill" class="pa-2">
@@ -672,6 +750,26 @@ function postComment() {
 
 .skill-row + .skill-row {
   border-top: 1px solid rgba(128, 128, 128, 0.15);
+}
+
+/* معرض الأعمال: لافتة بصرية لكل مشروع + قصّ الوصف */
+.work-banner {
+  height: 56px;
+}
+.work-banner-lg {
+  height: 96px;
+}
+.work-card {
+  transition: transform 0.2s ease;
+}
+.pp-motion .work-card:hover {
+  transform: translateY(-3px);
+}
+.work-desc {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 /* شريط التنقّل اللاصق */

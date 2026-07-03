@@ -192,6 +192,17 @@ describe('publicProfileStore', () => {
     expect(p.state.featuredSkillIds).not.toContain(1)
   })
 
+  it('migrates old stored sessions to gain new appearance keys', () => {
+    // جلسة قديمة اختارت ثيمًا لكنها لا تعرف المفاتيح الأحدث
+    localStorage.setItem('publicProfile', JSON.stringify({ appearance: { theme: 'tech' } }))
+    setActivePinia(createPinia())
+    const p = usePublicProfileStore()
+    expect(p.state.appearance.theme).toBe('tech') // اختيار المستخدم محفوظ
+    expect(p.state.appearance.experienceView).toBe('timeline') // والجديد يُلحق من الافتراضي
+    expect(p.state.appearance.motion).toBe(true)
+    expect(p.state.schedulingEnabled).toBe(true)
+  })
+
   it('reorders main sections within bounds and persists the order', async () => {
     const p = usePublicProfileStore()
     expect(p.state.sectionOrder[0]).toBe('story')
