@@ -112,20 +112,27 @@ export interface ProfileThemePalette {
 export const PROFILE_THEMES: Record<Exclude<ProfileThemeKey, 'platform' | 'smart' | 'custom'>, ProfileThemePalette> = {
   professional: { label: 'الاحترافي', hint: 'أزرق داكن هادئ — مستشارون ومدراء', bg: '#F4F7FB', surface: '#FFFFFF', text: '#1A2433', muted: '#5A6B7F', accent: '#1A365D', onAccent: '#FFFFFF', heroFrom: '#1A365D', heroTo: '#2C5282' },
   tech: { label: 'التقني', hint: 'أزرق كهربائي على داكن — مطورون ومهندسون', bg: '#0D1B2A', surface: '#152638', text: '#E3F2FA', muted: '#8FA9BC', accent: '#00B4D8', onAccent: '#04222D', heroFrom: '#0D1B2A', heroTo: '#0A3552' },
-  creative: { label: 'الإبداعي', hint: 'أرجواني ووردي — مصممون وفنانون', bg: '#FBF7FF', surface: '#FFFFFF', text: '#2A1B3D', muted: '#7B6B8F', accent: '#7B2FBE', onAccent: '#FFFFFF', heroFrom: '#7B2FBE', heroTo: '#FF6B6B' },
+  creative: { label: 'الإبداعي', hint: 'أرجواني ووردي — مصممون وفنانون', bg: '#FBF7FF', surface: '#FFFFFF', text: '#2A1B3D', muted: '#675879', accent: '#7B2FBE', onAccent: '#FFFFFF', heroFrom: '#7B2FBE', heroTo: '#FF6B6B' },
   innovator: { label: 'المبتكر', hint: 'ذهبي على أسود — روّاد أعمال', bg: '#141414', surface: '#1F1F1F', text: '#F5EFDC', muted: '#A79E85', accent: '#FFD700', onAccent: '#1A1A1A', heroFrom: '#1A1A1A', heroTo: '#4A3B00' },
-  serene: { label: 'الهادئ', hint: 'أخضر زيتي وبيج — مدربون ومستشارون', bg: '#F5F5DC', surface: '#FFFFFF', text: '#2B3A2C', muted: '#6E7B67', accent: '#2E7D32', onAccent: '#FFFFFF', heroFrom: '#2E7D32', heroTo: '#557C46' },
+  serene: { label: 'الهادئ', hint: 'أخضر زيتي وبيج — مدربون ومستشارون', bg: '#F5F5DC', surface: '#FFFFFF', text: '#2B3A2C', muted: '#59664F', accent: '#2E7D32', onAccent: '#FFFFFF', heroFrom: '#2E7D32', heroTo: '#557C46' },
   dark: { label: 'الداكن', hint: 'أسود متدرج — عشاق الوضع الليلي', bg: '#121212', surface: '#1E1E1E', text: '#EDEDED', muted: '#9A9A9A', accent: '#90CAF9', onAccent: '#0B1620', heroFrom: '#161616', heroTo: '#2A2A2A' },
   light: { label: 'الفاتح', hint: 'أبيض وأزرق خفيف — الخيار الكلاسيكي', bg: '#F7FAFC', surface: '#FFFFFF', text: '#2D3748', muted: '#718096', accent: '#3182CE', onAccent: '#FFFFFF', heroFrom: '#2B6CB0', heroTo: '#4299E1' },
 }
 
-/** نص داكن أم فاتح فوق لون معيّن؟ (استدلال إضاءة بسيط) */
-function readableOn(hex: string): string {
+/** إضاءة YIQ للون (0-255) */
+function yiq(hex: string): number {
   const n = hex.replace('#', '')
   if (n.length !== 6)
-    return '#FFFFFF'
-  const lum = 0.299 * parseInt(n.slice(0, 2), 16) + 0.587 * parseInt(n.slice(2, 4), 16) + 0.114 * parseInt(n.slice(4, 6), 16)
-  return lum > 150 ? '#101418' : '#FFFFFF'
+    return 0
+  return 0.299 * parseInt(n.slice(0, 2), 16) + 0.587 * parseInt(n.slice(2, 4), 16) + 0.114 * parseInt(n.slice(4, 6), 16)
+}
+
+/**
+ * نص داكن أم فاتح فوق لون معيّن؟ العتبة القياسية 128 —
+ * الألوان متوسطة الإضاءة (سماوي/كهرماني) تأخذ نصًا داكنًا وإلا هبط التباين دون 3:1.
+ */
+function readableOn(hex: string): string {
+  return yiq(hex) >= 128 ? '#101418' : '#FFFFFF'
 }
 
 function customPalette(a: ProfileAppearance): ProfileThemePalette {
@@ -135,7 +142,7 @@ function customPalette(a: ProfileAppearance): ProfileThemePalette {
     bg: a.customBg,
     surface: a.customSurface,
     text: a.customText,
-    muted: `${a.customText}99`,
+    muted: `${a.customText}CC`,
     accent: a.customColor,
     onAccent: readableOn(a.customColor),
     heroFrom: a.customBg,
@@ -413,19 +420,26 @@ export const usePublicProfileStore = defineStore('publicProfile', () => {
   }
   catch { /* بيئات بلا matchMedia (اختبارات) — يبقى الافتراضي داكنًا */ }
 
+  /** اللوحة الفعّالة للثيم المختار — null يعني «اتبع ثيم المنصة» */
+  const activePalette = computed<ProfileThemePalette | null>(() => {
+    const a = state.value.appearance
+    if (a.theme === 'platform')
+      return null
+    return a.theme === 'custom'
+      ? customPalette(a)
+      : a.theme === 'smart'
+        ? smartPalette(systemDark.value, hourOfDay.value)
+        : PROFILE_THEMES[a.theme]
+  })
+
   /**
    * متغيرات CSS للثيم المختار — null يعني «اتبع ثيم المنصة» (السلوك الافتراضي القديم).
    * تُحقن في جذر الصفحة العامة فتصبغ الخلفية والبطاقات والألوان دون المساس بثيم التطبيق.
    */
   const themeStyles = computed<Record<string, string> | null>(() => {
-    const a = state.value.appearance
-    if (a.theme === 'platform')
+    const p = activePalette.value
+    if (!p)
       return null
-    const p = a.theme === 'custom'
-      ? customPalette(a)
-      : a.theme === 'smart'
-        ? smartPalette(systemDark.value, hourOfDay.value)
-        : PROFILE_THEMES[a.theme]
     return {
       '--pp-bg': p.bg,
       '--pp-surface': p.surface,
@@ -436,6 +450,15 @@ export const usePublicProfileStore = defineStore('publicProfile', () => {
       '--pp-hero-from': p.heroFrom,
       '--pp-hero-to': p.heroTo,
     }
+  })
+
+  /**
+   * هل خلفية الثيم فاتحة؟ تُفعّل remap لألوان Vuetify الساطعة (زمردي/ليموني)
+   * التي صُمّمت لثيم المنصة الداكن وتفقد تباينها فوق البطاقات البيضاء.
+   */
+  const themeIsLight = computed(() => {
+    const p = activePalette.value
+    return !!p && yiq(p.bg) >= 128
   })
 
   /** الثيمات الجاهزة للجميع؛ الثيم المخصص ميزة «الاحترافية» فأعلى */
@@ -774,7 +797,7 @@ export const usePublicProfileStore = defineStore('publicProfile', () => {
   return {
     state, displayName,
     verifiedFacts, publicSkills, visibleTestimonials, roleBadges,
-    availabilityMeta, themeStyles, setTheme, fontFamily,
+    availabilityMeta, themeStyles, themeIsLight, setTheme, fontFamily,
     saveThemeTemplate, applyThemeTemplate, removeThemeTemplate,
     featuredSkills, toggleFeaturedSkill, moveSection, reorderSection,
     setAvatarImage, addCustomLink, removeCustomLink,

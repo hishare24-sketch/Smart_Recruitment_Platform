@@ -349,7 +349,7 @@ function postComment() {
 <template>
   <div
     class="pp-page"
-    :class="{ 'pp-themed': !!pub.themeStyles, 'pp-motion': s.appearance.motion }"
+    :class="{ 'pp-themed': !!pub.themeStyles, 'pp-light': pub.themeIsLight, 'pp-motion': s.appearance.motion }"
     :style="[pub.themeStyles ?? {}, pageFontStyle]"
   >
     <VContainer class="py-8" style="max-width: 880px">
@@ -464,7 +464,7 @@ function postComment() {
 
         <!-- طرق العرض + التنقّل السريع بين الأقسام -->
         <VCard class="pa-2 mb-4 pp-nav no-print d-flex align-center ga-2 flex-wrap">
-          <VBtnToggle v-model="viewMode" density="compact" mandatory variant="outlined" divided>
+          <VBtnToggle v-model="viewMode" color="primary" density="compact" mandatory variant="outlined" divided>
             <VBtn value="classic" size="small" prepend-icon="mdi-view-dashboard-outline">كلاسيكي</VBtn>
             <VBtn value="compact" size="small" prepend-icon="mdi-card-text-outline">مختصر</VBtn>
             <VBtn value="visual" size="small" prepend-icon="mdi-image-multiple-outline">مرئي</VBtn>
@@ -1059,8 +1059,16 @@ function postComment() {
   background-color: var(--pp-surface) !important;
   color: var(--pp-text) !important;
 }
+/* تعتيم موحّد خفيف فوق تدرّج الهيرو يضمن تباين النص الأبيض مهما كان الثيم
+   (الوردي/السماوي الفاتح كانا يهبطان بالتباين دون 3:1) */
 .pp-themed :deep(.pp-hero) {
-  background: linear-gradient(135deg, var(--pp-hero-from), var(--pp-hero-to)) !important;
+  background:
+    linear-gradient(rgba(8, 10, 14, 0.35), rgba(8, 10, 14, 0.35)),
+    linear-gradient(135deg, var(--pp-hero-from), var(--pp-hero-to)) !important;
+}
+/* التوهّج الليموني جزء من هوية المنصة — لا يتسرّب فوق تدرّجات الثيمات */
+.pp-themed :deep(.pp-hero.brand-gradient::after) {
+  display: none;
 }
 .pp-themed :deep(.text-medium-emphasis) {
   color: var(--pp-muted) !important;
@@ -1077,6 +1085,42 @@ function postComment() {
 .pp-themed .quote-tile {
   background: color-mix(in srgb, var(--pp-accent) 8%, transparent);
   border-inline-start-color: var(--pp-accent);
+}
+
+/* ===== الثيمات فاتحة الخلفية: remap لألوان Vuetify الساطعة =====
+   secondary/success/accent... صُمّمت لثيم المنصة الداكن (زمردي/ليموني ساطع)
+   وتباينها فوق البطاقات البيضاء يهبط دون 2:1 — تُستبدل بدرجات داكنة مكافئة */
+.pp-light :deep(.text-secondary) {
+  color: #0e7c50 !important;
+}
+.pp-light :deep(.text-success) {
+  color: #15803d !important;
+}
+.pp-light :deep(.text-info) {
+  color: #0369a1 !important;
+}
+.pp-light :deep(.text-warning),
+.pp-light :deep(.text-amber) {
+  color: #b45309 !important;
+}
+.pp-light :deep(.text-error) {
+  color: #dc2626 !important;
+}
+.pp-light :deep(.bg-secondary) {
+  background-color: #0e7c50 !important;
+  color: #ffffff !important;
+}
+.pp-light :deep(.bg-success) {
+  background-color: #15803d !important;
+  color: #ffffff !important;
+}
+.pp-light :deep(.bg-info) {
+  background-color: #0369a1 !important;
+  color: #ffffff !important;
+}
+.pp-light :deep(.bg-warning) {
+  background-color: #b45309 !important;
+  color: #ffffff !important;
 }
 
 /* ===== تأثيرات الحركة (قابلة للإيقاف من إعدادات المظهر) ===== */

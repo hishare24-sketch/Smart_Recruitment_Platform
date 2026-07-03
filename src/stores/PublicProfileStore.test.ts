@@ -229,6 +229,25 @@ describe('publicProfileStore', () => {
     expect(p.state.savedThemes).toHaveLength(0)
   })
 
+  it('guards contrast: readable text over mid-luminance accents and light-theme flag', () => {
+    const p = usePublicProfileStore()
+    const plan = useAccountPlanStore()
+    plan.tier = 'pro'
+    p.setTheme('custom')
+    p.state.appearance.customColor = '#00B4D8' // سماوي متوسط الإضاءة (YIQ≈130)
+    expect(p.themeStyles!['--pp-on-accent']).toBe('#101418') // نص داكن لا أبيض
+    p.state.appearance.customColor = '#7B2FBE' // أرجواني داكن (YIQ≈86)
+    expect(p.themeStyles!['--pp-on-accent']).toBe('#FFFFFF')
+
+    // علم الخلفية الفاتحة يقود remap ألوان Vuetify الساطعة في الصفحة
+    p.setTheme('creative')
+    expect(p.themeIsLight).toBe(true)
+    p.setTheme('tech')
+    expect(p.themeIsLight).toBe(false)
+    p.setTheme('platform')
+    expect(p.themeIsLight).toBe(false) // ثيم المنصة لا يُعامل كثيم فاتح
+  })
+
   it('lets visitors like and submit testimonials pending owner approval', () => {
     const p = usePublicProfileStore()
     const first = p.state.testimonials[0]
