@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
+import { syncPrivateDoc } from '@/services/cloudSync'
 import { useGamificationStore } from '@/stores/GamificationStore'
 import { useNotificationsStore } from '@/stores/NotificationsStore'
 
@@ -94,6 +95,20 @@ export const useWalletStore = defineStore('wallet', () => {
 
   watch(txns, v => localStorage.setItem(TXNS_KEY, JSON.stringify(v)), { deep: true })
   watch(methods, v => localStorage.setItem(METHODS_KEY, JSON.stringify(v)), { deep: true })
+
+  // مزامنة سحابية خاصة — بجلسة حقيقية فقط (DOC/CLOUD_SYNC.md)
+  const { status: syncStatus } = syncPrivateDoc({
+    store: 'wallet',
+    snapshot: () => ({ txns: txns.value, methods: methods.value }),
+    apply: (incoming) => {
+      const d = incoming as { txns?: WalletTxn[], methods?: PaymentMethod[] }
+      if (Array.isArray(d.txns))
+        txns.value = d.txns
+      if (Array.isArray(d.methods))
+        methods.value = d.methods
+    },
+    source: [txns, methods],
+  })
 
   // ===== الأرصدة =====
   /** الرصيد القابل للسحب = صافي العمليات المكتملة */
@@ -267,7 +282,7 @@ export const useWalletStore = defineStore('wallet', () => {
   }
 
   return {
-    txns, methods,
+    txns, methods, syncStatus,
     available, pending, processingWithdrawals, totalIn, totalOut, defaultMethod,
     monthlyFlow, byType, balanceSeries,
     deposit, withdraw, credit, pay, convertPoints,

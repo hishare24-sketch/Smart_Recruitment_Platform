@@ -88,8 +88,9 @@ async function toggleFollow() {
 | المكوّن | المسار | الدور |
 |---|---|---|
 | العميل | [`src/services/supabase.ts`](../src/services/supabase.ts) | عميل كسول — `null` عند غياب المفاتيح (محاكاة كاملة) |
-| المخطط | [`supabase/schema.sql`](../supabase/schema.sql) | جدول `public_profiles` (slug + data jsonb) مع RLS |
-| المزامنة التجريبية | `PublicProfileStore` | قراءة عند الإقلاع + upsert مؤجل (1.2s) لكل تعديل + مؤشر `syncStatus` |
+| **محرك المزامنة** | [`src/services/cloudSync.ts`](../src/services/cloudSync.ts) | الطبقة الموحّدة لكل المخازن — **انظر [CLOUD_SYNC.md](./CLOUD_SYNC.md)** |
+| المخطط | [`supabase/migrations/`](../supabase/migrations/) | ترحيلات مرقّمة: public_profiles، الملكية، السياسات، account_states |
+| المخازن المُزامَنة | `PublicProfileStore` (عام) · `WalletStore`، `AccountPlanStore` (خاص) | كلٌّ عبر عقد `snapshot/apply/source` بثلاثة أسطر |
 
 ## حالة التفعيل: ✅ مكتمل
 

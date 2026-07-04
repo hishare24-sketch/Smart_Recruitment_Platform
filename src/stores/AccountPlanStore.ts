@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
+import { syncPrivateDoc } from '@/services/cloudSync'
 import { useNotificationsStore } from '@/stores/NotificationsStore'
 import { useWalletStore } from '@/stores/WalletStore'
 
@@ -71,6 +72,18 @@ export const useAccountPlanStore = defineStore('accountPlan', () => {
   // ثبّت نتيجة الترحيل فورًا كي لا يُعاد اشتقاقها
   localStorage.setItem(STORAGE_KEY, tier.value)
 
+  // مزامنة سحابية خاصة — بجلسة حقيقية فقط (DOC/CLOUD_SYNC.md)
+  const { status: syncStatus } = syncPrivateDoc({
+    store: 'accountPlan',
+    snapshot: () => ({ tier: tier.value }),
+    apply: (incoming) => {
+      const t = (incoming as { tier?: AccountTier }).tier
+      if (t && t in TIER_RANK)
+        tier.value = t
+    },
+    source: tier,
+  })
+
   /** هل باقتي تبلغ هذا المستوى؟ */
   function atLeast(required: AccountTier): boolean {
     return TIER_RANK[tier.value] >= TIER_RANK[required]
@@ -102,5 +115,5 @@ export const useAccountPlanStore = defineStore('accountPlan', () => {
     return true
   }
 
-  return { tier, atLeast, surveyLimit, canDelegate, setTier }
+  return { tier, syncStatus, atLeast, surveyLimit, canDelegate, setTier }
 })

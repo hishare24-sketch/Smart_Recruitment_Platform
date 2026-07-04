@@ -10,7 +10,7 @@ import { useInterviewsStore } from '@/stores/InterviewsStore'
 import { useMessagesStore } from '@/stores/MessagesStore'
 import { useNotificationsStore } from '@/stores/NotificationsStore'
 import { usePostedOpportunitiesStore } from '@/stores/PostedOpportunitiesStore'
-import { debounce, getSupabase } from '@/services/supabase'
+import { syncPublicProfileDoc } from '@/services/cloudSync'
 import { useProfileStore } from '@/stores/ProfileStore'
 import { useRoleProfilesStore } from '@/stores/RoleProfilesStore'
 import { useTrustStore } from '@/stores/TrustStore'
@@ -388,59 +388,14 @@ export const usePublicProfileStore = defineStore('publicProfile', () => {
   const state = ref<PublicProfileState>(load())
   watch(state, v => localStorage.setItem(STORAGE_KEY, JSON.stringify(v)), { deep: true })
 
-  // ===== مزامنة Supabase — تعمل فقط عند اكتمال مفاتيح البيئة (وإلا محاكاة كاملة) =====
-  // القراءة عند الإقلاع تدمج آخر نسخة سحابية بنفس مطبِّع localStorage،
-  // والكتابة مؤجلة تجمع التعديلات المتلاحقة في upsert واحد.
-  const remote = getSupabase()
-  /** حالة المزامنة للواجهات: off = محاكاة | synced | saving | error */
-  const syncStatus = ref<'off' | 'synced' | 'saving' | 'error'>(remote ? 'saving' : 'off')
-  if (remote) {
-    let applyingRemote = false
-    /** معرّف الجلسة الحقيقية إن وُجدت — أساس الملكية */
-    const sessionUid = async () => (await remote.auth.getSession()).data.session?.user?.id ?? null
-
-    // الإقلاع: صفّ المستخدم المملوك أولًا (إن سجّل دخولًا حقيقيًا)، وإلا الصف بالمعرّف
-    ;(async () => {
-      const uid = await sessionUid()
-      let row: { data: unknown } | null = null
-      if (uid) {
-        const { data } = await remote.from('public_profiles').select('data').eq('owner_id', uid).maybeSingle()
-        row = data
-      }
-      if (!row) {
-        const { data, error } = await remote.from('public_profiles').select('data').eq('slug', state.value.slug).maybeSingle()
-        if (error) {
-          syncStatus.value = 'error'
-          return
-        }
-        row = data
-      }
-      if (row?.data) {
-        applyingRemote = true
-        state.value = mergeStored(row.data as Partial<PublicProfileState>)
-      }
-      syncStatus.value = 'synced'
-    })()
-
-    const push = debounce(async (v: PublicProfileState) => {
-      // الحفظ بجلسة حقيقية يدّعي الصف لصاحبه (owner_id) — وسياسات RLS تمنع غيره عنه
-      const uid = await sessionUid()
-      const payload: Record<string, unknown> = { slug: v.slug, data: v, updated_at: new Date().toISOString() }
-      if (uid)
-        payload.owner_id = uid
-      remote.from('public_profiles')
-        .upsert(payload)
-        .then(({ error }) => (syncStatus.value = error ? 'error' : 'synced'))
-    }, 1200)
-    watch(state, (v) => {
-      if (applyingRemote) {
-        applyingRemote = false
-        return
-      }
-      syncStatus.value = 'saving'
-      push(JSON.parse(JSON.stringify(v)))
-    }, { deep: true })
-  }
+  // مزامنة سحابية عبر المحرك الموحّد — off تلقائيًا بلا مفاتيح Supabase
+  // (التفاصيل والقرارات المعمارية في DOC/CLOUD_SYNC.md)
+  const { status: syncStatus } = syncPublicProfileDoc({
+    slug: () => state.value.slug,
+    snapshot: () => state.value,
+    apply: incoming => (state.value = mergeStored(incoming as Partial<PublicProfileState>)),
+    source: state,
+  })
 
   const auth = useAuthStore()
   const profile = useProfileStore()
