@@ -18,8 +18,12 @@ function fakeClient(opts: FakeOpts = {}) {
   const calls = {
     fetches: 0,
     upserts: [] as { table: string, payload: Record<string, unknown> }[],
+    channels: [] as string[],
+    removed: 0,
   }
   let authCallback: ((event: string) => void) | null = null
+  // آخر معالج postgres_changes مشترك — تُطلقه fireRealtime لمحاكاة جهاز آخر
+  let rtHandler: ((payload: { new?: Record<string, unknown> }) => void) | null = null
 
   const builder = (table: string) => {
     const b = {
@@ -48,11 +52,27 @@ function fakeClient(opts: FakeOpts = {}) {
       },
     },
     from: builder,
+    channel: (name: string) => {
+      calls.channels.push(name)
+      const ch = {
+        on: (_event: string, _cfg: unknown, handler: (payload: { new?: Record<string, unknown> }) => void) => {
+          rtHandler = handler
+          return ch
+        },
+        subscribe: () => ch,
+      }
+      return ch
+    },
+    removeChannel: () => {
+      calls.removed++
+      rtHandler = null
+    },
   }
   return {
     client: client as unknown as SupabaseClient,
     calls,
     fireAuth: (event: string) => authCallback?.(event),
+    fireRealtime: (row: Record<string, unknown>) => rtHandler?.({ new: row }),
   }
 }
 
@@ -222,5 +242,95 @@ describe('cloudSync — الصفحة التعريفية العامة (syncPublic
     })
     await flush()
     expect(status.value).toBe('error')
+  })
+})
+
+describe('cloudSync — البثّ اللحظي (Realtime)', () => {
+  it('بجلسة: يشترك في قناة، وبثّ جهاز آخر يُطبَّق ولا يرتد رفعًا', async () => {
+    const { client, calls, fireRealtime } = fakeClient({ uid: 'user-1' })
+    const state = ref({ n: 0 })
+    syncPrivateDoc({
+      store: 'wallet',
+      client,
+      snapshot: () => ({ n: state.value.n }),
+      apply: incoming => (state.value = incoming as { n: number }),
+      source: state,
+    })
+    await flush()
+    expect(calls.channels.length).toBe(1) // اشتراك بعد الإقلاع
+
+    const before = calls.upserts.length
+    fireRealtime({ store: 'wallet', data: { n: 42 } }) // جهاز آخر حدّث الصف
+    await flush()
+    expect(state.value.n).toBe(42) // طُبّق البثّ
+    await settle()
+    expect(calls.upserts.length).toBe(before) // لم يرتد رفعًا (حارس الارتداد)
+  })
+
+  it('حارس الصدى: بثّ يطابق حالتنا الحالية يُتجاهل', async () => {
+    const { client, fireRealtime } = fakeClient({ uid: 'user-1' })
+    const applied: unknown[] = []
+    const state = ref({ n: 5 })
+    syncPrivateDoc({
+      store: 'wallet',
+      client,
+      snapshot: () => ({ n: state.value.n }),
+      apply: (incoming) => {
+        applied.push(incoming)
+        state.value = incoming as { n: number }
+      },
+      source: state,
+    })
+    await flush()
+    // بثّ يحمل نفس حالتنا الحالية (صدى كتابتنا) → يُتجاهل
+    fireRealtime({ store: 'wallet', data: { n: 5 } })
+    await flush()
+    expect(applied).toHaveLength(0)
+  })
+
+  it('يتجاهل بثّ مخزن آخر يشاركنا نفس owner (مطابقة store)', async () => {
+    const { client, fireRealtime } = fakeClient({ uid: 'user-1' })
+    const state = ref({ n: 0 })
+    syncPrivateDoc({
+      store: 'wallet',
+      client,
+      snapshot: () => ({ n: state.value.n }),
+      apply: incoming => (state.value = incoming as { n: number }),
+      source: state,
+    })
+    await flush()
+    fireRealtime({ store: 'notifications', data: { n: 99 } }) // مخزن مختلف
+    await flush()
+    expect(state.value.n).toBe(0) // لم يُطبَّق
+  })
+
+  it('بلا جلسة: لا اشتراك للبيانات الخاصة', async () => {
+    const { client, calls } = fakeClient({ uid: null })
+    const state = ref({ n: 0 })
+    syncPrivateDoc({
+      store: 'wallet',
+      client,
+      snapshot: () => state.value,
+      apply: () => {},
+      source: state,
+    })
+    await flush()
+    expect(calls.channels.length).toBe(0)
+  })
+
+  it('الخروج من الجلسة يزيل القناة', async () => {
+    const { client, calls, fireAuth } = fakeClient({ uid: 'user-1' })
+    const state = ref({ n: 0 })
+    syncPrivateDoc({
+      store: 'wallet',
+      client,
+      snapshot: () => state.value,
+      apply: () => {},
+      source: state,
+    })
+    await flush()
+    expect(calls.channels.length).toBe(1)
+    fireAuth('SIGNED_OUT')
+    expect(calls.removed).toBeGreaterThan(0)
   })
 })

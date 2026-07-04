@@ -1,4 +1,4 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js'
 import type { Ref, WatchSource } from 'vue'
 import { ref, watch } from 'vue'
 import { debounce, getSupabase } from '@/services/supabase'
@@ -27,7 +27,9 @@ import { debounce, getSupabase } from '@/services/supabase'
  *   الإقلاع: جلب النسخة السحابية → apply() (بنفس مطبِّع localStorage في المخزن).
  *   التعديل: watch(source) → upsert مؤجل (debounce) يجمع التعديلات المتلاحقة.
  *   الارتداد: علم داخلي يمنع إعادة رفع ما وصل من السحابة للتو.
- *   تغيّر الجلسة: دخول → إعادة جلب؛ خروج → إيقاف مزامنة الخاص.
+ *   البثّ اللحظي: اشتراك postgres_changes — تغيير من جهاز آخر يصل ويُطبَّق فورًا
+ *                (حارس الصدى يتجاهل بثّ كتابتنا نحن عبر مطابقة اللقطة نصّيًا).
+ *   تغيّر الجلسة: دخول → إعادة جلب + إعادة اشتراك؛ خروج → إيقاف مزامنة الخاص.
  *
  * الاختبارات: `client` قابل للحقن — انظر cloudSync.test.ts (عميل زائف بلا شبكة).
  */
@@ -70,6 +72,15 @@ interface EngineConfig extends CloudDocContract {
   conflictKeys?: string
   /** true = المستند لا يُزامَن إطلاقًا دون جلسة (البيانات الخاصة) */
   requiresSession?: boolean
+  /** اشتراك Realtime — غيابه (أو فلتر null) يعطّل البثّ اللحظي لهذا المستند */
+  realtime?: {
+    /** معرّف فريد للقناة لكل مستند — إذ تتشارك المخازن الخاصة الجدول والفلتر نفسيهما */
+    channelId: () => string
+    /** فلتر postgres_changes على عمود واحد (null = لا اشتراك) */
+    filter: (uid: string | null) => string | null
+    /** مطابقة إضافية للصف الوارد (مثل: store الصحيح، إذ الفلتر على owner_id فقط) */
+    match?: (row: Record<string, unknown>, uid: string | null) => boolean
+  }
 }
 
 /** معرّف الجلسة الحقيقية إن وُجدت */
@@ -86,6 +97,11 @@ function createDocSync(config: EngineConfig): { status: Ref<SyncStatus> } {
 
   /** يمنع ارتداد النسخة السحابية المطبَّقة للتو كرفع جديد */
   let applyingRemote = false
+  /** قناة البثّ اللحظي الحالية (تُعاد بناؤها عند تغيّر الجلسة) */
+  let channel: RealtimeChannel | null = null
+
+  /** لقطة الحالة نصّيًا — أداة حارس الصدى في البثّ */
+  const snapshotJson = () => JSON.stringify(config.snapshot())
 
   async function boot() {
     status.value = 'saving'
@@ -104,6 +120,41 @@ function createDocSync(config: EngineConfig): { status: Ref<SyncStatus> } {
       config.apply(row.data)
     }
     status.value = 'synced'
+    subscribeRealtime(uid)
+  }
+
+  /** يشترك في بثّ تغييرات صفّ هذا المستند — تغيير جهاز آخر يُطبَّق فورًا */
+  function subscribeRealtime(uid: string | null) {
+    if (!config.realtime)
+      return
+    if (channel) {
+      client!.removeChannel(channel)
+      channel = null
+    }
+    const filter = config.realtime.filter(uid)
+    if (!filter)
+      return
+    // اسم فريد لكل مستند: المخازن الخاصة تشترك في الجدول والفلتر، والاسم المكرّر
+    // يجعل supabase-js يعيد القناة نفسها فيرفض إضافة معالج بعد subscribe().
+    channel = client!
+      .channel(`sync:${config.table}:${config.realtime.channelId()}`)
+      .on(
+        'postgres_changes' as 'system',
+        { event: '*', schema: 'public', table: config.table, filter } as never,
+        (payload: { new?: Record<string, unknown> }) => {
+          const row = payload.new
+          if (!row || (config.realtime!.match && !config.realtime!.match(row, uid)))
+            return
+          const incoming = row.data
+          // حارس الصدى: تجاهل ما يطابق حالتنا (بثّ كتابتنا نحن أو تغيير بلا أثر)
+          if (JSON.stringify(incoming) === snapshotJson())
+            return
+          applyingRemote = true
+          config.apply(incoming)
+          status.value = 'synced'
+        },
+      )
+      .subscribe()
   }
 
   const push = debounce(async () => {
@@ -131,12 +182,18 @@ function createDocSync(config: EngineConfig): { status: Ref<SyncStatus> } {
     push()
   }, { deep: true })
 
-  // تفاعل الجلسة: الدخول يعيد الجلب، والخروج يوقف مزامنة البيانات الخاصة
+  // تفاعل الجلسة: الدخول يعيد الجلب والاشتراك، والخروج يوقف مزامنة الخاص وبثّه
   client.auth.onAuthStateChange((event) => {
-    if (event === 'SIGNED_IN')
+    if (event === 'SIGNED_IN') {
       boot()
-    else if (event === 'SIGNED_OUT')
+    }
+    else if (event === 'SIGNED_OUT') {
+      if (channel) {
+        client!.removeChannel(channel)
+        channel = null
+      }
       status.value = 'off'
+    }
   })
 
   boot()
@@ -169,6 +226,12 @@ export function syncPrivateDoc(opts: PrivateDocOptions): { status: Ref<SyncStatu
     },
     conflictKeys: 'owner_id,store',
     requiresSession: true,
+    realtime: {
+      // البثّ الخاص لا يعمل إلا بجلسة؛ الفلتر على owner_id، والمطابقة تحصر store
+      channelId: () => opts.store, // فريد لكل مخزن خاص
+      filter: uid => (uid ? `owner_id=eq.${uid}` : null),
+      match: row => row.store === opts.store,
+    },
   })
 }
 
@@ -202,6 +265,11 @@ export function syncPublicProfileDoc(opts: PublicProfileDocOptions): { status: R
       if (uid)
         payload.owner_id = uid // الادّعاء: الصف يصبح ملك صاحب الجلسة
       return payload
+    },
+    realtime: {
+      // الصفحة عامة — البثّ بالـslug يعمل حتى للزوار (القراءة عامة)
+      channelId: () => `profile:${opts.slug()}`,
+      filter: () => `slug=eq.${opts.slug()}`,
     },
   })
 }
