@@ -91,14 +91,23 @@ async function toggleFollow() {
 | المخطط | [`supabase/schema.sql`](../supabase/schema.sql) | جدول `public_profiles` (slug + data jsonb) مع RLS |
 | المزامنة التجريبية | `PublicProfileStore` | قراءة عند الإقلاع + upsert مؤجل (1.2s) لكل تعديل + مؤشر `syncStatus` |
 
-## خطوات التفعيل (مرة واحدة)
+## حالة التفعيل: ✅ مكتمل
 
-1. **المخطط**: لوحة Supabase → SQL Editor → الصق محتوى `supabase/schema.sql` → Run.
-2. **المفتاح محليًا**: Project Settings → API → انسخ `anon public`، ثم أنشئ `.env.local` (غير متتبع):
-   ```bash
-   VITE_SUPABASE_ANON_KEY=eyJ...
-   ```
-3. **المفتاح للنسخة الحية**: GitHub → Settings → Secrets and variables → Actions → New repository secret باسم `SUPABASE_ANON_KEY` — سير النشر يقرؤه تلقائيًا.
+- المفتاح العلني في `.env.local` محليًا ومضمّن في `deploy.yml` للنسخة الحية (publishable — علني بطبيعته).
+- ⚠️ درس Vite: لا تعرّف `VITE_SUPABASE_ANON_KEY=` فارغًا في `.env.development` — يتقدّم على `.env.local` فيمحو القيمة الحقيقية.
+
+## الترحيلات (migrations) — الإدارة المباشرة للقاعدة
+
+| المكوّن | المسار |
+|---|---|
+| ملفات SQL مرقّمة | `supabase/migrations/000N_*.sql` |
+| المُرحِّل | `scripts/db-migrate.mjs` → `npm run db:migrate` |
+| التتبّع | جدول `public._migrations` (ما طُبّق لا يتكرر) |
+| الاعتماد | `SUPABASE_ACCESS_TOKEN` (رمز شخصي `sbp_...`) في `.env.local` غير المتتبع — **بلا بادئة VITE_ عمدًا** كي لا يصل للمتصفح |
+
+سير العمل عند أي توسعة: أضف `000N_feature.sql` → `npm run db:migrate` → انتهى. لا حاجة لـSQL Editor.
+
+> `supabase/schema.sql` بقي كمرجع تاريخي للإعداد اليدوي الأول؛ المصدر المعتمد الآن هو مجلد `migrations/`.
 
 ## حدود المرحلة التجريبية (مقصودة)
 
