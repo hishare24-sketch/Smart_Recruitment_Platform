@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
+import { syncPrivateDoc } from '@/services/cloudSync'
 import { useAuthStore } from '@/stores/AuthStore'
 
 // Real gamification engine: points are awarded on genuine actions across the app,
@@ -144,6 +145,32 @@ export const useGamificationStore = defineStore('gamification', () => {
     }))
   }, { deep: true })
 
+  // مزامنة سحابية خاصة — بجلسة حقيقية فقط (DOC/CLOUD_SYNC.md)
+  const { status: syncStatus } = syncPrivateDoc({
+    store: 'gamification',
+    snapshot: () => ({
+      points: points.value,
+      streak: streak.value,
+      counters: counters.value,
+      earnedBadgeIds: earnedBadgeIds.value,
+      challenges: challenges.value,
+    }),
+    apply: (incoming) => {
+      const d = incoming as Partial<{ points: number, streak: { count: number, last: string }, counters: Counters, earnedBadgeIds: string[], challenges: Challenge[] }>
+      if (typeof d.points === 'number')
+        points.value = d.points
+      if (d.streak && typeof d.streak.count === 'number')
+        streak.value = d.streak
+      if (d.counters)
+        counters.value = { ...counters.value, ...d.counters }
+      if (Array.isArray(d.earnedBadgeIds))
+        earnedBadgeIds.value = d.earnedBadgeIds
+      if (Array.isArray(d.challenges))
+        challenges.value = d.challenges
+    },
+    source: [points, streak, counters, earnedBadgeIds, challenges],
+  })
+
   // — Derived —
   const tier = computed(() => [...TIERS].reverse().find(t => points.value >= t.min) ?? TIERS[0])
   const nextTier = computed(() => TIERS.find(t => t.min > points.value) ?? null)
@@ -269,7 +296,7 @@ export const useGamificationStore = defineStore('gamification', () => {
   }
 
   return {
-    points, streak, counters, challenges, lastReward, lastBadgeId,
+    points, streak, counters, challenges, lastReward, lastBadgeId, syncStatus,
     tier, nextTier, tierProgress, pointsToNext,
     badges, earnedCount, activeChallenges, doneChallenges,
     leaderboard, myRank,

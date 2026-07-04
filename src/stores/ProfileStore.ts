@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import type { SeekerPrefs } from '@/interfaces/RoleProfiles'
 import { ai } from '@/services/ai'
+import { syncPrivateDoc } from '@/services/cloudSync'
 import { useGamificationStore } from '@/stores/GamificationStore'
 
 export type ProofType = 'assessment' | 'endorsement' | 'project' | 'certificate' | 'self'
@@ -158,6 +159,35 @@ export const useProfileStore = defineStore('profile', () => {
   }
   watch([headline, summary, skills, experiences, certificates, prefs], persist, { deep: true })
 
+  // مزامنة سحابية خاصة — بجلسة حقيقية فقط (DOC/CLOUD_SYNC.md)
+  const { status: syncStatus } = syncPrivateDoc({
+    store: 'profile',
+    snapshot: () => ({
+      headline: headline.value,
+      summary: summary.value,
+      skills: skills.value,
+      experiences: experiences.value,
+      certificates: certificates.value,
+      prefs: prefs.value,
+    }),
+    apply: (incoming) => {
+      const d = incoming as Partial<{ headline: string, summary: string, skills: Skill[], experiences: Experience[], certificates: Certificate[], prefs: SeekerPrefs }>
+      if (typeof d.headline === 'string')
+        headline.value = d.headline
+      if (typeof d.summary === 'string')
+        summary.value = d.summary
+      if (Array.isArray(d.skills))
+        skills.value = d.skills
+      if (Array.isArray(d.experiences))
+        experiences.value = d.experiences
+      if (Array.isArray(d.certificates))
+        certificates.value = d.certificates
+      if (d.prefs)
+        prefs.value = { ...structuredClone(seed.prefs), ...d.prefs }
+    },
+    source: [headline, summary, skills, experiences, certificates, prefs],
+  })
+
   function addSkill(name: string, selfLevel: number, category?: string) {
     if (!name.trim())
       return
@@ -192,7 +222,7 @@ export const useProfileStore = defineStore('profile', () => {
   }
 
   return {
-    headline, summary, skills, experiences, certificates, prefs,
+    headline, summary, skills, experiences, certificates, prefs, syncStatus,
     pendingProofRequests, unverifiedSkills, addProofRequest, resolveProofRequest,
     addSkill, removeSkill, addProof, addExperience, removeExperience, addCertificate, removeCertificate,
   }

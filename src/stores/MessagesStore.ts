@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
+import { syncPrivateDoc } from '@/services/cloudSync'
 
 export interface ChatLine {
   from: 'me' | 'them'
@@ -72,6 +73,17 @@ export const useMessagesStore = defineStore('messages', () => {
 
   watch(conversations, val => localStorage.setItem(STORAGE_KEY, JSON.stringify(val)), { deep: true })
 
+  // مزامنة سحابية خاصة — بجلسة حقيقية فقط (DOC/CLOUD_SYNC.md)
+  const { status: syncStatus } = syncPrivateDoc({
+    store: 'messages',
+    snapshot: () => conversations.value,
+    apply: (incoming) => {
+      if (Array.isArray(incoming))
+        conversations.value = incoming as Conversation[]
+    },
+    source: conversations,
+  })
+
   const totalUnread = computed(() => conversations.value.reduce((sum, c) => sum + c.unread, 0))
 
   function markRead(id: number) {
@@ -100,5 +112,5 @@ export const useMessagesStore = defineStore('messages', () => {
     return c
   }
 
-  return { conversations, totalUnread, markRead, send, startConversation }
+  return { conversations, syncStatus, totalUnread, markRead, send, startConversation }
 })

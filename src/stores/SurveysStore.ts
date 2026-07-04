@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
+import { syncPrivateDoc } from '@/services/cloudSync'
 import { useAccountPlanStore } from '@/stores/AccountPlanStore'
 import { useGamificationStore } from '@/stores/GamificationStore'
 import { useNotificationsStore } from '@/stores/NotificationsStore'
@@ -277,6 +278,20 @@ export const useSurveysStore = defineStore('surveys', () => {
 
   watch(surveys, val => localStorage.setItem(STORAGE_KEY, JSON.stringify(val)), { deep: true })
   watch(responses, val => localStorage.setItem(RESPONSES_KEY, JSON.stringify(val)), { deep: true })
+
+  // مزامنة سحابية خاصة — بجلسة حقيقية فقط (DOC/CLOUD_SYNC.md)
+  const { status: syncStatus } = syncPrivateDoc({
+    store: 'surveys',
+    snapshot: () => ({ surveys: surveys.value, responses: responses.value }),
+    apply: (incoming) => {
+      const d = incoming as { surveys?: Survey[], responses?: SurveyResponse[] }
+      if (Array.isArray(d.surveys))
+        surveys.value = d.surveys
+      if (Array.isArray(d.responses))
+        responses.value = d.responses
+    },
+    source: [surveys, responses],
+  })
 
   // ===== التمكين حسب باقة الحساب الموحّدة (بديل surveyPlan القديمة) =====
   const accountPlan = useAccountPlanStore()
@@ -586,7 +601,7 @@ export const useSurveysStore = defineStore('surveys', () => {
   }
 
   return {
-    surveys, responses,
+    surveys, responses, syncStatus,
     byId, byToken, responsesFor, statsFor, adminFor,
     add, update, remove, duplicate, setStatus, syncLifecycle,
     importInvitees, removeInvitee, inviteAll,

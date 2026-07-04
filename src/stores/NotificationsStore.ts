@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
+import { syncPrivateDoc } from '@/services/cloudSync'
 
 export type NotificationCategory = 'opportunity' | 'wish' | 'endorsement' | 'message' | 'system' | 'interview'
 
@@ -51,6 +52,17 @@ export const useNotificationsStore = defineStore('notifications', () => {
 
   watch(notifications, val => localStorage.setItem(STORAGE_KEY, JSON.stringify(val)), { deep: true })
 
+  // مزامنة سحابية خاصة — بجلسة حقيقية فقط (DOC/CLOUD_SYNC.md)
+  const { status: syncStatus } = syncPrivateDoc({
+    store: 'notifications',
+    snapshot: () => notifications.value,
+    apply: (incoming) => {
+      if (Array.isArray(incoming))
+        notifications.value = incoming as AppNotification[]
+    },
+    source: notifications,
+  })
+
   const unreadCount = computed(() => notifications.value.filter(n => !n.read).length)
 
   let nextId = 1000
@@ -83,5 +95,5 @@ export const useNotificationsStore = defineStore('notifications', () => {
       n.read = true
   }
 
-  return { notifications, unreadCount, push, markAllRead, toggleRead, markRead }
+  return { notifications, syncStatus, unreadCount, push, markAllRead, toggleRead, markRead }
 })
