@@ -3,7 +3,7 @@
 > تتبّع تقدّم التحويل مرحلةً بمرحلة. الخطة الكاملة والقرارات في [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 > الهدف: **Vue SPA + NestJS + JWT (`api/`) + Docker/Nginx/staging + Tailwind**، عقد `api/openapi.yaml` مصدر الحقيقة، Supabase محوّل يُنزع.
 
-**📍 الموضع الحالي:** انتهت المراحل 1–4 (كلها مُتحقَّقة حيًّا) — NestJS هو الباك-إند الوحيد (مصادقة + كل المخازن + بثّ لحظي WebSocket)، Supabase مُزال بالكامل. **المرحلة 5 جارية:** أساس Tailwind + بدائيات القشرة + **`DefaultLayout` كامل بـ Tailwind (مُتحقَّق حيًّا في الأوضاع الثلاثة + موبايل/سطح مكتب)**. **التالي:** الصفحات صفحةً بصفحة ثم نزع حزمة Vuetify.
+**📍 الموضع الحالي:** انتهت المراحل 1–4 (NestJS الباك-إند الوحيد). **المرحلة 5 (Vuetify→Tailwind) متقدّمة جدًّا** — مُحوّل 100%: القشرة · الرئيسية · المصادقة · الفرص (قائمة+تفاصيل+الشجرة) · المحفظة · الطلبات (feed+تفاصيل) · كل صفحات الخبراء · Onboarding · GovernanceDashboard · PageHeader/EmptyState. **~23 بديلًا في `src/components/ui/`.** **اكتملت أيضًا مهمتان:** تكافؤ حسابات الخبراء + دمج التصنيف المتكامل (`src/services/personas.ts`). **⏭️ التالي:** بقية صفحات Vuetify (المرشّح: Messages/Settings/Profile/Surveys/InterviewersMarketplace) ثم نزع حزمة Vuetify، ثم المرحلة 6. **⚠️ 19 commit محلية غير مدفوعة لـ origin.**
 
 ---
 
