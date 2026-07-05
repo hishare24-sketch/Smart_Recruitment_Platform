@@ -11,23 +11,22 @@
 |---|---|
 | الواجهة | Vue 3 + Vite + TypeScript + Composition API + Pinia + Vue Router (SPA) |
 | التنسيق | **TailwindCSS** (بدل Vuetify) |
-| الباك-إند | **Laravel 10 + Sanctum** (REST + Bearer token) |
-| البنية | **monorepo**: الواجهة في الجذر، الباك-إند في [`/backend`](../backend) |
+| الباك-إند | **NestJS + JWT** (TypeScript، REST + Bearer token) |
+| البنية | **monorepo**: الواجهة في الجذر، الباك-إند في [`api/`](../api) |
 | النشر | **Docker + Nginx + بيئة staging** + CI |
 | مصدر الحقيقة للتكامل | [`api/openapi.yaml`](../api/openapi.yaml) |
 
+**لماذا NestJS لا Laravel:** كلاهما معيار الفريق، لكن Nest يوحّد اللغة (TypeScript عبر المكدّس)، ويعمل على Node المثبّت أصلًا (بلا PHP/Composer/Docker للتطوير)، ويطابق المشروع الشقيق للمالك.
+
 **Supabase**: محوّل انتقالي أثناء التحويل فقط (خلف طبقة الخدمة)، يُنزع تدريجيًا مع اكتمال الباك-إند.
 
-## 2. قسمة التنفيذ (شفافية الأدوات)
+## 2. قسمة التنفيذ
 
-بيئة التطوير الحالية تشغّل **Node فقط** (لا PHP/Composer/Docker):
-
-- **أبنيه وأتحقق منه حيًّا هنا**: كل الواجهة (تحويل Tailwind، ربط العقد، الاختبارات).
-- **أؤلّفه كاملًا قابلًا للتشغيل**: باك-إند Laravel + الحاويات.
+الباك-إند الآن على **Node** — أبنيه **وأتحقق منه حيًّا هنا** كالواجهة تمامًا (لا اعتماد على Docker للتطوير).
 
 **بيئتان لنفس الكود (12-factor — بلا تعارض):**
-- **تطوير المالك (الأسهل)**: **Laravel Herd + SQLite** — مثبّت واحد، بلا Docker/WSL/Postgres. انظر [`backend/README.md`](../backend/README.md) المسار (أ).
-- **الفريق/الإنتاج**: **Docker + Nginx + Postgres** (المسار ب) — كما هو مكتوب في `backend/`. التبديل بمتغيّر `.env` واحد؛ compose يفرض Postgres تلقائيًا.
+- **تطوير (الأسهل)**: **SQLite داخل العملية (sql.js)** — بلا خادم ولا بناء أصلي؛ `npm run start:dev`. انظر [`api/README.md`](../api/README.md).
+- **الفريق/الإنتاج**: **Postgres عبر Docker + Nginx**. التبديل بمتغيّر `DB_CONNECTION` واحد.
 
 ## 3. الخطة المتدرّجة (نحو 100%)
 
@@ -35,24 +34,24 @@
 
 | # | المرحلة | المخرَج | التحقق |
 |---|---|---|---|
-| **1** | أساس الباك-إند | `/backend` Laravel 10 + Sanctum + Postgres عبر Docker؛ شريحة المصادقة مقابل العقد | `docker compose up` (الفريق) |
-| **2** | موارد الباك-إند | تنفيذ بقية مسارات `openapi.yaml` (الملف، الصفحة العامة، الرسائل، …) هجرات + متحكّمات + سياسات | اختبارات Laravel (الفريق) |
-| **3** | ربط الواجهة بالعقد | تحويل المخازن عبر `whenReal` + `VITE_USE_REAL_API=true`؛ تسجيل دخول حقيقي مقابل Laravel | حيّ (أنا) |
-| **4** | نزع Supabase | إزالة محوّل Supabase من المخازن بعد تغطية العقد؛ البثّ اللحظي عبر Laravel Reverb/Echo | حيّ (أنا) + Docker |
+| **1 ✅** | أساس الباك-إند | `api/` NestJS + JWT، DB قابلة للتبديل، غلاف + فلتر + health، شريحة مصادقة مقابل العقد | **حيّ (تمّ)** |
+| **2** | موارد الباك-إند | تنفيذ بقية مسارات `openapi.yaml` (الملف، الصفحة العامة، الرسائل، …): كيانات + وحدات + متحكّمات + حُرّاس | حيّ (أنا) |
+| **3** | ربط الواجهة بالعقد | تحويل المخازن عبر `whenReal` + `VITE_USE_REAL_API=true`؛ دخول حقيقي مقابل NestJS | حيّ (أنا) |
+| **4** | نزع Supabase | إزالة محوّل Supabase بعد تغطية العقد؛ البثّ اللحظي عبر NestJS WebSocket Gateway | حيّ (أنا) |
 | **5** | Tailwind | إعداد Tailwind + نقل المكوّنات والصفحات من Vuetify تدريجيًا | حيّ (أنا) |
-| **6** | النشر | Docker للواجهة + الباك-إند، Nginx عكسي، compose كامل، CI + staging | `docker compose up` + CI |
+| **6** | النشر | Docker للواجهة + الباك-إند (Node)، Nginx عكسي، compose كامل، CI + staging | `docker compose up` + CI |
 
 > الترتيب يقدّم الباك-إند (أساس كل شيء) ويؤخّر تحويل الواجهة (Tailwind) كي يبقى التطبيق سليمًا أطول فترة، وينزع Supabase فقط بعد تغطية العقد.
 
 ## 4. المرجع الجاهز للفريق
 
-الباك-إند يُبنى مقابل العقد، ولدى الفريق **تنفيذ Supabase مرجعي عامل** يعيدون إنتاجه في Laravel:
+الباك-إند يُبنى مقابل العقد، ولدى الفريق **تنفيذ Supabase مرجعي عامل** يعيدون إنتاجه في NestJS:
 
 | المورد | العقد | مرجع Supabase |
 |---|---|---|
 | المصادقة | `/auth/*` | GoTrue + `AuthService` |
-| النموذج + الصلاحيات | مخططات العقد | [`supabase/migrations/`](../supabase/migrations/) + سياسات RLS → Laravel Policies |
-| الرسائل اللحظية | `/conversations/*` | `direct_messages` + RLS + Realtime → Reverb/Echo |
+| النموذج + الصلاحيات | مخططات العقد | [`supabase/migrations/`](../supabase/migrations/) + سياسات RLS → NestJS Guards/Policies |
+| الرسائل اللحظية | `/conversations/*` | `direct_messages` + RLS + Realtime → WebSocket Gateway |
 | المزامنة | حسب المورد | [`CLOUD_SYNC.md`](./CLOUD_SYNC.md) |
 
 ## 5. مبدأ الفصل (ثابت طوال التحويل)

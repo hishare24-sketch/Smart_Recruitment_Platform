@@ -21,7 +21,7 @@
 
 نظام الألوان مستمدّ من وثيقة الـ UI/UX: أزرق داكن `#1A365D`، فيروزي `#319795`، برتقالي `#ED8936`.
 
-> **📐 قرار المعمارية والتسليم**: المشروع يُسلَّم على مكدّس الفريق (Vue SPA + Laravel/Nest + Docker/Nginx)، ومصدر الحقيقة للتكامل هو [`api/openapi.yaml`](api/openapi.yaml). التفاصيل الكاملة وخطة التسليم في **[`DOC/ARCHITECTURE.md`](DOC/ARCHITECTURE.md)**.
+> **📐 قرار المعمارية والتسليم**: المشروع يُحوَّل ويُسلَّم على مكدّس الفريق (Vue SPA + **NestJS + JWT** في [`api/`](api) + Docker/Nginx + Tailwind)، ومصدر الحقيقة للتكامل هو [`api/openapi.yaml`](api/openapi.yaml). الخطة الكاملة في **[`DOC/ARCHITECTURE.md`](DOC/ARCHITECTURE.md)**.
 
 ---
 
