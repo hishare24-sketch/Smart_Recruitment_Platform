@@ -368,6 +368,46 @@ export function migrateSector(oldId: string): string | undefined {
 }
 
 // ————————————————————————————————————————————————————————————————
+// ترحيل حقول القطاع الحرّة في البذور (department/field العربية) → slug قانوني.
+// نموذج «التطبيع عند القراءة»: البذور تحتفظ بنصّها للعرض، وتُربط بالقطاع عبر resolver
+// (بلا تعديل كل سجلّ). يغطّي كل قيم البذور الحالية (mockOpportunities · Requests ·
+// PostedOpportunities · Interviewers). المرجع: DOC/TAXONOMY_PLAN.md
+// ————————————————————————————————————————————————————————————————
+export const FIELD_TO_SECTOR: Record<string, string> = {
+  'التقنية': 'technology',
+  'تطوير الويب': 'technology',
+  'العمارة التقنية': 'technology',
+  'البنية التحتية': 'technology',
+  'البيانات': 'technology',
+  'الأمن': 'technology', // سياق: أمن سيبراني
+  'التصميم': 'design',
+  'واجهات المستخدم': 'design',
+  'أنظمة التصميم': 'design',
+  'التسويق': 'sales_marketing',
+  'المبيعات': 'sales_marketing',
+  'الموارد البشرية': 'administration',
+  'الإدارة': 'administration',
+  'إدارة المشاريع': 'administration',
+  'السلوكي': 'administration', // مقابلات سلوكية — سياق موارد بشرية
+  'المالية': 'finance',
+}
+
+/** يحلّ قيمة حقل قطاع حرّة (slug/code/تسمية كاملة/سلسلة قديمة) إلى قطاع قانوني */
+export function sectorForField(raw?: string): Sector | undefined {
+  if (!raw)
+    return undefined
+  const t = raw.trim()
+  const direct = getSector(t)
+  if (direct)
+    return direct
+  const byLabel = SECTORS.find(s => s.label === t)
+  if (byLabel)
+    return byLabel
+  const slug = FIELD_TO_SECTOR[t]
+  return slug ? getSector(slug) : undefined
+}
+
+// ————————————————————————————————————————————————————————————————
 // حوكمة: كلمات عامة يُمنع أن تكون قطاعًا (قاعدة الحوكمة 4)
 // ————————————————————————————————————————————————————————————————
 export const GENERIC_BLOCKLIST = ['عمال', 'عمالة', 'موظفين', 'موظف', 'تقني', 'متفرقات', 'عام', 'أخرى']

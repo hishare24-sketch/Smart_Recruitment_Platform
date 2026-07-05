@@ -6,6 +6,7 @@ import {
   GOVERNANCE_RULES,
   classifyText,
   LEGACY_SECTOR_MAP,
+  sectorForField,
   visibleSectors,
   OPPORTUNITY_TYPES,
   OPPORTUNITY_TYPE_IDS,
@@ -147,6 +148,39 @@ describe('sectors — governance', () => {
     expect(visibleSectors().some(s => s.code === 'S21')).toBe(false)
     expect(visibleSectors(true).some(s => s.code === 'S21')).toBe(true)
     expect(visibleSectors().length).toBe(20)
+  })
+})
+
+describe('sectorForField — seed field migration (normalize-on-read)', () => {
+  it('resolves slug/code/label directly', () => {
+    expect(sectorForField('technology')?.code).toBe('S01')
+    expect(sectorForField('S11')?.id).toBe('design')
+    expect(sectorForField('المالية والمحاسبة')?.id).toBe('finance')
+  })
+
+  it('maps legacy Arabic field strings to the right sector', () => {
+    expect(sectorForField('تطوير الويب')?.id).toBe('technology')
+    expect(sectorForField('واجهات المستخدم')?.id).toBe('design')
+    expect(sectorForField('الموارد البشرية')?.id).toBe('administration')
+    expect(sectorForField('الأمن')?.id).toBe('technology')
+    expect(sectorForField(undefined)).toBeUndefined()
+    expect(sectorForField('قيمة غير معروفة')).toBeUndefined()
+  })
+
+  // حارس اكتمال الترحيل: كل قيمة department/field في البذور الحالية تُطابَق قطاعًا
+  it('covers EVERY sector-like value used across all seed data (no orphans)', () => {
+    const SEED_FIELD_VALUES = [
+      // mockOpportunities.department
+      'التقنية', 'التصميم', 'البيانات', 'التسويق', 'الموارد البشرية', 'إدارة المشاريع', 'الأمن', 'المالية',
+      // RequestsStore.field
+      'تطوير الويب', 'العمارة التقنية', 'واجهات المستخدم', 'أنظمة التصميم',
+      // InterviewersStore.field
+      'الإدارة', 'البنية التحتية', 'السلوكي',
+      // CreateOpportunityPage picker (legacy departments)
+      'المبيعات',
+    ]
+    for (const v of SEED_FIELD_VALUES)
+      expect(sectorForField(v), `seed field value "${v}" must map to a sector`).toBeDefined()
   })
 })
 

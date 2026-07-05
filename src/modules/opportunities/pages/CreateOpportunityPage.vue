@@ -4,7 +4,7 @@ import PageHeader from '@/components/shared/PageHeader.vue'
 import { usePostedOpportunitiesStore } from '@/stores/PostedOpportunitiesStore'
 import { useGamificationStore } from '@/stores/GamificationStore'
 import { ai } from '@/services/ai'
-import { OPPORTUNITY_TYPES, classifyText } from '@/services/sectors'
+import { OPPORTUNITY_TYPES, classifyText, visibleSectors } from '@/services/sectors'
 import { useReviewQueueStore } from '@/stores/ReviewQueueStore'
 
 const store = usePostedOpportunitiesStore()
@@ -27,7 +27,8 @@ const description = ref('')
 
 // نوع الفرصة من المصدر المعتمد الموحّد (services/sectors.ts)
 const typeOptions = OPPORTUNITY_TYPES.map(o => ({ value: o.id, title: o.label }))
-const departmentOptions = ['التقنية', 'التسويق', 'المبيعات', 'الموارد البشرية', 'المالية', 'التصميم']
+// المجال/القطاع من المصدر المعتمد الموحّد (يُخفي «أخرى» افتراضيًّا)
+const departmentOptions = visibleSectors().map(s => s.label)
 const educationOptions = ['ثانوي', 'دبلوم', 'بكالوريوس', 'ماجستير', 'دكتوراه']
 const benefitOptions = ['سكن', 'مواصلات', 'تأمين طبي', 'تذاكر سفر', 'بدل اتصالات']
 const channelOptions = [
@@ -145,7 +146,7 @@ function openPreview() {
             </h3>
             <VRow dense>
               <VCol cols="12" md="6"><VTextField v-model="title" label="المسمى الوظيفي *" /></VCol>
-              <VCol cols="12" md="6"><VSelect v-model="department" label="القسم *" :items="departmentOptions" /></VCol>
+              <VCol cols="12" md="6"><VSelect v-model="department" label="المجال / القطاع *" :items="departmentOptions" /></VCol>
               <VCol cols="12" md="6"><VTextField v-model="location" label="الموقع" prepend-inner-icon="mdi-map-marker-outline" /></VCol>
               <VCol cols="12" md="6"><VSelect v-model="type" label="نوع الفرصة" :items="typeOptions" /></VCol>
               <VCol cols="12"><VTextarea v-model="description" label="وصف الفرصة" rows="3" /></VCol>
