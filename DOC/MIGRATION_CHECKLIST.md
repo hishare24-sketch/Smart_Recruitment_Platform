@@ -31,8 +31,9 @@
 - [x] `.env.development`: `VITE_USE_REAL_API=true` + `VITE_BASE_API_URL=http://localhost:8000/api` (المسارات تحمل `/v1/...`؛ النسخة الحيّة غير متأثّرة — بناء إنتاج و`.env.production` فارغ)
 - [x] **طبقة العميل تفكّ غلاف `{ data }`** للباك-إند (`unwrapEnvelope` في `src/services/api/index.ts`) + مساعد `put` — لتصل المخازن حمولة صافية بشكل mock
 - [x] تحويل **المصادقة** عبر `api.auth.*` — للـ NestJS الأولوية عند تفعيل المفتاح (`AuthService.login/register/logout`)، ومُطابِق `fromNestUser`، و`realAuthEnabled = USE_REAL_API || supabaseEnabled` — **مُتحقَّق حيًّا:** دخول + تسجيل عبر الواجهة → توكن JWT حقيقي من NestJS في `authUser` (id من القاعدة، لا mock-token)، بلا أخطاء console
-- [ ] بقية المخازن عبر `whenReal(() => api.x(), () => mock)` — مخزنًا بمخزن (الترتيب: Profile → PublicProfile → Marketplace → Interviewers/Interviews → Surveys → Notifications → Wallet/Plan)
-- [ ] تحقّق حيّ بعد كل مخزن
+- [x] **ProfileStore** — إماهة من `api.profile.get()`+`proofRequests()` عند الدخول (الخادم مرجع الحقيقة؛ الفارغ يعود للبذرة تفاديًا لتسرّب كاش مستخدم سابق)، و`persist` يدفع اللقطة الكاملة PATCH مُمهَّلًا (600ms) خلف علَم `ready`، و`resolveProofRequest` عبر النقطة. **الواجهة بلا تغيير.** توسعة الخادم: عمود `prefs` + `UpdateProfileDto` يقبل الوثيقة الكاملة (skills/experiences/certificates/prefs). **مُتحقَّق حيًّا:** بعد مسح الكاش وإعادة التحميل عادت البيانات من NestJS (عنوان + 5 مهارات)، بلا أخطاء console
+- [ ] بقية المخازن عبر `whenReal(() => api.x(), () => mock)` — مخزنًا بمخزن (التالي: PublicProfile → Marketplace → Interviewers/Interviews → Surveys → Notifications → Wallet/Plan)
+- [x] تحقّق حيّ بعد كل مخزن (Auth ✓ · Profile ✓)
 
 ## ⬜ المرحلة 4 — نزع Supabase + البثّ اللحظي
 - [ ] استبدال `cloudSync`/`directMessages` بنداءات العقد

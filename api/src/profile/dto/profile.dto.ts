@@ -1,4 +1,4 @@
-import { IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator'
+import { IsArray, IsIn, IsInt, IsObject, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator'
 
 export class UpdateProfileDto {
   @IsOptional()
@@ -10,6 +10,12 @@ export class UpdateProfileDto {
   @IsString()
   @MaxLength(2000)
   summary?: string
+
+  // الوثيقة الخاصة الكاملة — المخزن يحفظ اللقطة كلها في نداء واحد (يقابل persist المحلي)
+  @IsOptional() @IsArray() skills?: Array<Record<string, unknown>>
+  @IsOptional() @IsArray() experiences?: Array<Record<string, unknown>>
+  @IsOptional() @IsArray() certificates?: Array<Record<string, unknown>>
+  @IsOptional() @IsObject() prefs?: Record<string, unknown>
 }
 
 export class AddSkillDto {

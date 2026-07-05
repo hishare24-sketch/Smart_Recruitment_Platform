@@ -32,6 +32,15 @@ export class ProfileService {
       profile.headline = dto.headline
     if (dto.summary !== undefined)
       profile.summary = dto.summary
+    // اللقطة الكاملة (عند حفظ المخزن للوثيقة كلها) — تُستبدل كما وردت
+    if (dto.skills !== undefined)
+      profile.skills = dto.skills as unknown as Profile['skills']
+    if (dto.experiences !== undefined)
+      profile.experiences = dto.experiences as unknown as Profile['experiences']
+    if (dto.certificates !== undefined)
+      profile.certificates = dto.certificates as unknown as Profile['certificates']
+    if (dto.prefs !== undefined)
+      profile.prefs = dto.prefs
     return this.profiles.save(profile)
   }
 

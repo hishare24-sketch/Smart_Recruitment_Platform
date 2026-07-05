@@ -1,8 +1,9 @@
 import { defineStore } from 'pinia'
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import type { SeekerPrefs } from '@/interfaces/RoleProfiles'
 import { ai } from '@/services/ai'
 import { syncPrivateDoc } from '@/services/cloudSync'
+import { USE_REAL_API, api } from '@/services/api'
 import { useGamificationStore } from '@/stores/GamificationStore'
 
 export type ProofType = 'assessment' | 'endorsement' | 'project' | 'certificate' | 'self'
@@ -131,6 +132,10 @@ export const useProfileStore = defineStore('profile', () => {
     pendingProofRequests.value.unshift({ id: nextRequestId++, from, relation, skill, date: 'الآن' })
   }
   function resolveProofRequest(id: number, accept: boolean) {
+    // الخادم يزيل الطلب (وقد يضيف توصية على المهارة المطابقة)؛ المنطق المحلي أدناه
+    // يبقى تفاؤليًا وتزامنه لقطة persist للوثيقة الكاملة.
+    if (USE_REAL_API)
+      api.profile.resolveProofRequest(id, accept).catch(() => { /* المحلي كافٍ */ })
     const req = pendingProofRequests.value.find(r => r.id === id)
     if (req && accept) {
       const skill = skills.value.find(s => s.name.toLowerCase() === req.skill.toLowerCase())
@@ -147,17 +152,62 @@ export const useProfileStore = defineStore('profile', () => {
       .map(s => s.name),
   )
 
-  function persist() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+  function snapshot() {
+    return {
       headline: headline.value,
       summary: summary.value,
       skills: skills.value,
       experiences: experiences.value,
       certificates: certificates.value,
       prefs: prefs.value,
-    }))
+    }
+  }
+
+  // ===== الربط الخلفي (NestJS) خلف المفتاح — بلا تغيير في واجهة المخزن =====
+  // `ready` يمنع دفع لقطة الإماهة الأولى للخادم (تُطبَّق قبل رفع العلَم).
+  let ready = !USE_REAL_API
+  let serverSaveTimer: ReturnType<typeof setTimeout> | null = null
+  function pushToServer() {
+    if (serverSaveTimer)
+      clearTimeout(serverSaveTimer)
+    serverSaveTimer = setTimeout(() => { api.profile.update(snapshot()).catch(() => { /* الكاش المحلي كافٍ */ }) }, 600)
+  }
+
+  function persist() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot()))
+    if (USE_REAL_API && ready)
+      pushToServer()
   }
   watch([headline, summary, skills, experiences, certificates, prefs], persist, { deep: true })
+
+  /**
+   * إماهة الوثيقة الخاصة من الخادم عند الدخول (الوضع الحقيقي فقط).
+   * الخادم مرجع الحقيقة؛ الحقول الفارغة تعود للبذرة (تفادي تسرّب كاش مستخدم سابق).
+   */
+  async function hydrate() {
+    if (!USE_REAL_API)
+      return
+    try {
+      const p = await api.profile.get() as Partial<ProfileState> | null
+      if (p) {
+        headline.value = p.headline || seed.headline
+        summary.value = p.summary || seed.summary
+        skills.value = p.skills?.length ? p.skills : structuredClone(seed.skills)
+        experiences.value = p.experiences?.length ? p.experiences : structuredClone(seed.experiences)
+        certificates.value = p.certificates?.length ? p.certificates : structuredClone(seed.certificates)
+        prefs.value = { ...structuredClone(seed.prefs), ...(p.prefs ?? {}) }
+      }
+      const reqs = await api.profile.proofRequests() as ProofRequest[]
+      if (Array.isArray(reqs))
+        pendingProofRequests.value = reqs
+    }
+    catch { /* يبقى البذر المحلي */ }
+    // ننتظر تفريغ مراقبات الإماهة (ready=false) ثم نسمح بالدفع للخادم بعدها
+    await nextTick()
+    ready = true
+  }
+  if (USE_REAL_API)
+    hydrate()
 
   // مزامنة سحابية خاصة — بجلسة حقيقية فقط (DOC/CLOUD_SYNC.md)
   const { status: syncStatus } = syncPrivateDoc({

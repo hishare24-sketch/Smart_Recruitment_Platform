@@ -65,6 +65,10 @@ export class Profile {
   @Column({ type: 'simple-json', default: '[]' })
   certificates!: Certificate[]
 
+  // تفضيلات الباحث (seeker_profiles) — تُخزَّن كما هي
+  @Column({ type: 'simple-json', default: '{}' })
+  prefs!: Record<string, unknown>
+
   @Column({ type: 'simple-json', default: '[]' })
   proofRequests!: ProofRequest[]
 }

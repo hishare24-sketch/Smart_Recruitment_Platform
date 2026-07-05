@@ -85,6 +85,21 @@ describe('Phase 2 resources (e2e)', () => {
     await http.delete(`/api/v1/profile/skills/${skillId}`).set(auth()).expect(204)
   })
 
+  it('profile: whole-doc PATCH persists skills/experiences/certificates/prefs', async () => {
+    const doc = {
+      headline: 'مطوّر واجهات',
+      skills: [{ id: 1, name: 'Vue', selfLevel: 5, proofs: [] }],
+      experiences: [{ id: 1, title: 'مطوّر', company: 'شركة', period: '2022', desc: '' }],
+      certificates: [{ id: 1, name: 'Vue Pro', issuer: 'Vue School', date: '2023' }],
+      prefs: { location: 'الرياض', self_offer_active: true },
+    }
+    await http.patch('/api/v1/profile').set(auth()).send(doc).expect(200)
+    const got = await http.get('/api/v1/profile').set(auth()).expect(200)
+    expect(got.body.data.skills).toHaveLength(1)
+    expect(got.body.data.experiences[0].company).toBe('شركة')
+    expect(got.body.data.prefs.self_offer_active).toBe(true)
+  })
+
   it('account: plan free → wallet welcome balance → upgrade pro → elite blocked (402)', async () => {
     const plan = await http.get('/api/v1/account/plan').set(auth()).expect(200)
     expect(plan.body.data.tier).toBe('free')
