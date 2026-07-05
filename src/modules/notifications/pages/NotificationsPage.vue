@@ -4,10 +4,19 @@ import { useRouter } from 'vue-router'
 import PageHeader from '@/components/shared/PageHeader.vue'
 import type { AppNotification } from '@/stores/NotificationsStore'
 import { useNotificationsStore } from '@/stores/NotificationsStore'
+import BaseCard from '@/components/ui/BaseCard.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
+import BaseIcon from '@/components/ui/BaseIcon.vue'
+import BaseAvatar from '@/components/ui/BaseAvatar.vue'
 
 const store = useNotificationsStore()
 const router = useRouter()
 const filter = ref<'all' | 'unread'>('all')
+
+type BaseColor = 'brand' | 'emerald' | 'accent' | 'success' | 'info' | 'warning' | 'error' | 'neutral'
+function mapColor(c?: string): BaseColor {
+  return (({ primary: 'brand', secondary: 'emerald', 'medium-emphasis': 'neutral', 'surface-variant': 'neutral', grey: 'neutral', orange: 'warning', amber: 'warning' } as Record<string, BaseColor>)[c ?? ''] ?? c ?? 'brand') as BaseColor
+}
 
 // الإجراء المباشر من الإشعار: تعليمه كمقروء ثم الانتقال لتنفيذ الإجراء
 function runAction(n: AppNotification) {
@@ -26,51 +35,49 @@ const filtered = computed(() =>
   <div class="mx-auto" style="max-width: 820px">
     <PageHeader title="الإشعارات" :subtitle="`لديك ${store.unreadCount} إشعارات غير مقروءة`" icon="mdi-bell-outline">
       <template #actions>
-        <VBtn variant="text" size="small" prepend-icon="mdi-check-all" :disabled="!store.unreadCount" @click="store.markAllRead">
-          تعليم الكل كمقروء
-        </VBtn>
+        <BaseButton variant="ghost" size="sm" :disabled="!store.unreadCount" @click="store.markAllRead">
+          <BaseIcon name="mdi-check-all" :size="16" />تعليم الكل كمقروء
+        </BaseButton>
       </template>
     </PageHeader>
 
-    <VBtnToggle v-model="filter" mandatory color="primary" variant="outlined" class="mb-4">
-      <VBtn value="all" size="small">الكل</VBtn>
-      <VBtn value="unread" size="small">غير المقروءة ({{ store.unreadCount }})</VBtn>
-    </VBtnToggle>
+    <div class="seg mb-4">
+      <button type="button" class="seg-btn" :class="{ 'is-active': filter === 'all' }" @click="filter = 'all'">الكل</button>
+      <button type="button" class="seg-btn" :class="{ 'is-active': filter === 'unread' }" @click="filter = 'unread'">غير المقروءة ({{ store.unreadCount }})</button>
+    </div>
 
-    <VCard>
-      <VList lines="three">
-        <template v-for="(n, i) in filtered" :key="n.id">
-          <VListItem :class="!n.read ? 'bg-blue-lighten-5' : ''" @click="store.toggleRead(n.id)">
-            <template #prepend>
-              <VAvatar :color="n.color" variant="tonal" rounded="lg"><VIcon :icon="n.icon" /></VAvatar>
-            </template>
-            <VListItemTitle class="font-weight-bold">
-              {{ n.title }}
-              <VBadge v-if="!n.read" color="error" dot inline class="ms-1" />
-            </VListItemTitle>
-            <VListItemSubtitle>{{ n.body }}</VListItemSubtitle>
-            <VBtn
-              v-if="n.actionTo"
-              size="small"
-              color="primary"
-              variant="tonal"
-              class="mt-2 align-self-start"
-              prepend-icon="mdi-arrow-left-circle-outline"
-              @click.stop="runAction(n)"
-            >
-              {{ n.actionLabel ?? 'تنفيذ الإجراء' }}
-            </VBtn>
-            <template #append>
-              <span class="text-caption text-medium-emphasis">{{ n.time }}</span>
-            </template>
-          </VListItem>
-          <VDivider v-if="i < filtered.length - 1" />
-        </template>
-      </VList>
-      <div v-if="!filtered.length" class="pa-10 text-center text-medium-emphasis">
-        <VIcon icon="mdi-bell-check-outline" size="48" />
+    <BaseCard :padded="false" class="overflow-hidden">
+      <div
+        v-for="(n, i) in filtered"
+        :key="n.id"
+        class="flex cursor-pointer items-start gap-3 p-3 transition hover:bg-surfalt"
+        :class="[{ 'border-t border-ui': i > 0 }]"
+        :style="!n.read ? { background: 'rgba(var(--v-theme-primary), 0.06)' } : {}"
+        @click="store.toggleRead(n.id)"
+      >
+        <BaseAvatar :color="mapColor(n.color)" tonal square><BaseIcon :name="n.icon" :size="20" /></BaseAvatar>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-1 font-bold text-content">
+            {{ n.title }}
+            <span v-if="!n.read" class="inline-block h-2 w-2 rounded-full" style="background: rgb(var(--v-theme-error))" />
+          </div>
+          <div class="text-sm text-muted">{{ n.body }}</div>
+          <BaseButton
+            v-if="n.actionTo"
+            size="sm"
+            variant="tonal-brand"
+            class="mt-2"
+            @click.stop="runAction(n)"
+          >
+            <BaseIcon name="mdi-arrow-left-circle-outline" :size="16" />{{ n.actionLabel ?? 'تنفيذ الإجراء' }}
+          </BaseButton>
+        </div>
+        <span class="shrink-0 text-xs text-muted">{{ n.time }}</span>
+      </div>
+      <div v-if="!filtered.length" class="py-10 text-center text-muted">
+        <BaseIcon name="mdi-bell-check-outline" :size="48" />
         <div class="mt-2">لا توجد إشعارات</div>
       </div>
-    </VCard>
+    </BaseCard>
   </div>
 </template>
