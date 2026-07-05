@@ -6,11 +6,28 @@ import { useResumesStore } from '@/stores/ResumesStore'
 import { useProfileStore } from '@/stores/ProfileStore'
 import { useAuthStore } from '@/stores/AuthStore'
 import { ai } from '@/services/ai'
+import BaseCard from '@/components/ui/BaseCard.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
+import BaseChip from '@/components/ui/BaseChip.vue'
+import BaseIcon from '@/components/ui/BaseIcon.vue'
+import BaseAvatar from '@/components/ui/BaseAvatar.vue'
+import BaseInput from '@/components/ui/BaseInput.vue'
+import BaseTextarea from '@/components/ui/BaseTextarea.vue'
+import BaseSelect from '@/components/ui/BaseSelect.vue'
+import BaseSwitch from '@/components/ui/BaseSwitch.vue'
+import BaseModal from '@/components/ui/BaseModal.vue'
+import BaseSnackbar from '@/components/ui/BaseSnackbar.vue'
+import BaseProgressBar from '@/components/ui/BaseProgressBar.vue'
+import BaseDropdown from '@/components/ui/BaseDropdown.vue'
 
 const router = useRouter()
 const resumesStore = useResumesStore()
 const profile = useProfileStore()
 const auth = useAuthStore()
+
+function colorVar(c: string) {
+  return `rgb(var(--v-theme-${c === 'amber' ? 'warning' : c}))`
+}
 
 const step = ref(1)
 const totalSteps = 7
@@ -42,6 +59,17 @@ const colorScheme = ref('blue')
 const fontSize = ref('medium')
 const withPhoto = ref(true)
 const resumeName = ref('')
+
+const LANGUAGE_OPTIONS = [{ value: 'ar', title: 'العربية' }, { value: 'en', title: 'الإنجليزية' }, { value: 'bi', title: 'ثنائي اللغة' }]
+const SCHEME_OPTIONS = [{ value: 'blue', title: 'أزرق' }, { value: 'green', title: 'أخضر' }, { value: 'orange', title: 'برتقالي' }, { value: 'dark', title: 'غامق' }]
+const FONTSIZE_OPTIONS = [{ value: 'small', title: 'صغير' }, { value: 'medium', title: 'متوسط' }, { value: 'large', title: 'كبير' }]
+const SUMMARY_STYLES = [{ value: 'professional', label: 'احترافي' }, { value: 'creative', label: 'إبداعي' }, { value: 'brief', label: 'موجز' }, { value: 'detailed', label: 'مفصّل' }]
+
+function toggleStyle(active: boolean, color = 'primary') {
+  if (active)
+    return { background: `rgb(var(--v-theme-${color}))`, color: `rgb(var(--v-theme-on-${color}))`, borderColor: 'transparent' }
+  return { background: 'transparent', color: 'rgba(var(--v-theme-on-surface), 0.75)', borderColor: 'rgba(var(--v-theme-on-surface), 0.2)' }
+}
 
 const templateName = computed(() => templates.find(t => t.id === selectedTemplate.value)?.name ?? 'حديث')
 const languageLabel = computed(() => (language.value === 'ar' ? 'عربي' : language.value === 'en' ? 'English' : 'ثنائي'))
@@ -153,6 +181,7 @@ const publicLink = computed(() => `${window.location.origin}${import.meta.env.BA
 const privateDialog = ref(false)
 const privatePassword = ref('')
 const qrDialog = ref(false)
+const qrError = ref(false)
 const qrUrl = computed(() => `https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=8&data=${encodeURIComponent(publicLink.value)}`)
 
 function copyPublicLink() {
@@ -166,6 +195,10 @@ function genPassword() {
 function openPrivateLink() {
   genPassword()
   privateDialog.value = true
+}
+function openQr() {
+  qrError.value = false
+  qrDialog.value = true
 }
 function copyPrivate() {
   navigator.clipboard?.writeText(`${publicLink.value}?pw=${privatePassword.value}`)
@@ -183,6 +216,7 @@ const exportFormats = [
 const resumeSkills = ['Vue.js', 'TypeScript', 'UI/UX', 'Node.js']
 const aiReview = computed(() => ai.resumeReview(summary.value, resumeSkills))
 const opportunities = ['مطوّر واجهات أمامية أول', 'استشارة معمارية Frontend', 'بناء نظام تصميم موحّد']
+const opportunityOptions = opportunities.map(o => ({ value: o, title: o }))
 const selectedOpportunity = ref(opportunities[0])
 const vsSuggestions = computed(() => ai.resumeVsOpportunity(summary.value, selectedOpportunity.value))
 function translateSummary(to: 'ar' | 'en') {
@@ -266,251 +300,232 @@ const previewHobbies = ['القراءة التقنية', 'التصوير', 'ال
       icon="mdi-file-account-outline"
     />
 
-    <VRow>
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-12">
       <!-- Left: wizard -->
-      <VCol cols="12" md="7">
-    <!-- Stepper progress -->
-    <VCard class="pa-4 mb-4">
-      <div class="d-flex justify-space-between mb-2">
-        <span class="text-body-2 font-weight-bold">{{ stepTitles[step - 1] }}</span>
-        <span class="text-caption text-medium-emphasis">الخطوة {{ step }} من {{ totalSteps }}</span>
-      </div>
-      <VProgressLinear :model-value="(step / totalSteps) * 100" color="accent" height="8" rounded />
-    </VCard>
-
-    <VCard class="pa-5 mb-4" min-height="380">
-      <!-- Step 1: Template -->
-      <div v-if="step === 1">
-        <h3 class="text-subtitle-1 font-weight-bold mb-4">اختر قالباً</h3>
-        <VRow>
-          <VCol v-for="tpl in templates" :key="tpl.id" cols="6" md="4" lg="2">
-            <VCard
-              :variant="selectedTemplate === tpl.id ? 'flat' : 'outlined'"
-              :color="selectedTemplate === tpl.id ? 'primary' : undefined"
-              class="pa-3 text-center cursor-pointer"
-              height="100%"
-              @click="selectedTemplate = tpl.id"
-            >
-              <VIcon :icon="tpl.icon" size="40" :color="selectedTemplate === tpl.id ? undefined : tpl.color" />
-              <div class="text-body-2 font-weight-bold mt-2">
-                {{ tpl.name }}
-              </div>
-              <div class="text-caption" :class="selectedTemplate === tpl.id ? '' : 'text-medium-emphasis'">
-                {{ tpl.desc }}
-              </div>
-            </VCard>
-          </VCol>
-        </VRow>
-      </div>
-
-      <!-- Step 2: Sections -->
-      <div v-else-if="step === 2">
-        <h3 class="text-subtitle-1 font-weight-bold mb-1">خصّص الأقسام</h3>
-        <p class="text-caption text-medium-emphasis mb-4">فعّل الأقسام التي تريد إدراجها في سيرتك</p>
-        <VRow>
-          <VCol v-for="sec in sections" :key="sec.key" cols="12" sm="6">
-            <VCard variant="outlined" class="pa-3 d-flex align-center justify-space-between">
-              <span class="text-body-2">{{ sec.name }}</span>
-              <VSwitch v-model="sec.enabled" color="secondary" hide-details density="compact" />
-            </VCard>
-          </VCol>
-        </VRow>
-      </div>
-
-      <!-- Step 3: Language & format -->
-      <div v-else-if="step === 3">
-        <h3 class="text-subtitle-1 font-weight-bold mb-4">اللغة والتنسيق</h3>
-        <VRow>
-          <VCol cols="12" md="6">
-            <VSelect
-              v-model="language"
-              label="اللغة"
-              :items="[{ value: 'ar', title: 'العربية' }, { value: 'en', title: 'الإنجليزية' }, { value: 'bi', title: 'ثنائي اللغة' }]"
-            />
-          </VCol>
-          <VCol cols="12" md="6">
-            <VSelect
-              v-model="colorScheme"
-              label="نظام الألوان"
-              :items="[{ value: 'blue', title: 'أزرق' }, { value: 'green', title: 'أخضر' }, { value: 'orange', title: 'برتقالي' }, { value: 'dark', title: 'غامق' }]"
-            />
-          </VCol>
-          <VCol cols="12" md="6">
-            <VSelect
-              v-model="fontSize"
-              label="حجم الخط"
-              :items="[{ value: 'small', title: 'صغير' }, { value: 'medium', title: 'متوسط' }, { value: 'large', title: 'كبير' }]"
-            />
-          </VCol>
-          <VCol cols="12" md="6" class="d-flex align-center">
-            <VSwitch v-model="withPhoto" label="إضافة صورة شخصية" color="secondary" hide-details />
-          </VCol>
-        </VRow>
-      </div>
-
-      <!-- Step 4: Summary -->
-      <div v-else-if="step === 4">
-        <div class="d-flex justify-space-between align-center mb-3 flex-wrap ga-2">
-          <h3 class="text-subtitle-1 font-weight-bold">الملخص المهني</h3>
-          <div class="d-flex ga-2">
-            <VMenu>
-              <template #activator="{ props }">
-                <VBtn v-bind="props" color="secondary" variant="tonal" size="small" prepend-icon="mdi-translate">ترجمة</VBtn>
-              </template>
-              <VList density="compact">
-                <VListItem title="إلى الإنجليزية" prepend-icon="mdi-alphabet-latin" @click="translateSummary('en')" />
-                <VListItem title="إلى العربية" prepend-icon="mdi-abjad-arabic" @click="translateSummary('ar')" />
-              </VList>
-            </VMenu>
-            <VBtn color="secondary" variant="tonal" size="small" prepend-icon="mdi-refresh" @click="regenerateSummary">
-              إعادة توليد ذكي
-            </VBtn>
+      <div class="md:col-span-7">
+        <!-- Stepper progress -->
+        <BaseCard class="mb-4">
+          <div class="mb-2 flex justify-between">
+            <span class="text-sm font-bold text-content">{{ stepTitles[step - 1] }}</span>
+            <span class="text-xs text-muted">الخطوة {{ step }} من {{ totalSteps }}</span>
           </div>
-        </div>
-        <VChipGroup v-model="summaryStyle" mandatory color="primary" class="mb-2">
-          <VChip value="professional" filter>احترافي</VChip>
-          <VChip value="creative" filter>إبداعي</VChip>
-          <VChip value="brief" filter>موجز</VChip>
-          <VChip value="detailed" filter>مفصّل</VChip>
-        </VChipGroup>
-        <VTextarea v-model="summary" rows="5" auto-grow />
-      </div>
+          <BaseProgressBar :value="(step / totalSteps) * 100" :height="8" color="accent" />
+        </BaseCard>
 
-      <!-- Step 5: Achievements -->
-      <div v-else-if="step === 5">
-        <h3 class="text-subtitle-1 font-weight-bold mb-1">مراجعة الإنجازات</h3>
-        <p class="text-caption text-medium-emphasis mb-4">أعد صياغة إنجازاتك بأسلوب احترافي بنقرة واحدة</p>
-        <VCard variant="outlined" class="pa-3 mb-3">
-          <div class="d-flex justify-space-between align-center mb-2">
-            <span class="text-body-2 font-weight-bold">قيادة تطوير منصة الويب</span>
-            <VBtn size="x-small" variant="tonal" color="secondary" prepend-icon="mdi-auto-fix">إعادة صياغة</VBtn>
-          </div>
-          <p class="text-body-2 text-medium-emphasis mb-0">
-            قاد فريقاً من 4 مطوّرين لإطلاق منصة ويب جديدة، محقّقاً تحسيناً في الأداء بنسبة 40% وزيادة رضا المستخدمين.
-          </p>
-        </VCard>
-        <VCard variant="outlined" class="pa-3">
-          <div class="d-flex justify-space-between align-center mb-2">
-            <span class="text-body-2 font-weight-bold">تحسين أداء التطبيق</span>
-            <VBtn size="x-small" variant="tonal" color="secondary" prepend-icon="mdi-auto-fix">إعادة صياغة</VBtn>
-          </div>
-          <p class="text-body-2 text-medium-emphasis mb-0">
-            صمّم وطبّق استراتيجية تحميل كسول قلّصت زمن التحميل الأولي من 4 ثوانٍ إلى 1.2 ثانية.
-          </p>
-        </VCard>
-      </div>
-
-      <!-- Step 6: AI review (the visual resume is live on the right) -->
-      <div v-else-if="step === 6">
-        <h3 class="text-subtitle-1 font-weight-bold mb-1">تحليل ورؤى الـ AI</h3>
-        <p class="text-caption text-medium-emphasis mb-4">راجع سيرتك الحيّة على اليمين، وحسّنها حسب توصيات الـ AI.</p>
-
-        <!-- AI analysis -->
-        <VCard variant="tonal" color="secondary" class="pa-4">
-          <div class="d-flex align-center justify-space-between mb-3 flex-wrap ga-2">
-            <div class="d-flex align-center ga-2">
-              <VIcon icon="mdi-robot-happy-outline" />
-              <span class="text-subtitle-2 font-weight-bold">تحليل الـ AI للسيرة</span>
+        <BaseCard class="mb-4 min-h-[380px]">
+          <!-- Step 1: Template -->
+          <div v-if="step === 1">
+            <h3 class="mb-4 text-base font-bold text-content">اختر قالباً</h3>
+            <div class="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+              <button
+                v-for="tpl in templates"
+                :key="tpl.id"
+                type="button"
+                class="rounded-ui-lg border p-3 text-center transition"
+                :style="selectedTemplate === tpl.id
+                  ? { background: 'rgb(var(--v-theme-primary))', color: 'rgb(var(--v-theme-on-primary))', borderColor: 'transparent' }
+                  : { borderColor: 'rgba(var(--v-theme-on-surface), 0.14)' }"
+                @click="selectedTemplate = tpl.id"
+              >
+                <BaseIcon :name="tpl.icon" :size="40" :style="{ color: selectedTemplate === tpl.id ? 'rgb(var(--v-theme-on-primary))' : tpl.color }" />
+                <div class="mt-2 text-sm font-bold" :class="selectedTemplate === tpl.id ? '' : 'text-content'">{{ tpl.name }}</div>
+                <div class="text-xs" :style="selectedTemplate === tpl.id ? {} : { color: 'rgba(var(--v-theme-on-surface), 0.6)' }">{{ tpl.desc }}</div>
+              </button>
             </div>
-            <VChip :color="aiReview.score >= 80 ? 'success' : aiReview.score >= 60 ? 'warning' : 'error'" label>قوة السيرة {{ aiReview.score }}%</VChip>
           </div>
 
-          <div class="d-flex flex-column flex-md-row ga-4 mb-3">
-            <div class="flex-grow-1">
-              <div class="text-caption font-weight-bold text-success mb-1"><VIcon icon="mdi-thumb-up-outline" size="14" /> نقاط القوة</div>
-              <ul class="text-caption ps-4 mb-0">
-                <li v-for="(s, i) in aiReview.strengths" :key="i">{{ s }}</li>
+          <!-- Step 2: Sections -->
+          <div v-else-if="step === 2">
+            <h3 class="mb-1 text-base font-bold text-content">خصّص الأقسام</h3>
+            <p class="mb-4 text-xs text-muted">فعّل الأقسام التي تريد إدراجها في سيرتك</p>
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div v-for="sec in sections" :key="sec.key" class="flex items-center justify-between rounded-ui-lg border-ui p-3">
+                <span class="text-sm text-content">{{ sec.name }}</span>
+                <BaseSwitch v-model="sec.enabled" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 3: Language & format -->
+          <div v-else-if="step === 3">
+            <h3 class="mb-4 text-base font-bold text-content">اللغة والتنسيق</h3>
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label class="mb-1 block text-sm font-medium text-muted">اللغة</label>
+                <BaseSelect :model-value="language" :items="LANGUAGE_OPTIONS" @update:model-value="v => v && (language = v)" />
+              </div>
+              <div>
+                <label class="mb-1 block text-sm font-medium text-muted">نظام الألوان</label>
+                <BaseSelect :model-value="colorScheme" :items="SCHEME_OPTIONS" @update:model-value="v => v && (colorScheme = v)" />
+              </div>
+              <div>
+                <label class="mb-1 block text-sm font-medium text-muted">حجم الخط</label>
+                <BaseSelect :model-value="fontSize" :items="FONTSIZE_OPTIONS" @update:model-value="v => v && (fontSize = v)" />
+              </div>
+              <div class="flex items-end">
+                <BaseSwitch v-model="withPhoto" label="إضافة صورة شخصية" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 4: Summary -->
+          <div v-else-if="step === 4">
+            <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h3 class="text-base font-bold text-content">الملخص المهني</h3>
+              <div class="flex gap-2">
+                <BaseDropdown align="end">
+                  <template #trigger="{ toggle }">
+                    <BaseButton variant="tonal-emerald" size="sm" @click="toggle"><BaseIcon name="mdi-translate" :size="16" />ترجمة</BaseButton>
+                  </template>
+                  <div class="min-w-[180px] py-1">
+                    <button class="menu-row" @click="translateSummary('en')"><BaseIcon name="mdi-alphabet-latin" :size="18" />إلى الإنجليزية</button>
+                    <button class="menu-row" @click="translateSummary('ar')"><BaseIcon name="mdi-abjad-arabic" :size="18" />إلى العربية</button>
+                  </div>
+                </BaseDropdown>
+                <BaseButton variant="tonal-emerald" size="sm" @click="regenerateSummary"><BaseIcon name="mdi-refresh" :size="16" />إعادة توليد ذكي</BaseButton>
+              </div>
+            </div>
+            <div class="mb-2 flex flex-wrap gap-2">
+              <button
+                v-for="st in SUMMARY_STYLES"
+                :key="st.value"
+                type="button"
+                class="rounded-full border px-3 py-1 text-sm font-medium transition"
+                :style="toggleStyle(summaryStyle === st.value)"
+                @click="summaryStyle = st.value"
+              >{{ st.label }}</button>
+            </div>
+            <BaseTextarea v-model="summary" :rows="5" />
+          </div>
+
+          <!-- Step 5: Achievements -->
+          <div v-else-if="step === 5">
+            <h3 class="mb-1 text-base font-bold text-content">مراجعة الإنجازات</h3>
+            <p class="mb-4 text-xs text-muted">أعد صياغة إنجازاتك بأسلوب احترافي بنقرة واحدة</p>
+            <div class="mb-3 rounded-ui-lg border-ui p-3">
+              <div class="mb-2 flex items-center justify-between">
+                <span class="text-sm font-bold text-content">قيادة تطوير منصة الويب</span>
+                <BaseButton variant="tonal-emerald" size="sm" @click="() => {}"><BaseIcon name="mdi-auto-fix" :size="14" />إعادة صياغة</BaseButton>
+              </div>
+              <p class="mb-0 text-sm text-muted">
+                قاد فريقاً من 4 مطوّرين لإطلاق منصة ويب جديدة، محقّقاً تحسيناً في الأداء بنسبة 40% وزيادة رضا المستخدمين.
+              </p>
+            </div>
+            <div class="rounded-ui-lg border-ui p-3">
+              <div class="mb-2 flex items-center justify-between">
+                <span class="text-sm font-bold text-content">تحسين أداء التطبيق</span>
+                <BaseButton variant="tonal-emerald" size="sm" @click="() => {}"><BaseIcon name="mdi-auto-fix" :size="14" />إعادة صياغة</BaseButton>
+              </div>
+              <p class="mb-0 text-sm text-muted">
+                صمّم وطبّق استراتيجية تحميل كسول قلّصت زمن التحميل الأولي من 4 ثوانٍ إلى 1.2 ثانية.
+              </p>
+            </div>
+          </div>
+
+          <!-- Step 6: AI review (the visual resume is live on the right) -->
+          <div v-else-if="step === 6">
+            <h3 class="mb-1 text-base font-bold text-content">تحليل ورؤى الـ AI</h3>
+            <p class="mb-4 text-xs text-muted">راجع سيرتك الحيّة على اليمين، وحسّنها حسب توصيات الـ AI.</p>
+
+            <!-- AI analysis -->
+            <div class="rounded-ui-lg p-4" style="background: rgba(var(--v-theme-secondary), 0.12)">
+              <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                  <BaseIcon name="mdi-robot-happy-outline" :size="20" :style="{ color: 'rgb(var(--v-theme-secondary))' }" />
+                  <span class="text-sm font-bold text-content">تحليل الـ AI للسيرة</span>
+                </div>
+                <BaseChip :color="aiReview.score >= 80 ? 'success' : aiReview.score >= 60 ? 'warning' : 'error'">قوة السيرة {{ aiReview.score }}%</BaseChip>
+              </div>
+
+              <div class="mb-3 flex flex-col gap-4 md:flex-row">
+                <div class="flex-1">
+                  <div class="mb-1 flex items-center gap-1 text-xs font-bold" :style="{ color: colorVar('success') }"><BaseIcon name="mdi-thumb-up-outline" :size="14" /> نقاط القوة</div>
+                  <ul class="mb-0 list-disc ps-5 text-xs text-content">
+                    <li v-for="(s, i) in aiReview.strengths" :key="i">{{ s }}</li>
+                  </ul>
+                </div>
+                <div class="flex-1">
+                  <div class="mb-1 flex items-center gap-1 text-xs font-bold" :style="{ color: colorVar('warning') }"><BaseIcon name="mdi-alert-outline" :size="14" /> فرص التحسين</div>
+                  <ul class="mb-0 list-disc ps-5 text-xs text-content">
+                    <li v-for="(w, i) in aiReview.weaknesses" :key="i">{{ w }}</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="mb-1 flex items-center gap-1 text-xs font-bold text-content"><BaseIcon name="mdi-tag-multiple-outline" :size="14" /> كلمات مفتاحية (ATS)</div>
+              <div class="mb-3 flex flex-wrap gap-1">
+                <BaseChip v-for="k in aiReview.atsKeywords" :key="k" color="neutral">{{ k }}</BaseChip>
+              </div>
+
+              <hr class="mb-3 border-ui">
+              <div class="mb-2 flex items-center gap-1 text-xs font-bold text-content"><BaseIcon name="mdi-target" :size="14" /> تحليل مقابل فرصة</div>
+              <BaseSelect :model-value="selectedOpportunity" :items="opportunityOptions" class="mb-2" @update:model-value="v => v && (selectedOpportunity = v)" />
+              <ul class="mb-0 list-disc ps-5 text-xs text-content">
+                <li v-for="(s, i) in vsSuggestions" :key="i">{{ s }}</li>
               </ul>
             </div>
-            <div class="flex-grow-1">
-              <div class="text-caption font-weight-bold text-warning mb-1"><VIcon icon="mdi-alert-outline" size="14" /> فرص التحسين</div>
-              <ul class="text-caption ps-4 mb-0">
-                <li v-for="(w, i) in aiReview.weaknesses" :key="i">{{ w }}</li>
-              </ul>
+          </div>
+
+          <!-- Step 7: Export -->
+          <div v-else-if="step === 7" class="py-6 text-center">
+            <BaseAvatar color="success" tonal :size="80" class="mb-3">
+              <BaseIcon name="mdi-check-circle-outline" :size="48" />
+            </BaseAvatar>
+            <h3 class="mb-1 text-lg font-bold text-content">سيرتك جاهزة!</h3>
+            <p class="mb-4 text-sm text-muted">سمِّ سيرتك ثم احفظها أو صدّرها</p>
+            <div class="mx-auto mb-4 max-w-[360px]">
+              <BaseInput v-model="resumeName" :placeholder="`سيرة ${templateName}`" label="اسم السيرة" prefix-icon="mdi-file-account-outline" />
+            </div>
+            <!-- File exports -->
+            <div class="mb-2 text-xs font-bold text-muted">تصدير كملف</div>
+            <div class="mx-auto mb-2 grid max-w-[560px] grid-cols-2 gap-3 sm:grid-cols-4">
+              <button v-for="f in exportFormats" :key="f.fmt" type="button" class="rounded-ui-lg border-ui p-3 text-center transition hover:bg-surfalt" @click="exportResume(f.fmt)">
+                <BaseIcon :name="f.icon" :size="30" :style="{ color: colorVar(f.color) }" />
+                <div class="mt-1 text-xs font-bold text-content">{{ f.label }}</div>
+              </button>
+            </div>
+
+            <!-- Share -->
+            <div class="mb-2 mt-4 text-xs font-bold text-muted">مشاركة</div>
+            <div class="flex flex-wrap justify-center gap-2">
+              <BaseButton variant="tonal-emerald" size="sm" @click="copyPublicLink"><BaseIcon name="mdi-link-variant" :size="16" />رابط عام</BaseButton>
+              <BaseButton variant="tonal-emerald" size="sm" @click="openPrivateLink"><BaseIcon name="mdi-lock-outline" :size="16" />رابط خاص</BaseButton>
+              <BaseButton variant="tonal-emerald" size="sm" @click="openQr"><BaseIcon name="mdi-qrcode" :size="16" />رمز QR</BaseButton>
             </div>
           </div>
-
-          <div class="text-caption font-weight-bold mb-1"><VIcon icon="mdi-tag-multiple-outline" size="14" /> كلمات مفتاحية (ATS)</div>
-          <div class="d-flex flex-wrap ga-1 mb-3">
-            <VChip v-for="k in aiReview.atsKeywords" :key="k" size="x-small" color="surface" variant="flat" label>{{ k }}</VChip>
-          </div>
-
-          <VDivider class="mb-3" />
-          <div class="text-caption font-weight-bold mb-2"><VIcon icon="mdi-target" size="14" /> تحليل مقابل فرصة</div>
-          <VSelect v-model="selectedOpportunity" :items="opportunities" density="compact" variant="outlined" hide-details class="mb-2" />
-          <ul class="text-caption ps-4 mb-0">
-            <li v-for="(s, i) in vsSuggestions" :key="i">{{ s }}</li>
-          </ul>
-        </VCard>
-      </div>
-
-      <!-- Step 7: Export -->
-      <div v-else-if="step === 7" class="text-center py-6">
-        <VAvatar color="success" variant="tonal" size="80" class="mb-3">
-          <VIcon icon="mdi-check-circle-outline" size="48" />
-        </VAvatar>
-        <h3 class="text-h6 font-weight-bold mb-1">سيرتك جاهزة!</h3>
-        <p class="text-body-2 text-medium-emphasis mb-4">سمِّ سيرتك ثم احفظها أو صدّرها</p>
-        <VTextField
-          v-model="resumeName"
-          :placeholder="`سيرة ${templateName}`"
-          label="اسم السيرة"
-          class="mx-auto mb-4"
-          style="max-width: 360px"
-          prepend-inner-icon="mdi-file-account-outline"
-        />
-        <!-- File exports -->
-        <div class="text-caption font-weight-bold text-medium-emphasis mb-2">تصدير كملف</div>
-        <VRow class="mb-2" style="max-width: 560px; margin-inline: auto">
-          <VCol v-for="f in exportFormats" :key="f.fmt" cols="6" sm="3">
-            <VCard variant="outlined" class="pa-3 text-center cursor-pointer h-100" @click="exportResume(f.fmt)">
-              <VIcon :icon="f.icon" :color="f.color" size="30" />
-              <div class="text-caption font-weight-bold mt-1">{{ f.label }}</div>
-            </VCard>
-          </VCol>
-        </VRow>
-
-        <!-- Share -->
-        <div class="text-caption font-weight-bold text-medium-emphasis mb-2 mt-4">مشاركة</div>
-        <div class="d-flex flex-wrap justify-center ga-2">
-          <VBtn color="secondary" variant="tonal" prepend-icon="mdi-link-variant" @click="copyPublicLink">رابط عام</VBtn>
-          <VBtn color="secondary" variant="tonal" prepend-icon="mdi-lock-outline" @click="openPrivateLink">رابط خاص</VBtn>
-          <VBtn color="secondary" variant="tonal" prepend-icon="mdi-qrcode" @click="qrDialog = true">رمز QR</VBtn>
-        </div>
-      </div>
-    </VCard>
+        </BaseCard>
 
         <!-- Navigation -->
-        <div class="d-flex justify-space-between">
-          <VBtn variant="outlined" :disabled="step === 1" prepend-icon="mdi-arrow-right" @click="prev">
-            السابق
-          </VBtn>
-          <VBtn v-if="step < totalSteps" color="accent" append-icon="mdi-arrow-left" @click="next">
-            التالي
-          </VBtn>
-          <VBtn v-else color="success" prepend-icon="mdi-content-save" @click="saveResume">
-            حفظ في حسابي
-          </VBtn>
+        <div class="flex justify-between">
+          <BaseButton variant="outline" :disabled="step === 1" @click="prev">
+            <BaseIcon name="mdi-arrow-right" :size="16" />السابق
+          </BaseButton>
+          <BaseButton v-if="step < totalSteps" variant="accent" @click="next">
+            التالي<BaseIcon name="mdi-arrow-left" :size="16" />
+          </BaseButton>
+          <BaseButton v-else variant="emerald" @click="saveResume">
+            <BaseIcon name="mdi-content-save" :size="16" />حفظ في حسابي
+          </BaseButton>
         </div>
-      </VCol>
+      </div>
 
       <!-- Right: live preview -->
-      <VCol cols="12" md="5">
+      <div class="md:col-span-5">
         <div class="preview-panel">
-          <div class="d-flex align-center justify-space-between mb-2">
-            <div class="d-flex align-center ga-2">
-              <VIcon icon="mdi-eye-outline" color="accent" size="18" />
-              <span class="text-subtitle-2 font-weight-bold">معاينة حيّة</span>
-              <VChip size="x-small" color="accent" variant="tonal" label>{{ templateName }}</VChip>
+          <div class="mb-2 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <BaseIcon name="mdi-eye-outline" :size="18" :style="{ color: 'rgb(var(--v-theme-accent))' }" />
+              <span class="text-sm font-bold text-content">معاينة حيّة</span>
+              <BaseChip color="accent">{{ templateName }}</BaseChip>
             </div>
-            <span class="text-caption text-medium-emphasis">تتحدّث فورًا</span>
+            <span class="text-xs text-muted">تتحدّث فورًا</span>
           </div>
 
           <div class="resume-preview resume-print-target" :style="{ '--rp-accent': accentColor, fontSize: fontPx }" :dir="isRtl ? 'rtl' : 'ltr'">
             <!-- Header -->
             <div class="rp-header" :class="headerMod">
               <div class="d-flex align-center ga-3" :class="{ 'justify-center': selectedTemplate === 'academic' }">
-                <div v-if="withPhoto" class="rp-photo"><VIcon icon="mdi-account" /></div>
+                <div v-if="withPhoto" class="rp-photo"><BaseIcon name="mdi-account" :size="24" /></div>
                 <div>
                   <div class="rp-name">{{ displayName }}</div>
                   <div class="rp-title">{{ headline }}</div>
@@ -581,46 +596,42 @@ const previewHobbies = ['القراءة التقنية', 'التصوير', 'ال
             </div>
           </div>
         </div>
-      </VCol>
-    </VRow>
+      </div>
+    </div>
 
     <!-- QR dialog -->
-    <VDialog v-model="qrDialog" max-width="320">
-      <VCard class="pa-4 text-center">
-        <VCardTitle class="text-subtitle-1">رمز QR للسيرة</VCardTitle>
-        <VImg :src="qrUrl" width="200" height="200" class="mx-auto my-2" cover>
-          <template #error>
-            <div class="d-flex align-center justify-center fill-height text-caption text-medium-emphasis pa-4">
-              يتطلب اتصالاً بالإنترنت لعرض الرمز.
-            </div>
-          </template>
-        </VImg>
-        <div class="text-caption text-medium-emphasis mb-3">امسح الرمز لفتح السيرة على الجوال.</div>
-        <VBtn color="primary" variant="text" block @click="qrDialog = false">إغلاق</VBtn>
-      </VCard>
-    </VDialog>
+    <BaseModal v-model="qrDialog" title="رمز QR للسيرة" :max-width="320">
+      <div class="text-center">
+        <img v-if="!qrError" :src="qrUrl" width="200" height="200" class="mx-auto my-2 rounded-ui" alt="QR" @error="qrError = true">
+        <div v-else class="my-2 p-4 text-xs text-muted">يتطلب اتصالاً بالإنترنت لعرض الرمز.</div>
+        <div class="mb-1 text-xs text-muted">امسح الرمز لفتح السيرة على الجوال.</div>
+      </div>
+      <template #actions>
+        <BaseButton variant="ghost" block @click="qrDialog = false">إغلاق</BaseButton>
+      </template>
+    </BaseModal>
 
     <!-- Private link dialog -->
-    <VDialog v-model="privateDialog" max-width="440">
-      <VCard class="pa-2">
-        <VCardTitle class="text-subtitle-1">رابط خاص محمي بكلمة مرور</VCardTitle>
-        <VCardText>
-          <VTextField :model-value="publicLink" label="الرابط" readonly density="compact" class="mb-2" />
-          <VTextField :model-value="privatePassword" label="كلمة المرور" readonly density="compact" append-inner-icon="mdi-refresh" @click:append-inner="genPassword" />
-          <VAlert type="info" variant="tonal" density="compact" class="mt-2 text-caption">
-            شارك الرابط وكلمة المرور مع الجهات المحددة فقط.
-          </VAlert>
-        </VCardText>
-        <VCardActions class="justify-end">
-          <VBtn variant="text" @click="privateDialog = false">إغلاق</VBtn>
-          <VBtn color="accent" prepend-icon="mdi-content-copy" @click="copyPrivate">نسخ الرابط وكلمة المرور</VBtn>
-        </VCardActions>
-      </VCard>
-    </VDialog>
+    <BaseModal v-model="privateDialog" title="رابط خاص محمي بكلمة مرور" :max-width="440">
+      <BaseInput :model-value="publicLink" label="الرابط" readonly class="mb-2" dir="ltr" />
+      <BaseInput :model-value="privatePassword" label="كلمة المرور" readonly dir="ltr">
+        <template #suffix>
+          <button class="icon-btn h-8 w-8" aria-label="توليد" @click="genPassword"><BaseIcon name="mdi-refresh" :size="18" /></button>
+        </template>
+      </BaseInput>
+      <div class="mt-2 flex items-start gap-2 rounded-ui border-s-4 bg-surfalt p-2 text-xs text-content" :style="{ borderColor: 'rgb(var(--v-theme-info))' }">
+        <BaseIcon name="mdi-information-outline" :size="16" :style="{ color: 'rgb(var(--v-theme-info))' }" />
+        شارك الرابط وكلمة المرور مع الجهات المحددة فقط.
+      </div>
+      <template #actions>
+        <BaseButton variant="ghost" @click="privateDialog = false">إغلاق</BaseButton>
+        <BaseButton variant="accent" @click="copyPrivate"><BaseIcon name="mdi-content-copy" :size="16" />نسخ الرابط وكلمة المرور</BaseButton>
+      </template>
+    </BaseModal>
 
-    <VSnackbar :model-value="!!toastMsg" color="primary" location="top" timeout="3500" @update:model-value="toastMsg = ''">
+    <BaseSnackbar :model-value="!!toastMsg" color="primary" :timeout="3500" @update:model-value="toastMsg = ''">
       {{ toastMsg }}
-    </VSnackbar>
+    </BaseSnackbar>
   </div>
 </template>
 
