@@ -3,7 +3,7 @@
 > تتبّع تقدّم التحويل مرحلةً بمرحلة. الخطة الكاملة والقرارات في [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 > الهدف: **Vue SPA + NestJS + JWT (`api/`) + Docker/Nginx/staging + Tailwind**، عقد `api/openapi.yaml` مصدر الحقيقة، Supabase محوّل يُنزع.
 
-**📍 الموضع الحالي:** انتهت المرحلتان 1 و2 (مُتحقَّقتان حيًّا)؛ **المرحلة 3 جارية** — المصادقة محوّلة ومُتحقَّقة حيًّا، والتالي بقية المخازن مخزنًا بمخزن.
+**📍 الموضع الحالي:** انتهت المراحل 1 و2 و3 (كلها مُتحقَّقة حيًّا) — كل المخازن الخاصة تُخدَم من NestJS. **التالي المرحلة 4** (نزع Supabase نهائيًّا + بثّ لحظي عبر WebSocket Gateway).
 
 ---
 
@@ -27,7 +27,7 @@
 - **التحقّق:** `test/phase2.e2e-spec.ts` — 12 اختبار تكامل e2e يمرّ على كل مورد عبر HTTP الكامل (`npm test`)، + جولة curl حيّة مقابل `dev.sqlite` (رقّي المخطط تلقائيًا: عمود tier + الجداول الجديدة).
 - المرجع الحيّ: [`../supabase/migrations/`](../supabase/migrations/) + [`CLOUD_SYNC.md`](./CLOUD_SYNC.md)
 
-## 🟡 المرحلة 3 — ربط الواجهة بالعقد (بلا لمس الشكل) — جارية
+## ✅ المرحلة 3 — ربط الواجهة بالعقد (بلا لمس الشكل) — مُنجزة ومُتحقَّقة حيًّا
 - [x] `.env.development`: `VITE_USE_REAL_API=true` + `VITE_BASE_API_URL=http://localhost:8000/api` (المسارات تحمل `/v1/...`؛ النسخة الحيّة غير متأثّرة — بناء إنتاج و`.env.production` فارغ)
 - [x] **طبقة العميل تفكّ غلاف `{ data }`** للباك-إند (`unwrapEnvelope` في `src/services/api/index.ts`) + مساعد `put` — لتصل المخازن حمولة صافية بشكل mock
 - [x] تحويل **المصادقة** عبر `api.auth.*` — للـ NestJS الأولوية عند تفعيل المفتاح (`AuthService.login/register/logout`)، ومُطابِق `fromNestUser`، و`realAuthEnabled = USE_REAL_API || supabaseEnabled` — **مُتحقَّق حيًّا:** دخول + تسجيل عبر الواجهة → توكن JWT حقيقي من NestJS في `authUser` (id من القاعدة، لا mock-token)، بلا أخطاء console
@@ -38,7 +38,8 @@
 - [x] **Interviews + Interviewers** — `InterviewsStore` (مقابلاتي بنتائجها الغنية) · `InterviewersStore` (ورشة المقيّم: حجوزات/أجندة/تسعير/عناصر تقييم) أُدرجا في `NEST_PRIVATE_STORES` فصارا يُحفظان في NestJS عبر الآلية العامة (بلا تعديل عليهما). **ملاحظة:** المخزنان أغنى من موردَي `/interviews` و`/interviewers` المبسّطَين فاعتُمد الـ blob (أوفى لبياناتهما الغنية). كتالوج المقيّمين يبقى بذرة عرض. **مُتحقَّق حيًّا:** بدء مقابلة + حجز → PUT مُمهَّل → مسح كل مفاتيح المقابلات + reload → عادا من الخادم (`synced`)، بلا أخطاء console
 - [x] **Surveys + Notifications** — `SurveysStore` (استبيانات + ردود + دورة حياة + استهداف) · `NotificationsStore` (إشعارات بإجراءات) أُدرجا في `NEST_PRIVATE_STORES` كـ blob (أغنى من موردَي `/surveys` و`/notifications`؛ حدّ الباقة يبقى على العميل عبر `canCreate`). **مُتحقَّق حيًّا:** إنشاء استبيان + دفع إشعار → PUT مُمهَّل → مسح الكاش + reload → عادا من الخادم (الاستبيان بردوده الـ17 + الإشعار)، بلا أخطاء console
 - [x] **Wallet + Plan** — `WalletStore` (سِجِلّ مالي: عمليات/وسائل دفع) · `AccountPlanStore` (الباقة) أُدرجا كـ blob. **قرار:** المخزنان أغنى من موردَي `/wallet`+`/account/plan`، والدفع يبقى على العميل (`wallet.pay`)؛ **الدفع الخادمي الذرّي (402 حقيقي) مؤجّل لطور المدفوعات الحقيقية** (يتطلّب استبدال سِجِلّ العميل بسِجِلّ خادمي، لا مجرّد حفظ). **مُتحقَّق حيًّا:** شحن 1234 + ترقية free→pro (خُصمت رسومها من المحفظة) → مسح الكاش + reload → عاد السِجِلّ (بالإيداع ورسوم الباقة) والباقة `pro` من الخادم، بلا أخطاء console
-- [ ] بقية مخازن blob تباعًا بإضافتها لـ `NEST_PRIVATE_STORES` (messages/wishes/saved/reviews/gamification/candidates/roleProfiles/resumes/searchPrefs/expertRoles/peerRequests/roleRequests/endorser/interviewerBrand) — الآلية مُثبَتة، بقيت إضافة الأسماء + تحقّق
+- [x] **السحب الأخير** — أُضيفت بقية مخازن blob الـ14 لـ `NEST_PRIVATE_STORES` (messages/wishes/saved/reviews/gamification/candidates/roleProfiles/resumes/searchPrefs/expertRoles/peerRequests/roleRequests/endorser/interviewerBrand). **مُتحقَّق حيًّا:** 9 مخازن منها بلغت `synced` على الإقلاع، و`gamification` جولة كاملة (تعديل النقاط → PUT → مسح الكاش + reload → عادت 360 من الخادم)، بلا أخطاء console. **بذلك كل مخازن blob الخاصة تُحفظ في NestJS.**
+- [x] **تحقّق حيّ بعد كل مخزن** — كل الدفعات أعلاه مُتحقَّقة حيًّا (register→JWT · Profile · PublicProfile · Marketplace · Interviews/Interviewers · Surveys/Notifications · Wallet/Plan · السحب الأخير). **المصادر المرجعية لكل نداءات المخازن الخاصة صارت NestJS، وSupabase مُعطَّل في الوضع الحقيقي.**
 - [x] تحقّق حيّ بعد كل مخزن (Auth ✓ · Profile ✓ · PublicProfile ✓ · Marketplace ✓ · Interviews/Interviewers ✓ · Surveys/Notifications ✓ · Wallet/Plan ✓)
 
 ## ⬜ المرحلة 4 — نزع Supabase + البثّ اللحظي

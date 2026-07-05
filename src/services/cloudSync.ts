@@ -216,7 +216,13 @@ const NEST_PRIVATE_STORES = new Set([
   'interviews', 'interviewerWorkspace', // المقابلات وورشة المقيّم
   'surveys', 'notifications', // الاستبيانات والإشعارات
   'wallet', 'accountPlan', // المحفظة وباقة الحساب (سِجِلّ العميل يبقى؛ الدفع الخادمي الذرّي مؤجّل لطور المدفوعات الحقيقية)
+  // بقية المخازن الخاصة (blob) — نفس الآلية العامة:
+  'messages', 'wishes', 'saved', 'reviews', 'gamification', 'candidates',
+  'roleProfiles', 'resumes', 'searchPrefs', 'expertRoles', 'peerRequests',
+  'roleRequests', 'endorser', 'interviewerBrand',
 ])
+// ملاحظة: 'profile' وصفحة العرض العام يُوصَلان عبر مواردهما المخصّصة لا هنا.
+// المراسلة عبر المستخدمين (relational/realtime) تبقى للمرحلة 4؛ هذا يحفظ عرض المستخدم فقط.
 
 /**
  * محرّك مزامنة الكتلة الخاصة عبر NestJS (بديل Supabase عند USE_REAL_API):
