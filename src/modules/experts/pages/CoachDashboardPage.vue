@@ -2,7 +2,17 @@
 import { ref } from 'vue'
 import PageHeader from '@/components/shared/PageHeader.vue'
 import StatCard from '@/components/shared/StatCard.vue'
+import ExpertBrandPanel from '../components/ExpertBrandPanel.vue'
 import { useExpertRolesStore } from '@/stores/ExpertRolesStore'
+import BaseCard from '@/components/ui/BaseCard.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
+import BaseIcon from '@/components/ui/BaseIcon.vue'
+import BaseAvatar from '@/components/ui/BaseAvatar.vue'
+import BaseInput from '@/components/ui/BaseInput.vue'
+import BaseSelect from '@/components/ui/BaseSelect.vue'
+import BaseProgressBar from '@/components/ui/BaseProgressBar.vue'
+import BaseModal from '@/components/ui/BaseModal.vue'
+import BaseSnackbar from '@/components/ui/BaseSnackbar.vue'
 
 // لوحة المرشد المهني — علاقات طويلة الأمد لا جلسات مفردة
 const store = useExpertRolesStore()
@@ -28,76 +38,76 @@ function logSession(clientId: number, name: string) {
   <div>
     <PageHeader title="لوحة المرشد المهني" subtitle="رافق عملاءك في رحلات مهنية طويلة الأمد" icon="mdi-compass-outline" />
 
-    <VRow class="mb-2">
-      <VCol cols="6" md="4"><StatCard title="عملاء نشطون" :value="store.coachStats.clients" icon="mdi-account-heart-outline" color="primary" /></VCol>
-      <VCol cols="6" md="4"><StatCard title="دخل شهري متكرر" :value="`${store.coachStats.monthlyRecurring} ر.س`" icon="mdi-cash-sync" color="success" /></VCol>
-      <VCol cols="12" md="4"><StatCard title="متوسط تقدم العملاء" :value="`${store.coachStats.avgProgress}%`" icon="mdi-trending-up" color="secondary" /></VCol>
-    </VRow>
+    <div class="mb-4 grid grid-cols-2 gap-4 md:grid-cols-3">
+      <StatCard title="عملاء نشطون" :value="store.coachStats.clients" icon="mdi-account-heart-outline" color="primary" />
+      <StatCard title="دخل شهري متكرر" :value="`${store.coachStats.monthlyRecurring} ر.س`" icon="mdi-cash-sync" color="success" />
+      <StatCard title="متوسط تقدم العملاء" :value="`${store.coachStats.avgProgress}%`" icon="mdi-trending-up" color="secondary" class="col-span-2 md:col-span-1" />
+    </div>
 
-    <VRow>
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
       <!-- عملائي -->
-      <VCol cols="12" md="7">
-        <VCard class="pa-5">
-          <h2 class="text-subtitle-1 font-weight-bold mb-3">رحلات عملائي</h2>
+      <div class="lg:col-span-2">
+        <BaseCard>
+          <h2 class="mb-3 font-bold">رحلات عملائي</h2>
           <div v-for="c in store.state.coachClients" :key="c.id" class="mb-4">
-            <div class="d-flex align-center ga-3 mb-1">
-              <VAvatar color="primary" variant="tonal"><span class="font-weight-bold">{{ c.initial }}</span></VAvatar>
-              <div class="flex-grow-1">
-                <div class="text-body-2 font-weight-bold">{{ c.name }}</div>
-                <div class="text-caption text-medium-emphasis">{{ c.goal }}</div>
+            <div class="mb-1 flex items-center gap-3">
+              <BaseAvatar color="brand" tonal>{{ c.initial }}</BaseAvatar>
+              <div class="flex-1">
+                <div class="text-sm font-bold">{{ c.name }}</div>
+                <div class="text-xs text-muted">{{ c.goal }}</div>
               </div>
-              <VBtn size="x-small" color="secondary" variant="tonal" prepend-icon="mdi-video-outline" @click="logSession(c.id, c.name)">جلسة الآن</VBtn>
+              <BaseButton variant="tonal-emerald" size="sm" @click="logSession(c.id, c.name)">
+                <BaseIcon name="mdi-video-outline" :size="16" /> جلسة الآن
+              </BaseButton>
             </div>
-            <div class="d-flex align-center ga-2">
-              <VProgressLinear :model-value="c.progress" color="primary" height="8" rounded class="flex-grow-1" />
-              <span class="text-caption font-weight-bold">{{ c.progress }}%</span>
+            <div class="flex items-center gap-2">
+              <BaseProgressBar :value="c.progress" color="primary" :height="8" class="flex-1" />
+              <span class="text-xs font-bold">{{ c.progress }}%</span>
             </div>
-            <div class="text-caption text-medium-emphasis mt-1">
-              <VIcon icon="mdi-calendar-clock-outline" size="12" /> الجلسة القادمة: {{ c.nextSession }} · {{ c.program }}
+            <div class="mt-1 flex items-center gap-1 text-xs text-muted">
+              <BaseIcon name="mdi-calendar-clock-outline" :size="12" /> الجلسة القادمة: {{ c.nextSession }} · {{ c.program }}
             </div>
           </div>
-        </VCard>
-      </VCol>
+        </BaseCard>
+      </div>
 
-      <!-- برامجي -->
-      <VCol cols="12" md="5">
-        <VCard class="pa-5">
-          <div class="d-flex align-center justify-space-between mb-3">
-            <h2 class="text-subtitle-1 font-weight-bold">برامج الاشتراك</h2>
-            <VBtn size="small" color="accent" variant="tonal" prepend-icon="mdi-plus" @click="programDialog = true">برنامج</VBtn>
+      <!-- برامجي + الملف والنمو -->
+      <div class="space-y-4">
+        <BaseCard>
+          <div class="mb-3 flex items-center justify-between">
+            <h2 class="font-bold">برامج الاشتراك</h2>
+            <BaseButton variant="tonal-accent" size="sm" @click="programDialog = true"><BaseIcon name="mdi-plus" :size="16" /> برنامج</BaseButton>
           </div>
-          <VCard v-for="p in store.state.coachPrograms" :key="p.id" variant="outlined" class="pa-3 mb-2">
-            <div class="text-body-2 font-weight-bold">{{ p.name }}</div>
-            <div class="text-caption text-medium-emphasis mb-1">{{ p.duration }} · {{ p.price }} ر.س/شهر</div>
-            <div class="d-flex align-center ga-2">
-              <VProgressLinear :model-value="(p.enrolled / p.seats) * 100" color="secondary" height="6" rounded class="flex-grow-1" />
-              <span class="text-caption">{{ p.enrolled }}/{{ p.seats }}</span>
+          <div v-for="p in store.state.coachPrograms" :key="p.id" class="mb-2 rounded-ui border-ui p-3">
+            <div class="text-sm font-bold">{{ p.name }}</div>
+            <div class="mb-1 text-xs text-muted">{{ p.duration }} · {{ p.price }} ر.س/شهر</div>
+            <div class="flex items-center gap-2">
+              <BaseProgressBar :value="(p.enrolled / p.seats) * 100" color="secondary" :height="6" class="flex-1" />
+              <span class="text-xs">{{ p.enrolled }}/{{ p.seats }}</span>
             </div>
-          </VCard>
-          <p class="text-caption text-medium-emphasis mt-2">نموذج العمل: اشتراك شهري يخلق علاقة وولاءً طويل الأمد.</p>
-        </VCard>
-      </VCol>
-    </VRow>
+          </div>
+          <p class="mt-2 text-xs text-muted">نموذج العمل: اشتراك شهري يخلق علاقة وولاءً طويل الأمد.</p>
+        </BaseCard>
 
-    <VDialog v-model="programDialog" max-width="420">
-      <VCard class="pa-2">
-        <VCardTitle>برنامج إرشادي جديد</VCardTitle>
-        <VCardText>
-          <VTextField v-model="newProgram.name" label="اسم البرنامج" class="mb-3" />
-          <VSelect v-model="newProgram.duration" :items="['شهري', 'ربع سنوي', 'نصف سنوي']" label="المدة" class="mb-3" />
-          <VTextField v-model.number="newProgram.price" type="number" label="السعر الشهري (ر.س)" class="mb-3" />
-          <VTextField v-model.number="newProgram.seats" type="number" label="عدد المقاعد" />
-        </VCardText>
-        <VCardActions>
-          <VSpacer />
-          <VBtn variant="text" @click="programDialog = false">إلغاء</VBtn>
-          <VBtn color="accent" variant="flat" :disabled="!newProgram.name.trim()" @click="saveProgram">إنشاء</VBtn>
-        </VCardActions>
-      </VCard>
-    </VDialog>
+        <ExpertBrandPanel />
+      </div>
+    </div>
 
-    <VSnackbar :model-value="!!snackbar" color="success" location="top" timeout="2500" @update:model-value="snackbar = ''">
+    <BaseModal v-model="programDialog" title="برنامج إرشادي جديد" :max-width="420">
+      <div class="space-y-3">
+        <BaseInput v-model="newProgram.name" label="اسم البرنامج" />
+        <BaseSelect v-model="newProgram.duration" :items="['شهري', 'ربع سنوي', 'نصف سنوي'].map(v => ({ value: v, title: v }))" />
+        <BaseInput v-model.number="newProgram.price" type="number" label="السعر الشهري (ر.س)" />
+        <BaseInput v-model.number="newProgram.seats" type="number" label="عدد المقاعد" />
+      </div>
+      <template #actions>
+        <BaseButton variant="ghost" @click="programDialog = false">إلغاء</BaseButton>
+        <BaseButton variant="accent" :disabled="!newProgram.name.trim()" @click="saveProgram">إنشاء</BaseButton>
+      </template>
+    </BaseModal>
+
+    <BaseSnackbar :model-value="!!snackbar" color="success" :timeout="2500" @update:model-value="snackbar = ''">
       {{ snackbar }}
-    </VSnackbar>
+    </BaseSnackbar>
   </div>
 </template>
