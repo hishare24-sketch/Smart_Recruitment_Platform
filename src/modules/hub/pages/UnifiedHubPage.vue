@@ -9,6 +9,16 @@ import { useAuthStore } from '@/stores/AuthStore'
 import type { HubGroupKey, HubSortKey, WorkItem, WorkItemUrgency } from '@/stores/UnifiedHubStore'
 import { KIND_META, URGENCY_META, filterItems, groupItems, sortItems, useUnifiedHubStore } from '@/stores/UnifiedHubStore'
 import { useNotificationsStore } from '@/stores/NotificationsStore'
+import BaseCard from '@/components/ui/BaseCard.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
+import BaseChip from '@/components/ui/BaseChip.vue'
+import BaseIcon from '@/components/ui/BaseIcon.vue'
+import BaseAvatar from '@/components/ui/BaseAvatar.vue'
+import BaseInput from '@/components/ui/BaseInput.vue'
+import BaseSelect from '@/components/ui/BaseSelect.vue'
+import BaseSwitch from '@/components/ui/BaseSwitch.vue'
+import BaseModal from '@/components/ui/BaseModal.vue'
+import BaseDropdown from '@/components/ui/BaseDropdown.vue'
 
 // ===== المركز الموحّد — كل أدوارك في شاشة واحدة: قرارات، مواعيد، ومؤشرات =====
 const { t } = useI18n()
@@ -18,6 +28,16 @@ const hub = useUnifiedHubStore()
 const notifications = useNotificationsStore()
 
 const roleLabel = (r: UserRole) => t(`roles.${r}`)
+
+type BaseColor = 'brand' | 'emerald' | 'accent' | 'success' | 'info' | 'warning' | 'error' | 'neutral'
+function mapColor(c?: string): BaseColor {
+  return (({ primary: 'brand', secondary: 'emerald', 'medium-emphasis': 'neutral', 'surface-variant': 'neutral', grey: 'neutral', orange: 'warning', amber: 'warning' } as Record<string, BaseColor>)[c ?? ''] ?? c ?? 'brand') as BaseColor
+}
+function toggleStyle(active: boolean, color = 'primary') {
+  if (active)
+    return { background: `rgb(var(--v-theme-${color}))`, color: `rgb(var(--v-theme-on-${color}))`, borderColor: 'transparent' }
+  return { background: 'transparent', color: 'rgba(var(--v-theme-on-surface), 0.75)', borderColor: 'rgba(var(--v-theme-on-surface), 0.2)' }
+}
 
 // —— حالة التحكم (تقسيم/فلترة/فرز/كثافة) ——
 const groupBy = ref<HubGroupKey>('urgency')
@@ -38,8 +58,19 @@ const SORT_OPTIONS: { value: HubSortKey, label: string }[] = [
   { value: 'amount', label: 'القيمة المالية' },
   { value: 'recent', label: 'الأحدث' },
 ]
+const SORT_ITEMS = SORT_OPTIONS.map(o => ({ value: o.value, title: o.label }))
+const URGENCY_ENTRIES = Object.entries(URGENCY_META) as [WorkItemUrgency, typeof URGENCY_META[WorkItemUrgency]][]
 
 const ownedRoles = computed(() => hub.roleSummaries.map(r => r.role))
+
+function toggleRole(r: UserRole) {
+  roleFilter.value = roleFilter.value.includes(r) ? roleFilter.value.filter(x => x !== r) : [...roleFilter.value, r]
+  activeViewId.value = null
+}
+function toggleUrgency(u: WorkItemUrgency) {
+  urgencyFilter.value = urgencyFilter.value.includes(u) ? urgencyFilter.value.filter(x => x !== u) : [...urgencyFilter.value, u]
+  activeViewId.value = null
+}
 
 const visibleItems = computed(() => {
   const filtered = filterItems(hub.allItems, {
@@ -205,232 +236,208 @@ const activeFiltersCount = computed(() =>
       icon="mdi-view-dashboard-variant-outline"
     >
       <template #actions>
-        <VMenu :close-on-content-click="false" location="bottom end">
-          <template #activator="{ props }">
-            <VBtn v-bind="props" variant="text" icon="mdi-cog-outline" />
+        <BaseDropdown align="end" :close-on-content="false">
+          <template #trigger="{ toggle }">
+            <button class="icon-btn" aria-label="الإعدادات" @click="toggle"><BaseIcon name="mdi-cog-outline" :size="20" /></button>
           </template>
-          <VCard class="pa-3" min-width="240">
-            <div class="text-body-2 font-weight-bold mb-2">أقسام المركز</div>
-            <VSwitch v-model="sections.kpis" label="المؤشرات" color="primary" hide-details density="compact" />
-            <VSwitch v-model="sections.inbox" label="صندوق العمل" color="primary" hide-details density="compact" />
-            <VSwitch v-model="sections.roleCards" label="بطاقات الأدوار" color="primary" hide-details density="compact" />
-          </VCard>
-        </VMenu>
+          <div class="min-w-[240px] p-3">
+            <div class="mb-2 text-sm font-bold text-content">أقسام المركز</div>
+            <BaseSwitch v-model="sections.kpis" label="المؤشرات" />
+            <BaseSwitch v-model="sections.inbox" label="صندوق العمل" />
+            <BaseSwitch v-model="sections.roleCards" label="بطاقات الأدوار" />
+          </div>
+        </BaseDropdown>
       </template>
     </PageHeader>
 
     <!-- بطاقة تعريف أول زيارة — تُغلق وتُحفظ -->
-    <VCard v-if="showIntro" class="pa-4 mb-4" color="primary" variant="tonal">
-      <div class="d-flex align-start ga-3">
-        <VIcon icon="mdi-lightbulb-on-outline" size="22" class="mt-1" />
-        <div class="flex-grow-1">
-          <div class="text-body-2 font-weight-bold mb-2">هذه صفحتك الأولى كل يوم — ثلاث حقائق تكفيك:</div>
-          <div class="d-flex flex-column ga-1 text-body-2">
-            <span><VIcon icon="mdi-inbox-arrow-down-outline" size="16" class="me-1" />كل طلب أو موعد من <b>أي دور من أدوارك</b> يصل هنا تلقائيًا — لا حاجة للتنقل بين اللوحات.</span>
-            <span><VIcon icon="mdi-gesture-tap-button" size="16" class="me-1" />زرا <b>قبول/رفض</b> ينفّذان القرار فورًا في مكانه الصحيح، والسهم يفتح التفاصيل.</span>
-            <span><VIcon icon="mdi-open-in-app" size="16" class="me-1" />للعمل المتعمق افتح <b>اللوحة الكاملة</b> من بطاقة الدور بالأسفل.</span>
+    <div v-if="showIntro" class="mb-4 rounded-ui-lg p-4" style="background: rgba(var(--v-theme-primary), 0.12); color: rgb(var(--v-theme-on-surface))">
+      <div class="flex items-start gap-3">
+        <BaseIcon name="mdi-lightbulb-on-outline" :size="22" class="mt-1" :style="{ color: 'rgb(var(--v-theme-primary))' }" />
+        <div class="flex-1">
+          <div class="mb-2 text-sm font-bold text-content">هذه صفحتك الأولى كل يوم — ثلاث حقائق تكفيك:</div>
+          <div class="flex flex-col gap-1 text-sm text-content">
+            <span><BaseIcon name="mdi-inbox-arrow-down-outline" :size="16" class="me-1" />كل طلب أو موعد من <b>أي دور من أدوارك</b> يصل هنا تلقائيًا — لا حاجة للتنقل بين اللوحات.</span>
+            <span><BaseIcon name="mdi-gesture-tap-button" :size="16" class="me-1" />زرا <b>قبول/رفض</b> ينفّذان القرار فورًا في مكانه الصحيح، والسهم يفتح التفاصيل.</span>
+            <span><BaseIcon name="mdi-open-in-app" :size="16" class="me-1" />للعمل المتعمق افتح <b>اللوحة الكاملة</b> من بطاقة الدور بالأسفل.</span>
           </div>
         </div>
-        <VBtn icon="mdi-close" size="small" variant="text" @click="dismissIntro" />
+        <button class="icon-btn h-8 w-8" aria-label="إغلاق" @click="dismissIntro"><BaseIcon name="mdi-close" :size="18" /></button>
       </div>
-    </VCard>
+    </div>
 
     <!-- KPIs عابرة للأدوار -->
-    <VRow v-if="sections.kpis" class="mb-1">
-      <VCol v-for="k in kpiCards" :key="k.label" cols="6" lg="3">
-        <VCard class="pa-4 d-flex align-center ga-3">
-          <VAvatar :color="k.color" variant="tonal" rounded="lg" size="44">
-            <VIcon :icon="k.icon" size="22" />
-          </VAvatar>
-          <div>
-            <div class="text-h6 font-weight-bold">{{ k.value }}</div>
-            <div class="text-caption text-medium-emphasis">{{ k.label }}</div>
-          </div>
-        </VCard>
-      </VCol>
-    </VRow>
+    <div v-if="sections.kpis" class="mb-1 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <BaseCard v-for="k in kpiCards" :key="k.label" class="flex items-center gap-3">
+        <BaseAvatar :color="mapColor(k.color)" tonal square :size="44">
+          <BaseIcon :name="k.icon" :size="22" />
+        </BaseAvatar>
+        <div>
+          <div class="text-lg font-bold text-content">{{ k.value }}</div>
+          <div class="text-xs text-muted">{{ k.label }}</div>
+        </div>
+      </BaseCard>
+    </div>
 
     <!-- بطاقات الأدوار النشطة -->
-    <VRow v-if="sections.roleCards" class="mb-1">
-      <VCol v-for="r in hub.roleSummaries" :key="r.role" cols="12" sm="6" lg="4">
-        <VCard class="pa-4 h-100">
-          <div class="d-flex align-center ga-2 mb-2">
-            <VAvatar color="primary" variant="tonal" size="36">
-              <VIcon :icon="ROLE_META[r.role].icon" size="18" />
-            </VAvatar>
-            <span class="text-body-1 font-weight-bold flex-grow-1">{{ roleLabel(r.role) }}</span>
-            <VChip v-if="auth.role === r.role" size="x-small" color="success" variant="tonal" label>النشط</VChip>
-          </div>
-          <div class="d-flex flex-wrap ga-1 mb-3">
-            <VChip v-for="f in r.facts" :key="f" size="x-small" variant="tonal" color="secondary" label>{{ f }}</VChip>
-          </div>
-          <VBtn size="small" variant="tonal" color="primary" block prepend-icon="mdi-open-in-app" :to="{ name: r.home }">
-            افتح اللوحة الكاملة
-          </VBtn>
-        </VCard>
-      </VCol>
-    </VRow>
+    <div v-if="sections.roleCards" class="mb-1 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <BaseCard v-for="r in hub.roleSummaries" :key="r.role" class="flex h-full flex-col">
+        <div class="mb-2 flex items-center gap-2">
+          <BaseAvatar color="brand" tonal :size="36">
+            <BaseIcon :name="ROLE_META[r.role].icon" :size="18" />
+          </BaseAvatar>
+          <span class="flex-1 font-bold text-content">{{ roleLabel(r.role) }}</span>
+          <BaseChip v-if="auth.role === r.role" color="success">النشط</BaseChip>
+        </div>
+        <div class="mb-3 flex flex-wrap gap-1">
+          <BaseChip v-for="f in r.facts" :key="f" color="emerald">{{ f }}</BaseChip>
+        </div>
+        <BaseButton size="sm" variant="tonal-brand" block class="mt-auto" :to="{ name: r.home }">
+          <BaseIcon name="mdi-open-in-app" :size="16" />افتح اللوحة الكاملة
+        </BaseButton>
+      </BaseCard>
+    </div>
 
     <!-- صندوق العمل الموحّد + التحكم المتقدم -->
-    <VCard v-if="sections.inbox" class="pa-4">
-      <div class="d-flex align-center ga-2 mb-3 flex-wrap">
-        <VIcon icon="mdi-inbox-full-outline" color="primary" />
-        <h2 class="text-subtitle-1 font-weight-bold">صندوق العمل ({{ visibleItems.length }})</h2>
-        <VSpacer />
-        <VBtn
-          size="small"
-          variant="tonal"
-          :color="controlsOpen || activeFiltersCount ? 'primary' : undefined"
-          :prepend-icon="controlsOpen ? 'mdi-chevron-up' : 'mdi-tune-variant'"
+    <BaseCard v-if="sections.inbox">
+      <div class="mb-3 flex flex-wrap items-center gap-2">
+        <BaseIcon name="mdi-inbox-full-outline" :size="22" :style="{ color: 'rgb(var(--v-theme-primary))' }" />
+        <h2 class="text-base font-bold text-content">صندوق العمل ({{ visibleItems.length }})</h2>
+        <span class="flex-1" />
+        <BaseButton
+          size="sm"
+          :variant="controlsOpen || activeFiltersCount ? 'tonal-brand' : 'outline'"
           @click="controlsOpen = !controlsOpen"
         >
+          <BaseIcon :name="controlsOpen ? 'mdi-chevron-up' : 'mdi-tune-variant'" :size="16" />
           تصفية وتنظيم
-          <VBadge v-if="activeFiltersCount" color="primary" :content="activeFiltersCount" inline class="ms-1" />
-        </VBtn>
-        <VBtnToggle v-model="density" mandatory density="compact" variant="outlined" color="primary">
-          <VBtn value="comfortable" size="x-small" icon="mdi-view-agenda-outline" />
-          <VBtn value="compact" size="x-small" icon="mdi-view-headline" />
-        </VBtnToggle>
-      </div>
-
-      <VExpandTransition>
-        <div v-if="controlsOpen">
-          <!-- شريط الفلاتر -->
-          <VRow dense class="mb-2">
-        <VCol cols="12" md="4">
-          <VTextField v-model="query" placeholder="بحث بالاسم أو الموضوع..." prepend-inner-icon="mdi-magnify" density="compact" hide-details clearable />
-        </VCol>
-        <VCol cols="12" sm="6" md="4">
-          <VSelect
-            v-model="roleFilter"
-            :items="ownedRoles.map(r => ({ title: roleLabel(r), value: r }))"
-            label="الأدوار"
-            multiple chips closable-chips clearable
-            density="compact" hide-details
-          />
-        </VCol>
-        <VCol cols="6" sm="3" md="2">
-          <VSelect
-            v-model="urgencyFilter"
-            :items="Object.entries(URGENCY_META).map(([v, m]) => ({ title: m.label, value: v }))"
-            label="الحالة"
-            multiple clearable
-            density="compact" hide-details
-          />
-        </VCol>
-        <VCol cols="6" sm="3" md="2">
-          <VSelect v-model="sortBy" :items="SORT_OPTIONS.map(o => ({ title: o.label, value: o.value }))" label="فرز" density="compact" hide-details />
-        </VCol>
-      </VRow>
-
-      <!-- التجميع + طرق العرض المحفوظة -->
-      <div class="d-flex align-center ga-2 flex-wrap mb-3">
-        <VBtnToggle v-model="groupBy" mandatory color="primary" variant="outlined" density="compact">
-          <VBtn v-for="g in GROUP_OPTIONS" :key="g.value" :value="g.value" size="small" :prepend-icon="g.icon">{{ g.label }}</VBtn>
-        </VBtnToggle>
-        <VSpacer />
-        <VChip
-          v-for="v in savedViews"
-          :key="v.id"
-          size="small"
-          :color="activeViewId === v.id ? 'primary' : 'secondary'"
-          :variant="activeViewId === v.id ? 'flat' : 'tonal'"
-          label closable
-          @click="applyView(v)"
-          @click:close="removeView(v.id)"
-        >
-          <VIcon icon="mdi-bookmark-outline" start size="14" />{{ v.name }}
-        </VChip>
-        <VBtn size="x-small" variant="tonal" color="secondary" prepend-icon="mdi-bookmark-plus-outline" @click="viewDialog = true">حفظ العرض</VBtn>
-        <VBtn size="x-small" variant="text" prepend-icon="mdi-backup-restore" @click="resetControls">إعادة الضبط</VBtn>
-      </div>
+          <span v-if="activeFiltersCount" class="ms-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold" style="background: rgb(var(--v-theme-primary)); color: rgb(var(--v-theme-on-primary))">{{ activeFiltersCount }}</span>
+        </BaseButton>
+        <div class="seg">
+          <button type="button" class="seg-btn" :class="{ 'is-active': density === 'comfortable' }" aria-label="مريح" @click="density = 'comfortable'"><BaseIcon name="mdi-view-agenda-outline" :size="16" /></button>
+          <button type="button" class="seg-btn" :class="{ 'is-active': density === 'compact' }" aria-label="مضغوط" @click="density = 'compact'"><BaseIcon name="mdi-view-headline" :size="16" /></button>
         </div>
-      </VExpandTransition>
+      </div>
+
+      <div v-if="controlsOpen">
+        <!-- شريط الفلاتر -->
+        <div class="mb-2 grid grid-cols-1 gap-2 md:grid-cols-2">
+          <BaseInput v-model="query" placeholder="بحث بالاسم أو الموضوع..." prefix-icon="mdi-magnify" />
+          <div>
+            <label class="mb-1 block text-xs font-medium text-muted">فرز</label>
+            <BaseSelect :model-value="sortBy" :items="SORT_ITEMS" @update:model-value="v => v && (sortBy = v)" />
+          </div>
+        </div>
+        <div class="mb-2 flex flex-wrap items-center gap-2">
+          <span class="text-xs font-medium text-muted">الأدوار:</span>
+          <button
+            v-for="r in ownedRoles"
+            :key="r"
+            type="button"
+            class="rounded-full border px-2.5 py-1 text-xs font-medium transition"
+            :style="toggleStyle(roleFilter.includes(r))"
+            @click="toggleRole(r)"
+          >{{ roleLabel(r) }}</button>
+        </div>
+        <div class="mb-3 flex flex-wrap items-center gap-2">
+          <span class="text-xs font-medium text-muted">الحالة:</span>
+          <button
+            v-for="[u, m] in URGENCY_ENTRIES"
+            :key="u"
+            type="button"
+            class="rounded-full border px-2.5 py-1 text-xs font-medium transition"
+            :style="toggleStyle(urgencyFilter.includes(u))"
+            @click="toggleUrgency(u)"
+          >{{ m.label }}</button>
+        </div>
+
+        <!-- التجميع + طرق العرض المحفوظة -->
+        <div class="mb-3 flex flex-wrap items-center gap-2">
+          <div class="seg flex-wrap">
+            <button v-for="g in GROUP_OPTIONS" :key="g.value" type="button" class="seg-btn flex items-center gap-1" :class="{ 'is-active': groupBy === g.value }" @click="groupBy = g.value"><BaseIcon :name="g.icon" :size="16" />{{ g.label }}</button>
+          </div>
+          <span class="flex-1" />
+          <span
+            v-for="v in savedViews"
+            :key="v.id"
+            class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium"
+            :style="activeViewId === v.id ? { background: 'rgb(var(--v-theme-primary))', color: 'rgb(var(--v-theme-on-primary))' } : { background: 'rgba(var(--v-theme-secondary), 0.16)', color: 'rgb(var(--v-theme-secondary))' }"
+          >
+            <BaseIcon name="mdi-bookmark-outline" :size="14" />
+            <button type="button" @click="applyView(v)">{{ v.name }}</button>
+            <button type="button" class="leading-none" aria-label="حذف" @click="removeView(v.id)"><BaseIcon name="mdi-close" :size="13" /></button>
+          </span>
+          <BaseButton size="sm" variant="tonal-emerald" @click="viewDialog = true"><BaseIcon name="mdi-bookmark-plus-outline" :size="14" />حفظ العرض</BaseButton>
+          <BaseButton size="sm" variant="ghost" @click="resetControls"><BaseIcon name="mdi-backup-restore" :size="14" />إعادة الضبط</BaseButton>
+        </div>
+      </div>
 
       <!-- المجموعات -->
       <template v-for="g in groups" :key="g.key">
-        <div class="d-flex align-center ga-2 mt-4 mb-2">
-          <VChip size="small" color="primary" variant="tonal" label>{{ groupLabel(g.key) }}</VChip>
-          <span class="text-caption text-medium-emphasis">{{ g.items.length }} عنصرًا</span>
-          <VDivider class="flex-grow-1" />
+        <div class="mb-2 mt-4 flex items-center gap-2">
+          <BaseChip color="brand">{{ groupLabel(g.key) }}</BaseChip>
+          <span class="text-xs text-muted">{{ g.items.length }} عنصرًا</span>
+          <hr class="flex-1 border-ui">
         </div>
-        <div class="d-flex flex-column" :class="density === 'compact' ? 'ga-1' : 'ga-2'">
-          <VCard
+        <div class="flex flex-col" :class="density === 'compact' ? 'gap-1' : 'gap-2'">
+          <div
             v-for="item in g.items"
             :key="item.id"
-            variant="outlined"
-            class="work-item"
-            :class="density === 'compact' ? 'pa-2' : 'pa-3'"
+            class="work-item rounded-ui-lg border"
+            :class="density === 'compact' ? 'p-2' : 'p-3'"
           >
-            <div class="d-flex align-center ga-3 flex-wrap">
-              <VAvatar :color="item.color" variant="tonal" :size="density === 'compact' ? 32 : 42">
-                <VIcon :icon="item.icon" :size="density === 'compact' ? 16 : 20" />
-              </VAvatar>
-              <div class="flex-grow-1" style="min-width: 200px">
-                <div class="d-flex align-center ga-2 flex-wrap">
-                  <span class="text-body-2 font-weight-bold">{{ item.party }}</span>
-                  <VChip size="x-small" variant="tonal" :color="item.color" label>{{ KIND_META[item.kind].label }}</VChip>
-                  <VChip size="x-small" variant="tonal" color="secondary" label>{{ roleLabel(item.role) }}</VChip>
+            <div class="flex flex-wrap items-center gap-3">
+              <BaseAvatar :color="mapColor(item.color)" tonal :size="density === 'compact' ? 32 : 42">
+                <BaseIcon :name="item.icon" :size="density === 'compact' ? 16 : 20" />
+              </BaseAvatar>
+              <div class="flex-1" style="min-width: 200px">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="text-sm font-bold text-content">{{ item.party }}</span>
+                  <BaseChip :color="mapColor(item.color)">{{ KIND_META[item.kind].label }}</BaseChip>
+                  <BaseChip color="emerald">{{ roleLabel(item.role) }}</BaseChip>
                 </div>
-                <div class="text-caption text-medium-emphasis text-truncate" style="max-width: 520px">{{ item.title }}</div>
-                <div v-if="density === 'comfortable'" class="text-caption text-medium-emphasis">
+                <div class="truncate text-xs text-muted" style="max-width: 520px">{{ item.title }}</div>
+                <div v-if="density === 'comfortable'" class="text-xs text-muted">
                   {{ item.dateLabel }}<template v-if="item.amountLabel"> · <b>{{ item.amountLabel }}</b></template>
                 </div>
               </div>
-              <VChip size="x-small" :color="item.statusColor" label>{{ item.status }}</VChip>
-              <div class="d-flex ga-1 align-center">
+              <BaseChip :color="mapColor(item.statusColor)">{{ item.status }}</BaseChip>
+              <div class="flex items-center gap-1">
                 <template v-if="isDecidable(item)">
-                  <VBtn size="small" color="success" variant="tonal" prepend-icon="mdi-check" @click="resolve(item, true)">قبول</VBtn>
-                  <VBtn icon="mdi-close" size="small" variant="text" color="error" @click="resolve(item, false)" />
-                  <VTooltip text="فتح التفاصيل" location="top">
-                    <template #activator="{ props }">
-                      <VBtn v-bind="props" icon="mdi-arrow-left-circle-outline" size="small" variant="text" color="primary" @click="open(item)" />
-                    </template>
-                  </VTooltip>
+                  <BaseButton size="sm" variant="tonal-emerald" @click="resolve(item, true)"><BaseIcon name="mdi-check" :size="16" />قبول</BaseButton>
+                  <button class="icon-btn h-9 w-9" style="color: rgb(var(--v-theme-error))" aria-label="رفض" @click="resolve(item, false)"><BaseIcon name="mdi-close" :size="18" /></button>
+                  <button class="icon-btn h-9 w-9" style="color: rgb(var(--v-theme-primary))" aria-label="فتح التفاصيل" title="فتح التفاصيل" @click="open(item)"><BaseIcon name="mdi-arrow-left-circle-outline" :size="18" /></button>
                 </template>
-                <!-- عنصر يحتاج قرارًا لكن إتمامه في صفحته (تمييز بصري صريح) -->
-                <VBtn
+                <BaseButton
                   v-else-if="item.urgency === 'action'"
-                  size="small"
-                  color="primary"
-                  variant="tonal"
-                  prepend-icon="mdi-open-in-app"
+                  size="sm"
+                  variant="tonal-brand"
                   @click="open(item)"
                 >
-                  إتمام في صفحته
-                </VBtn>
-                <VTooltip v-else text="فتح التفاصيل" location="top">
-                  <template #activator="{ props }">
-                    <VBtn v-bind="props" icon="mdi-arrow-left-circle-outline" size="small" variant="text" color="primary" @click="open(item)" />
-                  </template>
-                </VTooltip>
+                  <BaseIcon name="mdi-open-in-app" :size="16" />إتمام في صفحته
+                </BaseButton>
+                <button v-else class="icon-btn h-9 w-9" style="color: rgb(var(--v-theme-primary))" aria-label="فتح التفاصيل" title="فتح التفاصيل" @click="open(item)"><BaseIcon name="mdi-arrow-left-circle-outline" :size="18" /></button>
               </div>
             </div>
-          </VCard>
+          </div>
         </div>
       </template>
 
-      <div v-if="!visibleItems.length" class="pa-10 text-center text-medium-emphasis">
-        <VIcon icon="mdi-inbox-remove-outline" size="48" />
-        <div class="mt-2 text-body-2">لا عناصر مطابقة — عدّل الفلاتر أو أعد الضبط.</div>
+      <div v-if="!visibleItems.length" class="py-10 text-center text-muted">
+        <BaseIcon name="mdi-inbox-remove-outline" :size="48" />
+        <div class="mt-2 text-sm">لا عناصر مطابقة — عدّل الفلاتر أو أعد الضبط.</div>
       </div>
-    </VCard>
+    </BaseCard>
 
     <!-- حفظ طريقة عرض -->
-    <VDialog v-model="viewDialog" max-width="400">
-      <VCard class="pa-2">
-        <VCardTitle>حفظ طريقة العرض الحالية</VCardTitle>
-        <VCardText>
-          <VTextField v-model="newViewName" label="اسم طريقة العرض" placeholder="قرارات اليوم / أموالي المعلّقة..." @keyup.enter="saveCurrentView" />
-          <p class="text-caption text-medium-emphasis mb-0">تُحفظ الفلاتر والفرز والتجميع والكثافة الحالية وتظهر كاختصار دائم.</p>
-        </VCardText>
-        <VCardActions>
-          <VSpacer />
-          <VBtn variant="text" @click="viewDialog = false">إلغاء</VBtn>
-          <VBtn color="primary" variant="flat" :disabled="!newViewName.trim()" prepend-icon="mdi-bookmark-plus-outline" @click="saveCurrentView">حفظ</VBtn>
-        </VCardActions>
-      </VCard>
-    </VDialog>
+    <BaseModal v-model="viewDialog" title="حفظ طريقة العرض الحالية" :max-width="400">
+      <BaseInput v-model="newViewName" label="اسم طريقة العرض" placeholder="قرارات اليوم / أموالي المعلّقة..." @keyup.enter="saveCurrentView" />
+      <p class="mb-0 mt-2 text-xs text-muted">تُحفظ الفلاتر والفرز والتجميع والكثافة الحالية وتظهر كاختصار دائم.</p>
+      <template #actions>
+        <BaseButton variant="ghost" @click="viewDialog = false">إلغاء</BaseButton>
+        <BaseButton variant="brand" :disabled="!newViewName.trim()" @click="saveCurrentView"><BaseIcon name="mdi-bookmark-plus-outline" :size="16" />حفظ</BaseButton>
+      </template>
+    </BaseModal>
   </div>
 </template>
 
