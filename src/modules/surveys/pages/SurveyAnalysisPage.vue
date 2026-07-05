@@ -5,6 +5,20 @@ import PageHeader from '@/components/shared/PageHeader.vue'
 import { QUESTION_TYPE_META, useSurveysStore } from '@/stores/SurveysStore'
 import type { SurveyQuestion } from '@/stores/SurveysStore'
 import { ai } from '@/services/ai'
+import BaseCard from '@/components/ui/BaseCard.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
+import BaseChip from '@/components/ui/BaseChip.vue'
+import BaseIcon from '@/components/ui/BaseIcon.vue'
+import BaseProgressBar from '@/components/ui/BaseProgressBar.vue'
+import BaseRating from '@/components/ui/BaseRating.vue'
+
+type BaseColor = 'brand' | 'emerald' | 'accent' | 'success' | 'info' | 'warning' | 'error' | 'neutral'
+function mapColor(c?: string): BaseColor {
+  return (({ primary: 'brand', secondary: 'emerald', 'medium-emphasis': 'neutral', 'surface-variant': 'neutral', grey: 'neutral', orange: 'warning', amber: 'warning' } as Record<string, BaseColor>)[c ?? ''] ?? c ?? 'brand') as BaseColor
+}
+function colorVar(c: string) {
+  return `rgb(var(--v-theme-${c === 'amber' ? 'warning' : c}))`
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -115,6 +129,10 @@ const insights = computed(() => {
 })
 const sentimentColor = computed(() => ({ positive: 'success', neutral: 'warning', negative: 'error' })[insights.value?.sentiment ?? 'neutral'])
 
+function printPage() {
+  window.print()
+}
+
 // ===== Export =====
 function exportCsv() {
   if (!survey.value)
@@ -149,168 +167,160 @@ function exportCsv() {
     <PageHeader :title="`تحليل: ${survey.title}`" :subtitle="`${survey.type} · أُنشئ ${survey.createdAt}`" icon="mdi-chart-box-outline" />
 
     <!-- Actions -->
-    <div class="d-flex flex-wrap ga-2 mb-4">
-      <VBtn color="primary" variant="tonal" size="small" prepend-icon="mdi-download-outline" @click="exportCsv">تصدير CSV</VBtn>
-      <VBtn variant="tonal" size="small" prepend-icon="mdi-printer-outline" onclick="window.print()">طباعة</VBtn>
-      <VBtn variant="tonal" size="small" color="secondary" prepend-icon="mdi-account-multiple-plus-outline" @click="store.simulateResponses(survey.id, 4)">محاكاة مستجيبين</VBtn>
+    <div class="mb-4 flex flex-wrap gap-2">
+      <BaseButton variant="tonal-brand" size="sm" @click="exportCsv"><BaseIcon name="mdi-download-outline" :size="16" />تصدير CSV</BaseButton>
+      <BaseButton variant="tonal-brand" size="sm" @click="printPage"><BaseIcon name="mdi-printer-outline" :size="16" />طباعة</BaseButton>
+      <BaseButton variant="tonal-emerald" size="sm" @click="store.simulateResponses(survey.id, 4)"><BaseIcon name="mdi-account-multiple-plus-outline" :size="16" />محاكاة مستجيبين</BaseButton>
     </div>
 
     <!-- Overview stats -->
-    <VRow class="mb-1">
-      <VCol v-for="s in [
+    <div class="mb-1 grid grid-cols-2 gap-4 md:grid-cols-4">
+      <BaseCard v-for="s in [
         { title: 'الاستجابات', value: stats.responses, icon: 'mdi-account-group-outline', color: 'primary' },
         { title: 'نسبة الإكمال', value: `${stats.completion}%`, icon: 'mdi-progress-check', color: 'success' },
         { title: 'متوسط الوقت', value: stats.avgTime, icon: 'mdi-timer-outline', color: 'info' },
         { title: 'داخلي / خارجي', value: `${stats.internal} / ${stats.external}`, icon: 'mdi-swap-horizontal', color: 'secondary' },
-      ]" :key="s.title" cols="6" md="3">
-        <VCard class="pa-4 text-center">
-          <VIcon :icon="s.icon" :color="s.color" size="26" class="mb-1" />
-          <div class="text-h6 font-weight-bold">{{ s.value }}</div>
-          <div class="text-caption text-medium-emphasis">{{ s.title }}</div>
-        </VCard>
-      </VCol>
-    </VRow>
+      ]" :key="s.title" class="text-center">
+        <BaseIcon :name="s.icon" :size="26" class="mb-1" :style="{ color: colorVar(s.color) }" />
+        <div class="text-lg font-bold text-content">{{ s.value }}</div>
+        <div class="text-xs text-muted">{{ s.title }}</div>
+      </BaseCard>
+    </div>
 
-    <VRow>
-      <VCol cols="12" lg="8">
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-12">
+      <div class="lg:col-span-8">
         <!-- Per-question visualizations -->
-        <VCard v-for="(q, qi) in survey.questions" :key="q.id" class="pa-5 mb-4">
-          <div class="d-flex align-center ga-2 mb-3 flex-wrap">
-            <VChip size="x-small" color="primary" variant="tonal" label :prepend-icon="QUESTION_TYPE_META[q.type].icon">
-              {{ QUESTION_TYPE_META[q.type].label }}
-            </VChip>
-            <h3 class="text-subtitle-1 font-weight-bold">{{ qi + 1 }}. {{ q.text }}</h3>
+        <BaseCard v-for="(q, qi) in survey.questions" :key="q.id" class="mb-4">
+          <div class="mb-3 flex flex-wrap items-center gap-2">
+            <BaseChip color="brand"><BaseIcon :name="QUESTION_TYPE_META[q.type].icon" :size="12" />{{ QUESTION_TYPE_META[q.type].label }}</BaseChip>
+            <h3 class="text-base font-bold text-content">{{ qi + 1 }}. {{ q.text }}</h3>
           </div>
 
           <!-- choices -->
           <template v-if="q.type === 'single' || q.type === 'multiple' || q.type === 'dropdown'">
             <div v-for="o in optionCounts(q)" :key="o.label" class="mb-2">
-              <div class="d-flex justify-space-between text-body-2 mb-1">
+              <div class="mb-1 flex justify-between text-sm text-content">
                 <span>{{ o.label }}</span>
-                <span class="font-weight-bold">{{ o.count }} ({{ o.pct }}%)</span>
+                <span class="font-bold">{{ o.count }} ({{ o.pct }}%)</span>
               </div>
-              <VProgressLinear :model-value="o.pct" color="primary" height="10" rounded />
+              <BaseProgressBar :value="o.pct" color="primary" :height="10" />
             </div>
           </template>
 
           <!-- rating -->
           <template v-else-if="q.type === 'rating'">
-            <div class="d-flex align-center ga-3 mb-3">
-              <span class="text-h4 font-weight-bold">{{ numericAvg(q) }}</span>
-              <VRating :model-value="numericAvg(q)" color="warning" density="compact" half-increments readonly />
-              <span class="text-caption text-medium-emphasis">متوسط التقييم</span>
+            <div class="mb-3 flex items-center gap-3">
+              <span class="text-3xl font-bold text-content">{{ numericAvg(q) }}</span>
+              <BaseRating :model-value="numericAvg(q)" color="warning" :size="20" readonly />
+              <span class="text-xs text-muted">متوسط التقييم</span>
             </div>
-            <div v-for="d in distribution(q, 1, 5)" :key="d.label" class="d-flex align-center ga-2 mb-1">
-              <span class="text-caption" style="width: 20px">{{ d.label }}★</span>
-              <VProgressLinear :model-value="d.pct" color="warning" height="8" rounded class="flex-grow-1" />
-              <span class="text-caption text-medium-emphasis" style="width: 32px">{{ d.count }}</span>
+            <div v-for="d in distribution(q, 1, 5)" :key="d.label" class="mb-1 flex items-center gap-2">
+              <span class="text-xs text-muted" style="width: 20px">{{ d.label }}★</span>
+              <BaseProgressBar :value="d.pct" color="warning" :height="8" class="flex-1" />
+              <span class="text-xs text-muted" style="width: 32px">{{ d.count }}</span>
             </div>
           </template>
 
           <!-- NPS -->
           <template v-else-if="q.type === 'nps'">
-            <div class="d-flex align-center ga-3 mb-3">
-              <span class="text-h4 font-weight-bold" :class="npsOf(q).score >= 30 ? 'text-success' : npsOf(q).score >= 0 ? 'text-warning' : 'text-error'">
+            <div class="mb-3 flex items-center gap-3">
+              <span class="text-3xl font-bold" :style="{ color: colorVar(npsOf(q).score >= 30 ? 'success' : npsOf(q).score >= 0 ? 'warning' : 'error') }">
                 {{ npsOf(q).score > 0 ? '+' : '' }}{{ npsOf(q).score }}
               </span>
-              <span class="text-caption text-medium-emphasis">صافي نقاط الترويج (NPS)</span>
+              <span class="text-xs text-muted">صافي نقاط الترويج (NPS)</span>
             </div>
-            <div class="d-flex rounded-lg overflow-hidden mb-2" style="height: 18px">
-              <div class="bg-error" :style="{ width: `${npsOf(q).detractors}%` }" />
-              <div class="bg-warning" :style="{ width: `${npsOf(q).passives}%` }" />
-              <div class="bg-success" :style="{ width: `${npsOf(q).promoters}%` }" />
+            <div class="mb-2 flex overflow-hidden rounded-lg" style="height: 18px">
+              <div :style="{ width: `${npsOf(q).detractors}%`, background: 'rgb(var(--v-theme-error))' }" />
+              <div :style="{ width: `${npsOf(q).passives}%`, background: 'rgb(var(--v-theme-warning))' }" />
+              <div :style="{ width: `${npsOf(q).promoters}%`, background: 'rgb(var(--v-theme-success))' }" />
             </div>
-            <div class="d-flex justify-space-between text-caption">
-              <span class="text-error">منتقدون {{ npsOf(q).detractors }}%</span>
-              <span class="text-warning">محايدون {{ npsOf(q).passives }}%</span>
-              <span class="text-success">مروّجون {{ npsOf(q).promoters }}%</span>
+            <div class="flex justify-between text-xs">
+              <span :style="{ color: colorVar('error') }">منتقدون {{ npsOf(q).detractors }}%</span>
+              <span :style="{ color: colorVar('warning') }">محايدون {{ npsOf(q).passives }}%</span>
+              <span :style="{ color: colorVar('success') }">مروّجون {{ npsOf(q).promoters }}%</span>
             </div>
           </template>
 
           <!-- scale -->
           <template v-else-if="q.type === 'scale'">
-            <div class="d-flex align-center ga-3 mb-2">
-              <span class="text-h5 font-weight-bold">{{ numericAvg(q) }}</span>
-              <span class="text-caption text-medium-emphasis">من 10 · «{{ q.scaleMin || 'الأدنى' }}» إلى «{{ q.scaleMax || 'الأعلى' }}»</span>
+            <div class="mb-2 flex items-center gap-3">
+              <span class="text-2xl font-bold text-content">{{ numericAvg(q) }}</span>
+              <span class="text-xs text-muted">من 10 · «{{ q.scaleMin || 'الأدنى' }}» إلى «{{ q.scaleMax || 'الأعلى' }}»</span>
             </div>
-            <VProgressLinear :model-value="numericAvg(q) * 10" color="primary" height="12" rounded />
+            <BaseProgressBar :value="numericAvg(q) * 10" color="primary" :height="12" />
           </template>
 
           <!-- matrix -->
           <template v-else-if="q.type === 'matrix'">
-            <div v-for="m in matrixAverages(q)" :key="m.row" class="d-flex align-center ga-2 mb-2">
-              <span class="text-body-2" style="min-width: 120px">{{ m.row }}</span>
-              <VProgressLinear :model-value="m.avg * 20" color="warning" height="10" rounded class="flex-grow-1" />
-              <span class="text-caption font-weight-bold" style="width: 32px">{{ m.avg }}</span>
+            <div v-for="m in matrixAverages(q)" :key="m.row" class="mb-2 flex items-center gap-2">
+              <span class="text-sm text-content" style="min-width: 120px">{{ m.row }}</span>
+              <BaseProgressBar :value="m.avg * 20" color="warning" :height="10" class="flex-1" />
+              <span class="text-xs font-bold text-content" style="width: 32px">{{ m.avg }}</span>
             </div>
           </template>
 
           <!-- ranking -->
           <template v-else-if="q.type === 'ranking'">
-            <div v-for="(r, ri) in rankingAverages(q)" :key="r.label" class="d-flex align-center ga-2 mb-1">
-              <VChip size="x-small" :color="ri === 0 ? 'success' : 'primary'" label>{{ ri + 1 }}</VChip>
-              <span class="text-body-2 flex-grow-1">{{ r.label }}</span>
-              <span class="text-caption text-medium-emphasis">متوسط الترتيب {{ r.avg }}</span>
+            <div v-for="(r, ri) in rankingAverages(q)" :key="r.label" class="mb-1 flex items-center gap-2">
+              <BaseChip :color="ri === 0 ? 'success' : 'brand'">{{ ri + 1 }}</BaseChip>
+              <span class="flex-1 text-sm text-content">{{ r.label }}</span>
+              <span class="text-xs text-muted">متوسط الترتيب {{ r.avg }}</span>
             </div>
           </template>
 
           <!-- text -->
           <template v-else>
-            <div v-if="textAnswers(q).length" class="d-flex flex-column ga-2">
-              <VCard v-for="(a, i) in textAnswers(q)" :key="i" variant="tonal" color="surface-variant" class="pa-3 text-body-2">
+            <div v-if="textAnswers(q).length" class="flex flex-col gap-2">
+              <div v-for="(a, i) in textAnswers(q)" :key="i" class="rounded-ui p-3 text-sm text-content" style="background: rgba(var(--v-theme-on-surface), 0.06)">
                 «{{ a }}»
-              </VCard>
+              </div>
             </div>
-            <p v-else class="text-caption text-medium-emphasis">لا إجابات نصية بعد.</p>
+            <p v-else class="text-xs text-muted">لا إجابات نصية بعد.</p>
           </template>
-        </VCard>
-      </VCol>
+        </BaseCard>
+      </div>
 
-      <VCol cols="12" lg="4">
+      <div class="lg:col-span-4">
         <!-- AI insights -->
-        <VCard v-if="insights" class="pa-5 mb-4">
-          <div class="d-flex align-center ga-2 mb-2">
-            <VIcon icon="mdi-robot-happy-outline" color="secondary" />
-            <h3 class="text-subtitle-1 font-weight-bold">تحليل الذكاء الاصطناعي</h3>
-            <VChip size="x-small" :color="sentimentColor" label class="ms-auto">{{ insights.sentimentLabel }}</VChip>
+        <BaseCard v-if="insights" class="mb-4">
+          <div class="mb-2 flex items-center gap-2">
+            <BaseIcon name="mdi-robot-happy-outline" :size="22" :style="{ color: 'rgb(var(--v-theme-secondary))' }" />
+            <h3 class="text-base font-bold text-content">تحليل الذكاء الاصطناعي</h3>
+            <BaseChip :color="mapColor(sentimentColor)" class="ms-auto">{{ insights.sentimentLabel }}</BaseChip>
           </div>
-          <p class="text-body-2 mb-3">{{ insights.summary }}</p>
-          <div class="text-body-2 font-weight-bold mb-1">أبرز الملاحظات</div>
-          <div class="d-flex flex-column ga-1 mb-3">
-            <div v-for="t in insights.themes" :key="t" class="text-caption d-flex ga-1">
-              <VIcon icon="mdi-circle-small" size="16" color="secondary" />{{ t }}
+          <p class="mb-3 text-sm text-content">{{ insights.summary }}</p>
+          <div class="mb-1 text-sm font-bold text-content">أبرز الملاحظات</div>
+          <div class="mb-3 flex flex-col gap-1">
+            <div v-for="t in insights.themes" :key="t" class="flex items-center gap-1 text-xs text-content">
+              <BaseIcon name="mdi-circle-small" :size="16" :style="{ color: 'rgb(var(--v-theme-secondary))' }" />{{ t }}
             </div>
           </div>
-          <div class="text-body-2 font-weight-bold mb-1">توصيات قابلة للتنفيذ</div>
-          <VAlert v-for="r in insights.recommendations" :key="r" color="secondary" variant="tonal" density="compact" class="mb-1 text-caption" border="start">
+          <div class="mb-1 text-sm font-bold text-content">توصيات قابلة للتنفيذ</div>
+          <div v-for="r in insights.recommendations" :key="r" class="mb-1 rounded-ui border-s-4 p-2 text-xs text-content" style="background: rgba(var(--v-theme-secondary), 0.12); border-color: rgb(var(--v-theme-secondary))">
             {{ r }}
-          </VAlert>
-        </VCard>
+          </div>
+        </BaseCard>
 
         <!-- Response timeline -->
-        <VCard class="pa-5">
-          <h3 class="text-subtitle-1 font-weight-bold mb-3">الاستجابات عبر الزمن</h3>
-          <div v-if="timeline.length" class="d-flex align-end ga-1" style="height: 90px">
-            <VTooltip v-for="d in timeline" :key="d.day" :text="`${d.day}: ${d.count}`" location="top">
-              <template #activator="{ props }">
-                <div v-bind="props" class="flex-grow-1 d-flex flex-column justify-end" style="height: 100%">
-                  <div class="bar-lime rounded-t" :style="{ height: `${Math.max(8, d.pct)}%` }" />
-                </div>
-              </template>
-            </VTooltip>
+        <BaseCard>
+          <h3 class="mb-3 text-base font-bold text-content">الاستجابات عبر الزمن</h3>
+          <div v-if="timeline.length" class="flex items-end gap-1" style="height: 90px">
+            <div v-for="d in timeline" :key="d.day" class="flex flex-1 flex-col justify-end" style="height: 100%" :title="`${d.day}: ${d.count}`">
+              <div class="bar-lime rounded-t" :style="{ height: `${Math.max(8, d.pct)}%` }" />
+            </div>
           </div>
-          <p v-else class="text-caption text-medium-emphasis">لا استجابات بعد.</p>
-          <div v-if="timeline.length" class="d-flex justify-space-between text-caption text-medium-emphasis mt-1">
+          <p v-else class="text-xs text-muted">لا استجابات بعد.</p>
+          <div v-if="timeline.length" class="mt-1 flex justify-between text-xs text-muted">
             <span>{{ timeline[0].day }}</span>
             <span>{{ timeline[timeline.length - 1].day }}</span>
           </div>
-        </VCard>
-      </VCol>
-    </VRow>
+        </BaseCard>
+      </div>
+    </div>
   </div>
 
-  <VCard v-else class="pa-8 text-center">
-    <p class="text-body-1">الاستبيان غير موجود.</p>
-    <VBtn color="primary" variant="tonal" class="mt-2" @click="router.push({ name: 'surveys' })">عودة للاستبيانات</VBtn>
-  </VCard>
+  <BaseCard v-else class="py-8 text-center">
+    <p class="text-content">الاستبيان غير موجود.</p>
+    <BaseButton variant="tonal-brand" class="mt-2" @click="router.push({ name: 'surveys' })">عودة للاستبيانات</BaseButton>
+  </BaseCard>
 </template>
