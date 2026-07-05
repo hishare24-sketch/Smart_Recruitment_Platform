@@ -2,17 +2,27 @@
 import { ref } from 'vue'
 import PageHeader from '@/components/shared/PageHeader.vue'
 import StatCard from '@/components/shared/StatCard.vue'
+import ExpertBrandPanel from '../components/ExpertBrandPanel.vue'
 import { useExpertRolesStore } from '@/stores/ExpertRolesStore'
 import type { ConsultingRequest } from '@/stores/ExpertRolesStore'
+import BaseCard from '@/components/ui/BaseCard.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
+import BaseChip from '@/components/ui/BaseChip.vue'
+import BaseIcon from '@/components/ui/BaseIcon.vue'
+import BaseAvatar from '@/components/ui/BaseAvatar.vue'
+import BaseInput from '@/components/ui/BaseInput.vue'
+import BaseModal from '@/components/ui/BaseModal.vue'
+import BaseSnackbar from '@/components/ui/BaseSnackbar.vue'
 
 // لوحة المستشار المهني — خدمات B2B للشركات
 const store = useExpertRolesStore()
 const snackbar = ref('')
 
-const STATUS: Record<ConsultingRequest['status'], { label: string, color: string }> = {
+type BaseColor = 'brand' | 'emerald' | 'accent' | 'success' | 'info' | 'warning' | 'error' | 'neutral'
+const STATUS: Record<ConsultingRequest['status'], { label: string, color: BaseColor }> = {
   new: { label: 'جديد', color: 'accent' },
   accepted: { label: 'مقبول', color: 'info' },
-  in_progress: { label: 'قيد التنفيذ', color: 'primary' },
+  in_progress: { label: 'قيد التنفيذ', color: 'brand' },
   done: { label: 'منجز', color: 'success' },
   declined: { label: 'معتذَر عنه', color: 'error' },
 }
@@ -47,51 +57,57 @@ function doComplete() {
   <div>
     <PageHeader title="لوحة المستشار المهني" subtitle="استشارات استراتيجية للشركات حول السوق والفرق" icon="mdi-lightbulb-on-outline" />
 
-    <VRow class="mb-2">
-      <VCol cols="4"><StatCard title="طلبات جديدة" :value="store.consultantStats.newRequests" icon="mdi-inbox-arrow-down-outline" color="accent" /></VCol>
-      <VCol cols="4"><StatCard title="استشارات نشطة" :value="store.consultantStats.active" icon="mdi-progress-clock" color="primary" /></VCol>
-      <VCol cols="4"><StatCard title="منجزة" :value="store.consultantStats.done" icon="mdi-check-decagram-outline" color="success" /></VCol>
-    </VRow>
+    <div class="mb-4 grid grid-cols-3 gap-4">
+      <StatCard title="طلبات جديدة" :value="store.consultantStats.newRequests" icon="mdi-inbox-arrow-down-outline" color="accent" />
+      <StatCard title="استشارات نشطة" :value="store.consultantStats.active" icon="mdi-progress-clock" color="primary" />
+      <StatCard title="منجزة" :value="store.consultantStats.done" icon="mdi-check-decagram-outline" color="success" />
+    </div>
 
-    <VCard class="pa-5">
-      <h2 class="text-subtitle-1 font-weight-bold mb-1">طلبات الشركات</h2>
-      <p class="text-caption text-medium-emphasis mb-3">قناة B2B: الشركات تطلب استشاراتك مباشرة عبر المنصة (بالساعة أو بالمشروع).</p>
-      <VCard v-for="r in store.state.consulting" :key="r.id" variant="outlined" class="pa-4 mb-2">
-        <div class="d-flex align-center ga-3 flex-wrap">
-          <VAvatar color="info" variant="tonal" rounded="lg"><VIcon icon="mdi-office-building-outline" /></VAvatar>
-          <div class="flex-grow-1">
-            <div class="text-body-2 font-weight-bold">{{ r.topic }}</div>
-            <div class="text-caption text-medium-emphasis">{{ r.company }} · {{ r.scope }} · {{ r.budget }} · {{ r.date }}</div>
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <!-- طلبات الشركات -->
+      <div class="lg:col-span-2">
+        <BaseCard>
+          <h2 class="mb-1 font-bold">طلبات الشركات</h2>
+          <p class="mb-3 text-xs text-muted">قناة B2B: الشركات تطلب استشاراتك مباشرة عبر المنصة (بالساعة أو بالمشروع).</p>
+          <div v-for="r in store.state.consulting" :key="r.id" class="mb-2 rounded-ui border-ui p-4">
+            <div class="flex flex-wrap items-center gap-3">
+              <BaseAvatar color="info" tonal square><BaseIcon name="mdi-office-building-outline" :size="20" /></BaseAvatar>
+              <div class="min-w-0 flex-1">
+                <div class="text-sm font-bold">{{ r.topic }}</div>
+                <div class="text-xs text-muted">{{ r.company }} · {{ r.scope }} · {{ r.budget }} · {{ r.date }}</div>
+              </div>
+              <BaseChip :color="STATUS[r.status].color">{{ STATUS[r.status].label }}</BaseChip>
+              <div v-if="r.status === 'new'" class="flex gap-1">
+                <BaseButton variant="emerald" size="sm" @click="accept(r)"><BaseIcon name="mdi-check" :size="16" /> قبول</BaseButton>
+                <button class="flex h-8 w-8 items-center justify-center rounded-full border-ui transition hover:bg-surfalt" style="color: rgb(var(--v-theme-error))" aria-label="اعتذار" @click="decline(r)">
+                  <BaseIcon name="mdi-close" :size="18" />
+                </button>
+              </div>
+              <BaseButton v-else-if="r.status === 'accepted' || r.status === 'in_progress'" variant="tonal-brand" size="sm" @click="openComplete(r)">
+                <BaseIcon name="mdi-flag-checkered" :size="16" /> إنجاز وتحصيل
+              </BaseButton>
+            </div>
           </div>
-          <VChip size="small" :color="STATUS[r.status].color" label>{{ STATUS[r.status].label }}</VChip>
-          <div v-if="r.status === 'new'" class="d-flex ga-1">
-            <VBtn size="small" color="success" prepend-icon="mdi-check" @click="accept(r)">قبول</VBtn>
-            <VBtn size="small" color="error" variant="outlined" icon="mdi-close" @click="decline(r)" />
-          </div>
-          <VBtn v-else-if="r.status === 'accepted' || r.status === 'in_progress'" size="small" color="primary" variant="tonal" prepend-icon="mdi-flag-checkered" @click="openComplete(r)">
-            إنجاز وتحصيل
-          </VBtn>
-        </div>
-      </VCard>
-    </VCard>
+        </BaseCard>
+      </div>
 
-    <VDialog v-model="completeDialog" max-width="400">
-      <VCard class="pa-2">
-        <VCardTitle>إنجاز الاستشارة</VCardTitle>
-        <VCardText>
-          <p class="text-body-2 text-medium-emphasis mb-3">{{ completing?.company }} — {{ completing?.topic }}</p>
-          <VTextField v-model.number="fee" type="number" label="الأتعاب (ر.س)" prepend-inner-icon="mdi-cash-multiple" />
-        </VCardText>
-        <VCardActions>
-          <VSpacer />
-          <VBtn variant="text" @click="completeDialog = false">إلغاء</VBtn>
-          <VBtn color="primary" variant="flat" :disabled="fee <= 0" @click="doComplete">تأكيد الإنجاز</VBtn>
-        </VCardActions>
-      </VCard>
-    </VDialog>
+      <!-- الملف والنمو -->
+      <div>
+        <ExpertBrandPanel />
+      </div>
+    </div>
 
-    <VSnackbar :model-value="!!snackbar" color="success" location="top" timeout="3000" @update:model-value="snackbar = ''">
+    <BaseModal v-model="completeDialog" title="إنجاز الاستشارة" :max-width="400">
+      <p class="mb-3 text-sm text-muted">{{ completing?.company }} — {{ completing?.topic }}</p>
+      <BaseInput v-model.number="fee" type="number" label="الأتعاب (ر.س)" prefix-icon="mdi-cash-multiple" />
+      <template #actions>
+        <BaseButton variant="ghost" @click="completeDialog = false">إلغاء</BaseButton>
+        <BaseButton variant="brand" :disabled="fee <= 0" @click="doComplete">تأكيد الإنجاز</BaseButton>
+      </template>
+    </BaseModal>
+
+    <BaseSnackbar :model-value="!!snackbar" color="success" :timeout="3000" @update:model-value="snackbar = ''">
       {{ snackbar }}
-    </VSnackbar>
+    </BaseSnackbar>
   </div>
 </template>

@@ -3,8 +3,19 @@ import { ref } from 'vue'
 import PageHeader from '@/components/shared/PageHeader.vue'
 import StatCard from '@/components/shared/StatCard.vue'
 import EmptyState from '@/components/shared/EmptyState.vue'
+import ExpertBrandPanel from '../components/ExpertBrandPanel.vue'
 import { useExpertRolesStore } from '@/stores/ExpertRolesStore'
 import type { TraineeReferral } from '@/stores/ExpertRolesStore'
+import BaseCard from '@/components/ui/BaseCard.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
+import BaseChip from '@/components/ui/BaseChip.vue'
+import BaseIcon from '@/components/ui/BaseIcon.vue'
+import BaseAvatar from '@/components/ui/BaseAvatar.vue'
+import BaseInput from '@/components/ui/BaseInput.vue'
+import BaseSelect from '@/components/ui/BaseSelect.vue'
+import BaseProgressBar from '@/components/ui/BaseProgressBar.vue'
+import BaseModal from '@/components/ui/BaseModal.vue'
+import BaseSnackbar from '@/components/ui/BaseSnackbar.vue'
 
 // لوحة المدرب التقني — حلقة متكاملة: تقييم → تدريب → توظيف
 const store = useExpertRolesStore()
@@ -34,10 +45,11 @@ function doEnroll() {
   enrollDialog.value = false
 }
 
-const STATUS: Record<string, { label: string, color: string }> = {
+type BaseColor = 'brand' | 'emerald' | 'accent' | 'success' | 'info' | 'warning' | 'error' | 'neutral'
+const STATUS: Record<string, { label: string, color: BaseColor }> = {
   open: { label: 'التسجيل مفتوح', color: 'success' },
   running: { label: 'جارية', color: 'info' },
-  done: { label: 'منتهية', color: 'surface-variant' },
+  done: { label: 'منتهية', color: 'neutral' },
 }
 </script>
 
@@ -45,103 +57,105 @@ const STATUS: Record<string, { label: string, color: string }> = {
   <div>
     <PageHeader title="لوحة المدرب التقني" subtitle="دورات وورش تعالج فجوات نتائج التقييم" icon="mdi-school-outline" />
 
-    <VRow class="mb-2">
-      <VCol cols="6" md="3"><StatCard title="دوراتي" :value="store.trainerStats.courses" icon="mdi-book-open-variant" color="primary" /></VCol>
-      <VCol cols="6" md="3"><StatCard title="متدربون" :value="store.trainerStats.trainees" icon="mdi-account-group-outline" color="secondary" /></VCol>
-      <VCol cols="6" md="3"><StatCard title="إيرادات الدورات" :value="`${store.trainerStats.revenue} ر.س`" icon="mdi-cash-multiple" color="success" /></VCol>
-      <VCol cols="6" md="3"><StatCard title="إحالات جديدة" :value="store.trainerStats.newReferrals" icon="mdi-account-arrow-left-outline" color="accent" /></VCol>
-    </VRow>
+    <div class="mb-4 grid grid-cols-2 gap-4 md:grid-cols-4">
+      <StatCard title="دوراتي" :value="store.trainerStats.courses" icon="mdi-book-open-variant" color="primary" />
+      <StatCard title="متدربون" :value="store.trainerStats.trainees" icon="mdi-account-group-outline" color="secondary" />
+      <StatCard title="إيرادات الدورات" :value="`${store.trainerStats.revenue} ر.س`" icon="mdi-cash-multiple" color="success" />
+      <StatCard title="إحالات جديدة" :value="store.trainerStats.newReferrals" icon="mdi-account-arrow-left-outline" color="accent" />
+    </div>
 
-    <VRow>
-      <!-- إحالات من نتائج التقييم -->
-      <VCol cols="12" md="5">
-        <VCard class="pa-5">
-          <h2 class="text-subtitle-1 font-weight-bold mb-1">مرشحون بحاجة لتدريب</h2>
-          <p class="text-caption text-medium-emphasis mb-3">إحالات آلية من نتائج مركز التقييم وتقارير المقيّمين — هذه ميزتك التنافسية.</p>
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <!-- المحتوى: إحالات + دورات -->
+      <div class="space-y-6 lg:col-span-2">
+        <!-- إحالات من نتائج التقييم -->
+        <BaseCard>
+          <h2 class="mb-1 font-bold">مرشحون بحاجة لتدريب</h2>
+          <p class="mb-3 text-xs text-muted">إحالات آلية من نتائج مركز التقييم وتقارير المقيّمين — هذه ميزتك التنافسية.</p>
           <template v-if="store.state.trainees.filter(t => t.status === 'new').length">
-            <VCard v-for="t in store.state.trainees.filter(x => x.status === 'new')" :key="t.id" variant="outlined" class="pa-3 mb-2">
-              <div class="d-flex align-center ga-2 mb-1">
-                <VAvatar color="accent" variant="tonal" size="34"><span class="font-weight-bold">{{ t.initial }}</span></VAvatar>
-                <div class="flex-grow-1">
-                  <div class="text-body-2 font-weight-bold">{{ t.name }}</div>
-                  <div class="text-caption text-medium-emphasis">{{ t.source }}</div>
+            <div v-for="t in store.state.trainees.filter(x => x.status === 'new')" :key="t.id" class="mb-2 rounded-ui border-ui p-3">
+              <div class="mb-1 flex items-center gap-2">
+                <BaseAvatar color="accent" :size="34" tonal>{{ t.initial }}</BaseAvatar>
+                <div class="flex-1">
+                  <div class="text-sm font-bold">{{ t.name }}</div>
+                  <div class="text-xs text-muted">{{ t.source }}</div>
                 </div>
               </div>
-              <p class="text-caption mb-2"><VIcon icon="mdi-target" size="12" color="warning" /> {{ t.gap }}</p>
-              <VBtn size="small" color="accent" block prepend-icon="mdi-school-outline" @click="openEnroll(t)">سجّله في دورة</VBtn>
-            </VCard>
+              <p class="mb-2 flex items-center gap-1 text-xs"><BaseIcon name="mdi-target" :size="12" style="color: rgb(var(--v-theme-warning))" /> {{ t.gap }}</p>
+              <BaseButton variant="accent" size="sm" block @click="openEnroll(t)"><BaseIcon name="mdi-school-outline" :size="16" /> سجّله في دورة</BaseButton>
+            </div>
           </template>
           <EmptyState v-else icon="mdi-account-check-outline" title="لا إحالات جديدة" description="ستصلك إحالات تلقائية من نتائج التقييم" />
-        </VCard>
-      </VCol>
+        </BaseCard>
 
-      <!-- دوراتي -->
-      <VCol cols="12" md="7">
-        <VCard class="pa-5">
-          <div class="d-flex align-center justify-space-between mb-3">
-            <h2 class="text-subtitle-1 font-weight-bold">دوراتي وورشي</h2>
-            <VBtn size="small" color="accent" variant="tonal" prepend-icon="mdi-plus" @click="courseDialog = true">دورة جديدة</VBtn>
+        <!-- دوراتي -->
+        <BaseCard>
+          <div class="mb-3 flex items-center justify-between">
+            <h2 class="font-bold">دوراتي وورشي</h2>
+            <BaseButton variant="tonal-accent" size="sm" @click="courseDialog = true"><BaseIcon name="mdi-plus" :size="16" /> دورة جديدة</BaseButton>
           </div>
-          <VCard v-for="c in store.state.courses" :key="c.id" variant="outlined" class="pa-3 mb-2">
-            <div class="d-flex align-center ga-2 flex-wrap mb-1">
-              <span class="text-body-2 font-weight-bold flex-grow-1">{{ c.title }}</span>
-              <VChip size="x-small" :color="STATUS[c.status].color" label>{{ STATUS[c.status].label }}</VChip>
+          <div v-for="c in store.state.courses" :key="c.id" class="mb-2 rounded-ui border-ui p-3">
+            <div class="mb-1 flex flex-wrap items-center gap-2">
+              <span class="flex-1 text-sm font-bold">{{ c.title }}</span>
+              <BaseChip :color="STATUS[c.status].color">{{ STATUS[c.status].label }}</BaseChip>
             </div>
-            <div class="text-caption text-medium-emphasis mb-2">{{ c.kind }} · {{ c.skill }} · {{ c.price }} ر.س</div>
-            <div class="d-flex align-center ga-2">
-              <VProgressLinear :model-value="(c.enrolled / c.seats) * 100" color="secondary" height="8" rounded class="flex-grow-1" />
-              <span class="text-caption">{{ c.enrolled }}/{{ c.seats }} مقعدًا</span>
+            <div class="mb-2 text-xs text-muted">{{ c.kind }} · {{ c.skill }} · {{ c.price }} ر.س</div>
+            <div class="flex items-center gap-2">
+              <BaseProgressBar :value="(c.enrolled / c.seats) * 100" color="secondary" :height="8" class="flex-1" />
+              <span class="text-xs">{{ c.enrolled }}/{{ c.seats }} مقعدًا</span>
             </div>
-          </VCard>
-        </VCard>
-      </VCol>
-    </VRow>
+          </div>
+        </BaseCard>
+      </div>
+
+      <!-- الملف والنمو -->
+      <div>
+        <ExpertBrandPanel />
+      </div>
+    </div>
 
     <!-- دورة جديدة -->
-    <VDialog v-model="courseDialog" max-width="440">
-      <VCard class="pa-2">
-        <VCardTitle>دورة / ورشة جديدة</VCardTitle>
-        <VCardText>
-          <VTextField v-model="newCourse.title" label="العنوان" class="mb-3" />
-          <VTextField v-model="newCourse.skill" label="المهارة المستهدفة" class="mb-3" />
-          <VBtnToggle v-model="newCourse.kind" mandatory color="accent" variant="outlined" divided class="mb-3 w-100">
-            <VBtn value="ورشة عمل" class="flex-grow-1">ورشة عمل</VBtn>
-            <VBtn value="دورة مكثفة" class="flex-grow-1">دورة مكثفة</VBtn>
-          </VBtnToggle>
-          <div class="d-flex ga-2">
-            <VTextField v-model.number="newCourse.price" type="number" label="السعر (ر.س)" />
-            <VTextField v-model.number="newCourse.seats" type="number" label="المقاعد" />
-          </div>
-        </VCardText>
-        <VCardActions>
-          <VSpacer />
-          <VBtn variant="text" @click="courseDialog = false">إلغاء</VBtn>
-          <VBtn color="accent" variant="flat" :disabled="!newCourse.title.trim()" @click="saveCourse">إنشاء</VBtn>
-        </VCardActions>
-      </VCard>
-    </VDialog>
+    <BaseModal v-model="courseDialog" title="دورة / ورشة جديدة" :max-width="440">
+      <div class="space-y-3">
+        <BaseInput v-model="newCourse.title" label="العنوان" />
+        <BaseInput v-model="newCourse.skill" label="المهارة المستهدفة" />
+        <div class="rounded-ui inline-flex overflow-hidden border-ui">
+          <button
+            class="px-4 py-2 text-sm transition"
+            :class="newCourse.kind === 'ورشة عمل' ? 'bg-accent text-on-accent' : 'text-muted hover:bg-surfalt'"
+            @click="newCourse.kind = 'ورشة عمل'"
+          >ورشة عمل</button>
+          <button
+            class="px-4 py-2 text-sm transition"
+            :class="newCourse.kind === 'دورة مكثفة' ? 'bg-accent text-on-accent' : 'text-muted hover:bg-surfalt'"
+            @click="newCourse.kind = 'دورة مكثفة'"
+          >دورة مكثفة</button>
+        </div>
+        <div class="flex gap-2">
+          <BaseInput v-model.number="newCourse.price" type="number" label="السعر (ر.س)" class="flex-1" />
+          <BaseInput v-model.number="newCourse.seats" type="number" label="المقاعد" class="flex-1" />
+        </div>
+      </div>
+      <template #actions>
+        <BaseButton variant="ghost" @click="courseDialog = false">إلغاء</BaseButton>
+        <BaseButton variant="accent" :disabled="!newCourse.title.trim()" @click="saveCourse">إنشاء</BaseButton>
+      </template>
+    </BaseModal>
 
     <!-- تسجيل متدرب -->
-    <VDialog v-model="enrollDialog" max-width="420">
-      <VCard class="pa-2">
-        <VCardTitle>تسجيل {{ enrolling?.name }}</VCardTitle>
-        <VCardText>
-          <VSelect
-            v-model="chosenCourseId"
-            :items="store.state.courses.filter(c => c.status === 'open' && c.enrolled < c.seats).map(c => ({ value: c.id, title: `${c.title} (${c.price} ر.س)` }))"
-            label="اختر الدورة"
-          />
-        </VCardText>
-        <VCardActions>
-          <VSpacer />
-          <VBtn variant="text" @click="enrollDialog = false">إلغاء</VBtn>
-          <VBtn color="accent" variant="flat" :disabled="chosenCourseId === null" @click="doEnroll">تسجيل</VBtn>
-        </VCardActions>
-      </VCard>
-    </VDialog>
+    <BaseModal v-model="enrollDialog" :title="`تسجيل ${enrolling?.name ?? ''}`" :max-width="420">
+      <BaseSelect
+        v-model="chosenCourseId"
+        :items="store.state.courses.filter(c => c.status === 'open' && c.enrolled < c.seats).map(c => ({ value: c.id, title: `${c.title} (${c.price} ر.س)` }))"
+        placeholder="اختر الدورة"
+      />
+      <template #actions>
+        <BaseButton variant="ghost" @click="enrollDialog = false">إلغاء</BaseButton>
+        <BaseButton variant="accent" :disabled="chosenCourseId === null" @click="doEnroll">تسجيل</BaseButton>
+      </template>
+    </BaseModal>
 
-    <VSnackbar :model-value="!!snackbar" color="success" location="top" timeout="3000" @update:model-value="snackbar = ''">
+    <BaseSnackbar :model-value="!!snackbar" color="success" :timeout="3000" @update:model-value="snackbar = ''">
       {{ snackbar }}
-    </VSnackbar>
+    </BaseSnackbar>
   </div>
 </template>
