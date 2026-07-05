@@ -6,6 +6,11 @@ import StatCard from '@/components/shared/StatCard.vue'
 import EmptyState from '@/components/shared/EmptyState.vue'
 import { useApplicationsStore } from '@/stores/ApplicationsStore'
 import type { ApplicationStatus } from '@/stores/ApplicationsStore'
+import BaseCard from '@/components/ui/BaseCard.vue'
+import BaseChip from '@/components/ui/BaseChip.vue'
+import BaseIcon from '@/components/ui/BaseIcon.vue'
+import BaseAvatar from '@/components/ui/BaseAvatar.vue'
+import BaseDropdown from '@/components/ui/BaseDropdown.vue'
 
 const statusMeta: Record<ApplicationStatus, { label: string, color: string, icon: string }> = {
   submitted: { label: 'تم التقديم', color: 'info', icon: 'mdi-send-check-outline' },
@@ -13,6 +18,16 @@ const statusMeta: Record<ApplicationStatus, { label: string, color: string, icon
   interview: { label: 'مقابلة', color: 'success', icon: 'mdi-calendar-check-outline' },
   rejected: { label: 'مرفوض', color: 'error', icon: 'mdi-close-circle-outline' },
   accepted: { label: 'مقبول', color: 'accent', icon: 'mdi-check-decagram-outline' },
+}
+
+type BaseColor = 'brand' | 'emerald' | 'accent' | 'success' | 'info' | 'warning' | 'error' | 'neutral'
+function mapColor(c?: string): BaseColor {
+  return (({ primary: 'brand', secondary: 'emerald', 'medium-emphasis': 'neutral', 'surface-variant': 'neutral', grey: 'neutral', orange: 'warning', amber: 'warning' } as Record<string, BaseColor>)[c ?? ''] ?? c ?? 'brand') as BaseColor
+}
+function toggleStyle(active: boolean) {
+  if (active)
+    return { background: 'rgb(var(--v-theme-primary))', color: 'rgb(var(--v-theme-on-primary))', borderColor: 'transparent' }
+  return { background: 'transparent', color: 'rgba(var(--v-theme-on-surface), 0.75)', borderColor: 'rgba(var(--v-theme-on-surface), 0.2)' }
 }
 
 const router = useRouter()
@@ -44,61 +59,50 @@ const filterChips: { value: ApplicationStatus | 'all', label: string }[] = [
   <div>
     <PageHeader title="طلباتي" subtitle="تابع حالة تقديماتك على الفرص" icon="mdi-file-send-outline" />
 
-    <VRow class="mb-2">
-      <VCol v-for="s in stats" :key="s.title" cols="6" md="3">
-        <StatCard v-bind="s" />
-      </VCol>
-    </VRow>
+    <div class="mb-2 grid grid-cols-2 gap-4 md:grid-cols-4">
+      <StatCard v-for="s in stats" :key="s.title" v-bind="s" />
+    </div>
 
-    <div class="d-flex flex-wrap ga-2 mb-4">
-      <VChip
+    <div class="mb-4 flex flex-wrap gap-2">
+      <button
         v-for="c in filterChips"
         :key="c.value"
-        :color="filter === c.value ? 'primary' : undefined"
-        :variant="filter === c.value ? 'flat' : 'outlined'"
-        class="cursor-pointer"
+        type="button"
+        class="rounded-full border px-3 py-1 text-sm font-medium transition"
+        :style="toggleStyle(filter === c.value)"
         @click="filter = c.value"
       >
         {{ c.label }}
-      </VChip>
+      </button>
     </div>
 
-    <VCard v-if="filtered.length">
-      <VList lines="two">
-        <template v-for="(app, i) in filtered" :key="app.id">
-          <VListItem>
-            <template #prepend>
-              <VAvatar :color="statusMeta[app.status].color" variant="tonal" rounded="lg">
-                <VIcon :icon="statusMeta[app.status].icon" />
-              </VAvatar>
-            </template>
-            <VListItemTitle class="font-weight-bold cursor-pointer" @click="router.push({ name: 'opportunity-details', params: { id: app.opportunityId } })">
-              {{ app.title }}
-            </VListItemTitle>
-            <VListItemSubtitle>
-              {{ app.company }} · قُدّم {{ app.appliedAt }} · بـ «{{ app.resume }}»
-            </VListItemSubtitle>
-            <template #append>
-              <div class="d-flex align-center ga-2">
-                <VChip :color="statusMeta[app.status].color" size="small" label>{{ statusMeta[app.status].label }}</VChip>
-                <VMenu>
-                  <template #activator="{ props }">
-                    <VBtn v-bind="props" icon="mdi-dots-vertical" variant="text" size="small" />
-                  </template>
-                  <VList density="compact">
-                    <VListItem prepend-icon="mdi-eye-outline" title="عرض الفرصة" @click="router.push({ name: 'opportunity-details', params: { id: app.opportunityId } })" />
-                    <VListItem prepend-icon="mdi-delete-outline" title="سحب الطلب" base-color="error" @click="store.withdraw(app.id)" />
-                  </VList>
-                </VMenu>
-              </div>
-            </template>
-          </VListItem>
-          <VDivider v-if="i < filtered.length - 1" />
-        </template>
-      </VList>
-    </VCard>
+    <BaseCard v-if="filtered.length" :padded="false" class="overflow-hidden">
+      <div v-for="(app, i) in filtered" :key="app.id" class="flex items-center gap-3 p-3" :class="{ 'border-t border-ui': i > 0 }">
+        <BaseAvatar :color="mapColor(statusMeta[app.status].color)" tonal square>
+          <BaseIcon :name="statusMeta[app.status].icon" :size="20" />
+        </BaseAvatar>
+        <div class="min-w-0 flex-1">
+          <button type="button" class="font-bold text-content hover:underline" @click="router.push({ name: 'opportunity-details', params: { id: app.opportunityId } })">
+            {{ app.title }}
+          </button>
+          <div class="truncate text-xs text-muted">
+            {{ app.company }} · قُدّم {{ app.appliedAt }} · بـ «{{ app.resume }}»
+          </div>
+        </div>
+        <BaseChip :color="mapColor(statusMeta[app.status].color)">{{ statusMeta[app.status].label }}</BaseChip>
+        <BaseDropdown>
+          <template #trigger="{ toggle }">
+            <button class="icon-btn h-9 w-9" aria-label="خيارات" @click="toggle"><BaseIcon name="mdi-dots-vertical" :size="18" /></button>
+          </template>
+          <div class="min-w-[170px] py-1">
+            <button class="menu-row" @click="router.push({ name: 'opportunity-details', params: { id: app.opportunityId } })"><BaseIcon name="mdi-eye-outline" :size="18" />عرض الفرصة</button>
+            <button class="menu-row" style="color: rgb(var(--v-theme-error))" @click="store.withdraw(app.id)"><BaseIcon name="mdi-delete-outline" :size="18" />سحب الطلب</button>
+          </div>
+        </BaseDropdown>
+      </div>
+    </BaseCard>
 
-    <VCard v-else>
+    <BaseCard v-else :padded="false">
       <EmptyState
         icon="mdi-file-search-outline"
         title="لا توجد طلبات بهذه الحالة"
@@ -107,6 +111,6 @@ const filterChips: { value: ApplicationStatus | 'all', label: string }[] = [
         action-icon="mdi-briefcase-search-outline"
         @action="router.push({ name: 'opportunities' })"
       />
-    </VCard>
+    </BaseCard>
   </div>
 </template>
