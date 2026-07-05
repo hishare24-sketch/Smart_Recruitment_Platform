@@ -1,12 +1,23 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import PageHeader from '@/components/shared/PageHeader.vue'
 import { LEVEL_META, TYPE_META, useInterviewsStore } from '@/stores/InterviewsStore'
 import type { Interview } from '@/stores/InterviewsStore'
 import type { InterviewLevel, InterviewTrack, InterviewType } from '@/services/ai'
 import { TRACK_META } from '@/services/ai'
 import { BOOKING_STATUS_META, KIND_META, useInterviewersStore } from '@/stores/InterviewersStore'
+import BaseCard from '@/components/ui/BaseCard.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
+import BaseChip from '@/components/ui/BaseChip.vue'
+import BaseIcon from '@/components/ui/BaseIcon.vue'
+import BaseAvatar from '@/components/ui/BaseAvatar.vue'
+import BaseModal from '@/components/ui/BaseModal.vue'
+
+type BaseColor = 'brand' | 'emerald' | 'accent' | 'success' | 'info' | 'warning' | 'error' | 'neutral'
+function mapColor(c: string): BaseColor {
+  return (({ primary: 'brand', secondary: 'emerald', 'medium-emphasis': 'neutral' } as Record<string, BaseColor>)[c] ?? c) as BaseColor
+}
 
 const router = useRouter()
 const store = useInterviewsStore()
@@ -112,158 +123,150 @@ function viewResult(iv: Interview) {
     />
 
     <!-- Upcoming schedule (weekly calendar + smart reminder) -->
-    <VCard v-if="upcoming.length" class="pa-4 mb-4">
-      <div class="d-flex align-center ga-2 mb-3">
-        <VIcon icon="mdi-calendar-clock-outline" color="primary" />
-        <h3 class="text-subtitle-1 font-weight-bold">جدولك القادم</h3>
+    <BaseCard v-if="upcoming.length" class="mb-4">
+      <div class="mb-3 flex items-center gap-2">
+        <BaseIcon name="mdi-calendar-clock-outline" :size="20" style="color: rgb(var(--v-theme-primary))" />
+        <h3 class="font-bold text-content">جدولك القادم</h3>
       </div>
 
       <!-- Smart reminder -->
-      <VAlert v-if="nextSession" color="accent" variant="tonal" density="comfortable" class="mb-3" border="start">
-        <template #prepend><VIcon icon="mdi-bell-ring-outline" /></template>
-        <div class="d-flex align-center justify-space-between flex-wrap ga-2">
-          <span class="text-body-2">
-            <span class="font-weight-bold">مقابلتك القادمة:</span> {{ nextSession.title }}
-            <VChip v-if="nextSession.dt" size="x-small" color="accent" label class="ms-1">{{ relLabel(nextSession.dt) }}</VChip>
-            <span class="text-caption text-medium-emphasis ms-1">{{ nextSession.raw }}</span>
-          </span>
-          <VBtn size="small" color="accent" variant="flat" :to="nextSession.to">التفاصيل</VBtn>
-        </div>
-      </VAlert>
+      <div v-if="nextSession" class="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-ui p-3" style="background: rgba(var(--v-theme-accent), 0.14)">
+        <span class="flex flex-wrap items-center gap-1 text-sm" style="color: rgb(var(--v-theme-accent))">
+          <BaseIcon name="mdi-bell-ring-outline" :size="16" />
+          <span class="font-bold">مقابلتك القادمة:</span> {{ nextSession.title }}
+          <BaseChip v-if="nextSession.dt" color="accent">{{ relLabel(nextSession.dt) }}</BaseChip>
+          <span class="text-xs text-muted">{{ nextSession.raw }}</span>
+        </span>
+        <BaseButton variant="accent" size="sm" :to="nextSession.to">التفاصيل</BaseButton>
+      </div>
 
       <!-- Weekly strip -->
       <div class="week-strip">
         <div
           v-for="day in week"
           :key="day.key"
-          class="week-day pa-2 text-center"
+          class="week-day p-2 text-center"
           :class="{ 'week-day--today': day.isToday, 'week-day--has': day.items.length }"
         >
-          <div class="text-caption text-medium-emphasis">{{ day.label }}</div>
-          <div class="text-h6 font-weight-bold">{{ day.num }}</div>
-          <div class="d-flex justify-center ga-1 mt-1" style="min-height: 8px">
+          <div class="text-xs text-muted">{{ day.label }}</div>
+          <div class="text-lg font-bold text-content">{{ day.num }}</div>
+          <div class="mt-1 flex justify-center gap-1" style="min-height: 8px">
             <span v-for="it in day.items.slice(0, 3)" :key="it.id" class="week-dot" :style="{ background: `rgb(var(--v-theme-${it.color}))` }" />
           </div>
         </div>
       </div>
 
       <!-- Upcoming list -->
-      <VList class="py-0 mt-2">
-        <VListItem v-for="u in upcoming" :key="u.id" :to="u.to" class="px-2">
-          <template #prepend>
-            <VAvatar :color="u.color" variant="tonal" rounded="lg" size="38"><VIcon :icon="u.icon" size="20" /></VAvatar>
-          </template>
-          <VListItemTitle class="font-weight-bold text-body-2">{{ u.title }}</VListItemTitle>
-          <VListItemSubtitle>{{ u.raw }}</VListItemSubtitle>
-          <template #append>
-            <div class="d-flex align-center ga-2">
-              <VChip v-if="u.dt" size="x-small" variant="tonal" label>{{ relLabel(u.dt) }}</VChip>
-              <VChip :color="u.color" size="x-small" label>{{ u.statusLabel }}</VChip>
-            </div>
-          </template>
-        </VListItem>
-      </VList>
-    </VCard>
+      <div class="mt-2">
+        <RouterLink
+          v-for="u in upcoming"
+          :key="u.id"
+          :to="u.to"
+          class="flex items-center gap-3 rounded-ui px-2 py-2 transition hover:bg-surfalt"
+        >
+          <BaseAvatar :color="mapColor(u.color)" tonal square :size="38"><BaseIcon :name="u.icon" :size="20" /></BaseAvatar>
+          <div class="min-w-0 flex-1">
+            <div class="truncate text-sm font-bold text-content">{{ u.title }}</div>
+            <div class="text-xs text-muted">{{ u.raw }}</div>
+          </div>
+          <div class="flex items-center gap-2">
+            <BaseChip v-if="u.dt" color="neutral">{{ relLabel(u.dt) }}</BaseChip>
+            <BaseChip :color="mapColor(u.color)">{{ u.statusLabel }}</BaseChip>
+          </div>
+        </RouterLink>
+      </div>
+    </BaseCard>
 
     <!-- Available -->
-    <h3 class="text-h6 font-weight-bold mb-3">المقابلات المتاحة</h3>
-    <VRow class="mb-4">
-      <VCol v-for="t in types" :key="t" cols="12" sm="6" lg="3">
-        <VCard class="pa-4 text-center h-100 d-flex flex-column">
-          <VAvatar color="primary" variant="tonal" size="56" rounded="lg" class="mb-3 mx-auto"><VIcon :icon="TYPE_META[t].icon" size="30" /></VAvatar>
-          <div class="text-subtitle-2 font-weight-bold">{{ TYPE_META[t].label }}</div>
-          <div class="text-caption text-medium-emphasis mb-3 flex-grow-1">{{ TYPE_META[t].desc }}</div>
-          <VBtn color="accent" size="small" block @click="openSetup(t)">اختيار المستوى</VBtn>
-        </VCard>
-      </VCol>
-    </VRow>
+    <h3 class="mb-3 text-lg font-bold text-content">المقابلات المتاحة</h3>
+    <div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <BaseCard v-for="t in types" :key="t" class="flex flex-col text-center">
+        <BaseAvatar color="brand" tonal square :size="56" class="mx-auto mb-3"><BaseIcon :name="TYPE_META[t].icon" :size="30" /></BaseAvatar>
+        <div class="text-sm font-bold text-content">{{ TYPE_META[t].label }}</div>
+        <div class="mb-3 flex-1 text-xs text-muted">{{ TYPE_META[t].desc }}</div>
+        <BaseButton variant="accent" size="sm" block @click="openSetup(t)">اختيار المستوى</BaseButton>
+      </BaseCard>
+    </div>
 
     <!-- History -->
-    <h3 class="text-h6 font-weight-bold mb-3">سجل المقابلات ({{ store.count }})</h3>
-    <VCard v-if="store.count">
-      <VList lines="two">
-        <template v-for="(iv, i) in store.interviews" :key="iv.id">
-          <VListItem>
-            <template #prepend>
-              <VAvatar :color="iv.status === 'completed' ? 'success' : 'warning'" variant="tonal" rounded="lg">
-                <VIcon :icon="TYPE_META[iv.type].icon" />
-              </VAvatar>
-            </template>
-            <VListItemTitle class="font-weight-bold">
-              {{ TYPE_META[iv.type].label }} · {{ LEVEL_META[iv.level].label }}
-            </VListItemTitle>
-            <VListItemSubtitle>
+    <h3 class="mb-3 text-lg font-bold text-content">سجل المقابلات ({{ store.count }})</h3>
+    <BaseCard v-if="store.count" :padded="false">
+      <div>
+        <div
+          v-for="(iv, i) in store.interviews"
+          :key="iv.id"
+          class="flex items-center gap-3 p-4"
+          :style="i > 0 ? 'border-top: 1px solid rgba(var(--v-theme-on-surface), 0.12)' : ''"
+        >
+          <BaseAvatar :color="iv.status === 'completed' ? 'success' : 'warning'" tonal square>
+            <BaseIcon :name="TYPE_META[iv.type].icon" :size="22" />
+          </BaseAvatar>
+          <div class="min-w-0 flex-1">
+            <div class="font-bold text-content">{{ TYPE_META[iv.type].label }} · {{ LEVEL_META[iv.level].label }}</div>
+            <div class="text-sm text-muted">
               {{ iv.date }} ·
               <span v-if="iv.result">النتيجة {{ iv.result.score }}% ({{ iv.result.level }})</span>
               <span v-else>{{ iv.status === 'in_progress' ? 'قيد التنفيذ' : 'مجدولة' }}</span>
-            </VListItemSubtitle>
-            <template #append>
-              <VBtn v-if="iv.status === 'completed'" variant="tonal" color="primary" size="small" @click="viewResult(iv)">التقرير</VBtn>
-              <VBtn v-else-if="iv.status === 'in_progress'" color="accent" size="small" @click="router.push({ name: 'interview-session', params: { id: iv.id } })">متابعة</VBtn>
-            </template>
-          </VListItem>
-          <VDivider v-if="i < store.interviews.length - 1" />
-        </template>
-      </VList>
-    </VCard>
-    <VCard v-else class="pa-8 text-center">
-      <VIcon icon="mdi-account-voice" size="48" color="medium-emphasis" />
-      <div class="text-body-2 text-medium-emphasis mt-2">لم تُجرِ أي مقابلة بعد — ابدأ بمقابلة AI أساسية مجانية</div>
-    </VCard>
+            </div>
+          </div>
+          <BaseButton v-if="iv.status === 'completed'" variant="tonal-brand" size="sm" @click="viewResult(iv)">التقرير</BaseButton>
+          <BaseButton v-else-if="iv.status === 'in_progress'" variant="accent" size="sm" @click="router.push({ name: 'interview-session', params: { id: iv.id } })">متابعة</BaseButton>
+        </div>
+      </div>
+    </BaseCard>
+    <BaseCard v-else class="py-8 text-center">
+      <BaseIcon name="mdi-account-voice" :size="48" class="text-muted" />
+      <div class="mt-2 text-sm text-muted">لم تُجرِ أي مقابلة بعد — ابدأ بمقابلة AI أساسية مجانية</div>
+    </BaseCard>
 
     <!-- Setup dialog -->
-    <VDialog v-model="setupDialog" max-width="520">
-      <VCard class="pa-2">
-        <VCardTitle class="d-flex justify-space-between align-center">
-          <span>{{ TYPE_META[chosenType].label }}</span>
-          <VBtn icon="mdi-close" variant="text" size="small" @click="setupDialog = false" />
-        </VCardTitle>
-        <VCardText>
-          <template v-if="isAiInterview">
-            <div class="text-body-2 font-weight-bold mb-2">اختر مسار المقابلة</div>
-            <p class="text-caption text-medium-emphasis mb-2">أسئلة تفاعلية تكيّفية مضادة للغش حسب مجالك</p>
-            <VRow class="mb-3">
-              <VCol v-for="tr in tracks" :key="tr" cols="6">
-                <VCard
-                  :variant="chosenTrack === tr ? 'flat' : 'outlined'"
-                  :color="chosenTrack === tr ? 'primary' : undefined"
-                  class="pa-2 cursor-pointer d-flex align-center ga-2"
-                  @click="chosenTrack = tr"
-                >
-                  <VIcon :icon="TRACK_META[tr].icon" :color="chosenTrack === tr ? undefined : 'primary'" size="20" />
-                  <div class="text-caption font-weight-bold">{{ TRACK_META[tr].label }}</div>
-                </VCard>
-              </VCol>
-            </VRow>
-          </template>
-
-          <div class="text-body-2 font-weight-bold mb-2">اختر المستوى</div>
-          <VCard
-            v-for="lvl in levels"
-            :key="lvl"
-            :variant="chosenLevel === lvl ? 'flat' : 'outlined'"
-            :color="chosenLevel === lvl ? 'primary' : undefined"
-            class="pa-3 mb-2 cursor-pointer d-flex align-center justify-space-between"
-            @click="chosenLevel = lvl"
+    <BaseModal v-model="setupDialog" :title="TYPE_META[chosenType].label" :max-width="520">
+      <template v-if="isAiInterview">
+        <div class="mb-2 text-sm font-bold text-content">اختر مسار المقابلة</div>
+        <p class="mb-2 text-xs text-muted">أسئلة تفاعلية تكيّفية مضادة للغش حسب مجالك</p>
+        <div class="mb-3 grid grid-cols-2 gap-2">
+          <button
+            v-for="tr in tracks"
+            :key="tr"
+            type="button"
+            class="flex items-center gap-2 rounded-ui border-ui p-2 text-start transition"
+            :class="{ 'is-selected': chosenTrack === tr }"
+            @click="chosenTrack = tr"
           >
-            <div class="d-flex align-center ga-2">
-              <VIcon :icon="chosenLevel === lvl ? 'mdi-radiobox-marked' : 'mdi-radiobox-blank'" />
-              <span>{{ LEVEL_META[lvl].label }}</span>
-            </div>
-            <VChip size="small" :color="chosenLevel === lvl ? 'surface' : 'accent'" :variant="chosenLevel === lvl ? 'flat' : 'tonal'" label>
-              {{ LEVEL_META[lvl].cost === 0 ? 'مجاني' : `${LEVEL_META[lvl].cost} ريال` }}
-            </VChip>
-          </VCard>
-        </VCardText>
-        <VCardActions class="justify-end">
-          <VBtn variant="text" @click="setupDialog = false">إلغاء</VBtn>
-          <VBtn v-if="chosenType === 'external' || chosenType === 'expert'" color="secondary" variant="tonal" prepend-icon="mdi-calendar">جدولة</VBtn>
-          <VBtn color="accent" prepend-icon="mdi-play" @click="startNow">
-            {{ chosenType === 'external' || chosenType === 'expert' ? 'طلب المقابلة' : 'بدء الآن' }}
-          </VBtn>
-        </VCardActions>
-      </VCard>
-    </VDialog>
+            <BaseIcon :name="TRACK_META[tr].icon" :size="20" style="color: rgb(var(--v-theme-primary))" />
+            <div class="text-xs font-bold">{{ TRACK_META[tr].label }}</div>
+          </button>
+        </div>
+      </template>
+
+      <div class="mb-2 text-sm font-bold text-content">اختر المستوى</div>
+      <button
+        v-for="lvl in levels"
+        :key="lvl"
+        type="button"
+        class="mb-2 flex w-full items-center justify-between rounded-ui border-ui p-3 text-start transition"
+        :class="{ 'is-selected': chosenLevel === lvl }"
+        @click="chosenLevel = lvl"
+      >
+        <div class="flex items-center gap-2 text-content">
+          <BaseIcon :name="chosenLevel === lvl ? 'mdi-radiobox-marked' : 'mdi-radiobox-blank'" :size="20" />
+          <span>{{ LEVEL_META[lvl].label }}</span>
+        </div>
+        <BaseChip :color="chosenLevel === lvl ? 'neutral' : 'accent'">
+          {{ LEVEL_META[lvl].cost === 0 ? 'مجاني' : `${LEVEL_META[lvl].cost} ريال` }}
+        </BaseChip>
+      </button>
+
+      <template #actions>
+        <BaseButton variant="ghost" size="sm" @click="setupDialog = false">إلغاء</BaseButton>
+        <BaseButton v-if="chosenType === 'external' || chosenType === 'expert'" variant="tonal-emerald" size="sm">
+          <BaseIcon name="mdi-calendar" :size="16" /> جدولة
+        </BaseButton>
+        <BaseButton variant="accent" size="sm" @click="startNow">
+          <BaseIcon name="mdi-play" :size="16" /> {{ chosenType === 'external' || chosenType === 'expert' ? 'طلب المقابلة' : 'بدء الآن' }}
+        </BaseButton>
+      </template>
+    </BaseModal>
   </div>
 </template>
 
@@ -290,5 +293,10 @@ function viewResult(iv: Interview) {
   height: 6px;
   border-radius: 50%;
   display: inline-block;
+}
+/* بطاقة اختيار محدّدة (المسار/المستوى) */
+.is-selected {
+  background: rgba(var(--v-theme-primary), 0.14);
+  border-color: rgb(var(--v-theme-primary));
 }
 </style>
