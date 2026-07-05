@@ -14,7 +14,11 @@ import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseCheckbox from '@/components/ui/BaseCheckbox.vue'
 import BaseSelect from '@/components/ui/BaseSelect.vue'
 import BaseSlider from '@/components/ui/BaseSlider.vue'
+import BaseModal from '@/components/ui/BaseModal.vue'
+import BaseSnackbar from '@/components/ui/BaseSnackbar.vue'
 
+const demoModal = ref(false)
+const demoSnack = ref(false)
 const demoText = ref('')
 const demoCheck = ref(true)
 const demoMulti = ref<string[]>(['a'])
@@ -186,6 +190,24 @@ function toggle() {
             <BaseProgressBar :value="40" color="warning" />
           </div>
         </div>
+      </BaseCard>
+
+      <BaseCard>
+        <h2 class="mb-3 text-lg font-semibold">
+          النافذة والإشعار (BaseModal / BaseSnackbar)
+        </h2>
+        <div class="flex flex-wrap gap-3">
+          <BaseButton variant="brand" @click="demoModal = true">افتح نافذة</BaseButton>
+          <BaseButton variant="emerald" @click="demoSnack = true">أظهر إشعارًا</BaseButton>
+        </div>
+        <BaseModal v-model="demoModal" title="نافذة تجريبية">
+          <p class="text-sm">تُغلق بالنقر على الخلفية أو Escape أو زر الإغلاق.</p>
+          <template #actions>
+            <BaseButton variant="ghost" @click="demoModal = false">إلغاء</BaseButton>
+            <BaseButton variant="brand" @click="demoModal = false">تم</BaseButton>
+          </template>
+        </BaseModal>
+        <BaseSnackbar v-model="demoSnack" color="success" :timeout="3000">تمّ الحفظ بنجاح!</BaseSnackbar>
       </BaseCard>
 
       <BaseCard>

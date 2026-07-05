@@ -131,4 +131,13 @@
     from { opacity: 0; transform: translateY(-4px); }
     to { opacity: 1; transform: none; }
   }
+
+  /* دخول شريط الإشعار السفلي عبر CSS */
+  .snack-in {
+    animation: snack-in 0.2s ease-out;
+  }
+  @keyframes snack-in {
+    from { opacity: 0; transform: translateY(1rem); }
+    to { opacity: 1; transform: none; }
+  }
 }
