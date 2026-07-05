@@ -23,6 +23,10 @@ export class User {
   @Column({ default: 'seeker' })
   role!: string
 
+  // باقة الحساب الموحّدة (free/pro/elite) — تحكم التمكين. تقابل AuthUser.tier في العقد.
+  @Column({ default: 'free' })
+  tier!: string
+
   @Column({ type: 'varchar', nullable: true })
   phone!: string | null
 

@@ -3,7 +3,7 @@
 > تتبّع تقدّم التحويل مرحلةً بمرحلة. الخطة الكاملة والقرارات في [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 > الهدف: **Vue SPA + NestJS + JWT (`api/`) + Docker/Nginx/staging + Tailwind**، عقد `api/openapi.yaml` مصدر الحقيقة، Supabase محوّل يُنزع.
 
-**📍 الموضع الحالي:** انتهت المرحلة 1 — التالي المرحلة 2.
+**📍 الموضع الحالي:** انتهت المرحلتان 1 و2 (مُتحقَّقتان حيًّا) — التالي المرحلة 3 (ربط الواجهة بالعقد).
 
 ---
 
@@ -14,15 +14,17 @@
 - [x] كيان `User` (uuid/role/phone، password select:false + bcryptjs)
 - [x] مصادقة JWT: register · login · me · logout — مختبَرة حيًّا (curl)
 
-## ⬜ المرحلة 2 — موارد الباك-إند (لكل مورد في `openapi.yaml`)
+## ✅ المرحلة 2 — موارد الباك-إند (لكل مورد في `openapi.yaml`) — مُنجزة ومُتحقَّقة حيًّا
 لكل مورد: كيان (Entity) → وحدة (Module) → متحكّم (Controller) → حارس/صلاحية (Guard) → اختبار.
-- [ ] `profile` (المهارات/الإثباتات/الخبرات/الشهادات)
-- [ ] `public-profiles` (الصفحة العامة + الادّعاء بالمالك)
-- [ ] `account/plan` + `wallet`
-- [ ] `surveys` (+ الردود)
-- [ ] `opportunities` + `requests`
-- [ ] `interviews` + `interviewers`
-- [ ] `notifications`
+الحقول المتداخلة (مهارات/إثباتات/تفضيلات…) تُخزَّن أعمدة `simple-json` لتطابق شكل المخزن الواحد في الواجهة؛ كل مورد مملوك للمستخدم عبر `@CurrentUser()` + `JwtAuthGuard`.
+- [x] `profile` (المهارات/الإثباتات/الخبرات/الشهادات + طلبات الإثبات) — `src/profile/`
+- [x] `public-profiles` (الصفحة العامة بلا مصادقة + تحرير المالك `/me` بـ slug مشتقّ + مشاهدة/متابعة/تقييم/تعليق/تواصل/جدولة/توصية/طلب إثبات) — `src/public-profiles/`
+- [x] `account/plan` + `wallet` (رصيد ترحيبي 100؛ الترقية تخصم الفرق من المحفظة → 402 عند نقص الرصيد؛ tier على User) — `src/account/`
+- [x] `surveys` (+ الردود؛ حدّ إنشاء حسب الباقة free=1/pro=10/elite=∞ → 403؛ الردّ يصرف من مجمّع النقاط) — `src/surveys/`
+- [x] `opportunities` + `requests` (بذور أوليّة + فلترة q/category/type + تقديم + طلباتي) — `src/marketplace/`
+- [x] `interviews` + `interviewers` (بذور مقيّمين + حجز pending + PATCH قبول/رفض/إكمال بتقرير) — `src/interviewers/` + `src/interviews/`
+- [x] `notifications` (إشعار ترحيبي عند أول وصول + تعليم الكل مقروءًا + `push()` داخلي للتدفقات) — `src/notifications/`
+- **التحقّق:** `test/phase2.e2e-spec.ts` — 12 اختبار تكامل e2e يمرّ على كل مورد عبر HTTP الكامل (`npm test`)، + جولة curl حيّة مقابل `dev.sqlite` (رقّي المخطط تلقائيًا: عمود tier + الجداول الجديدة).
 - المرجع الحيّ: [`../supabase/migrations/`](../supabase/migrations/) + [`CLOUD_SYNC.md`](./CLOUD_SYNC.md)
 
 ## ⬜ المرحلة 3 — ربط الواجهة بالعقد (بلا لمس الشكل)
