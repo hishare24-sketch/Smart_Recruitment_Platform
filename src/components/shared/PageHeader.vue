@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import BaseAvatar from '@/components/ui/BaseAvatar.vue'
+import BaseIcon from '@/components/ui/BaseIcon.vue'
+
 defineProps<{
   title: string
   subtitle?: string
@@ -7,21 +10,21 @@ defineProps<{
 </script>
 
 <template>
-  <div class="d-flex align-center justify-space-between flex-wrap ga-3 mb-5">
-    <div class="d-flex align-center ga-3">
-      <VAvatar v-if="icon" color="primary" variant="tonal" rounded="lg" size="44">
-        <VIcon :icon="icon" />
-      </VAvatar>
+  <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+    <div class="flex items-center gap-3">
+      <BaseAvatar v-if="icon" color="brand" :size="44" tonal square>
+        <BaseIcon :name="icon" :size="24" />
+      </BaseAvatar>
       <div>
-        <h1 class="text-h5 font-weight-bold">
+        <h1 class="text-2xl font-bold">
           {{ title }}
         </h1>
-        <p v-if="subtitle" class="text-body-2 text-medium-emphasis mb-0">
+        <p v-if="subtitle" class="text-sm text-muted">
           {{ subtitle }}
         </p>
       </div>
     </div>
-    <div class="d-flex align-center ga-2">
+    <div class="flex items-center gap-2">
       <slot name="actions" />
     </div>
   </div>

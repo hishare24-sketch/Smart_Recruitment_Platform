@@ -12,10 +12,14 @@ import BaseProgressRing from '@/components/ui/BaseProgressRing.vue'
 import BaseProgressBar from '@/components/ui/BaseProgressBar.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseCheckbox from '@/components/ui/BaseCheckbox.vue'
+import BaseSelect from '@/components/ui/BaseSelect.vue'
+import BaseSlider from '@/components/ui/BaseSlider.vue'
 
 const demoText = ref('')
 const demoCheck = ref(true)
 const demoMulti = ref<string[]>(['a'])
+const demoSelect = ref<string | null>(null)
+const demoRange = ref(40)
 
 // معرض مكوّنات الأساس (Tailwind) — أداة تحقّق أثناء ترحيل المرحلة 5.
 // نعرضها بجانب VBtn من Vuetify للتأكد من تطابق الثيم والتعايش.
@@ -146,7 +150,19 @@ function toggle() {
             <BaseCheckbox v-model="demoMulti" value="a" label="خيار أ" />
             <BaseCheckbox v-model="demoMulti" value="b" label="خيار ب" />
           </div>
-          <p class="text-muted text-xs">القيمة: «{{ demoText }}» · مفرد: {{ demoCheck }} · متعدّد: [{{ demoMulti.join(', ') }}]</p>
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <BaseSelect
+              v-model="demoSelect"
+              :items="[{ value: 'a', title: 'خيار أ' }, { value: 'b', title: 'خيار ب' }, { value: 'c', title: 'خيار ج' }]"
+              placeholder="اختر..."
+              clearable
+            />
+            <div class="flex items-center gap-2">
+              <span class="text-muted text-xs whitespace-nowrap">القيمة {{ demoRange }}</span>
+              <BaseSlider v-model="demoRange" :min="0" :max="100" :step="5" class="flex-1" />
+            </div>
+          </div>
+          <p class="text-muted text-xs">نص: «{{ demoText }}» · مفرد: {{ demoCheck }} · متعدّد: [{{ demoMulti.join(', ') }}] · اختيار: {{ demoSelect ?? '—' }}</p>
         </div>
       </BaseCard>
 
