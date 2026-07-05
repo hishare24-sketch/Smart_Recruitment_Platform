@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/AuthStore'
 import { usePersonaStore } from '@/stores/PersonaStore'
-import { SEEKER_PERSONA_META } from '@/services/personas'
+import { ORG_TYPES, ORG_TYPE_META, SEEKER_PERSONA_META } from '@/services/personas'
 import { PROOF_META, skillConfidence, skillLevelLabel, useProfileStore } from '@/stores/ProfileStore'
 import type { ProofType, Skill } from '@/stores/ProfileStore'
 import { useResumesStore } from '@/stores/ResumesStore'
@@ -244,6 +244,7 @@ const initials = computed(() => user.value?.name?.charAt(0).toUpperCase() ?? '?'
 const roleLabel = computed(() => (authStore.role ? t(`roles.${authStore.role}`) : ''))
 const personaStore = usePersonaStore()
 const personaMeta = computed(() => SEEKER_PERSONA_META[personaStore.state.seekerPersona])
+const orgTypeItems = ORG_TYPES.map(t => ({ value: t, title: ORG_TYPE_META[t].label }))
 const profileCompletion = computed(() => {
   let score = 40
   if (profile.skills.length >= 3)
@@ -746,9 +747,14 @@ const heroStats = computed(() => [
       <VCard class="pa-5 mb-5">
         <div class="d-flex align-center justify-space-between flex-wrap ga-2 mb-1">
           <h3 class="text-subtitle-1 font-weight-bold">ملف جهة التوظيف</h3>
-          <VChip v-if="roleProfiles.employer.is_verified" color="success" size="small" label prepend-icon="mdi-check-decagram">
-            شركة موثّقة
-          </VChip>
+          <div class="d-flex align-center ga-1">
+            <VChip color="secondary" size="small" variant="tonal" label :prepend-icon="ORG_TYPE_META[personaStore.state.orgType].icon">
+              {{ ORG_TYPE_META[personaStore.state.orgType].label }}
+            </VChip>
+            <VChip v-if="roleProfiles.employer.is_verified" color="success" size="small" label prepend-icon="mdi-check-decagram">
+              شركة موثّقة
+            </VChip>
+          </div>
         </div>
         <div class="d-flex justify-space-between text-caption mb-1 mt-3">
           <span class="text-medium-emphasis">اكتمال ملف الجهة</span>
@@ -764,6 +770,15 @@ const heroStats = computed(() => [
           </VCol>
           <VCol cols="12" md="6">
             <VSelect v-model="roleProfiles.employer.company_size" :items="COMPANY_SIZES" label="حجم الشركة" prepend-inner-icon="mdi-account-group-outline" />
+          </VCol>
+          <VCol cols="12" md="6">
+            <VSelect
+              :model-value="personaStore.state.orgType"
+              :items="orgTypeItems"
+              label="نوع المنشأة"
+              prepend-inner-icon="mdi-domain"
+              @update:model-value="personaStore.setOrgType($event)"
+            />
           </VCol>
           <VCol cols="12" md="6">
             <VTextField v-model="roleProfiles.employer.company_website" label="الموقع الإلكتروني" prepend-inner-icon="mdi-web" dir="ltr" />
