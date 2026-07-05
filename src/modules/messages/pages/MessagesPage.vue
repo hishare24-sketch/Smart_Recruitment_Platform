@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue'
+import BaseAvatar from '@/components/ui/BaseAvatar.vue'
+import BaseCard from '@/components/ui/BaseCard.vue'
+import BaseIcon from '@/components/ui/BaseIcon.vue'
+import BaseInput from '@/components/ui/BaseInput.vue'
 import { useMessagesStore } from '@/stores/MessagesStore'
 
 const store = useMessagesStore()
@@ -39,58 +43,82 @@ onMounted(() => {
 
 <template>
   <div>
-    <h1 class="text-h5 font-weight-bold mb-4">الرسائل</h1>
-    <VCard class="d-flex overflow-hidden" style="height: calc(100vh - 180px)">
+    <h1 class="mb-4 text-2xl font-bold text-content">الرسائل</h1>
+    <BaseCard :padded="false" class="flex overflow-hidden" style="height: calc(100vh - 180px)">
       <!-- Conversation list -->
-      <div class="border-e d-none d-md-block" style="width: 300px; min-width: 300px">
-        <VList class="py-0">
-          <template v-for="(conv, i) in store.conversations" :key="conv.id">
-            <VListItem :active="conv.id === activeId" color="primary" @click="selectConversation(conv.id)">
-              <template #prepend>
-                <VAvatar color="secondary"><span>{{ conv.initial }}</span></VAvatar>
-              </template>
-              <VListItemTitle class="font-weight-bold">{{ conv.name }}</VListItemTitle>
-              <VListItemSubtitle>{{ conv.messages[conv.messages.length - 1]?.text }}</VListItemSubtitle>
-              <template #append>
-                <VBadge v-if="conv.unread" :content="conv.unread" color="accent" inline />
-              </template>
-            </VListItem>
-            <VDivider v-if="i < store.conversations.length - 1" />
-          </template>
-        </VList>
+      <div class="hidden w-[300px] min-w-[300px] border-e border-ui md:block">
+        <ul class="overflow-y-auto" style="max-height: 100%">
+          <li v-for="(conv, i) in store.conversations" :key="conv.id">
+            <button
+              type="button"
+              class="conv-row"
+              :class="{ 'is-active': conv.id === activeId }"
+              @click="selectConversation(conv.id)"
+            >
+              <BaseAvatar color="emerald">{{ conv.initial }}</BaseAvatar>
+              <div class="min-w-0 flex-1">
+                <div class="truncate font-bold text-content">{{ conv.name }}</div>
+                <div class="truncate text-sm text-muted">
+                  {{ conv.messages[conv.messages.length - 1]?.text }}
+                </div>
+              </div>
+              <span
+                v-if="conv.unread"
+                class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-xs font-bold text-on-accent"
+              >{{ conv.unread }}</span>
+            </button>
+            <div v-if="i < store.conversations.length - 1" class="border-t border-ui" />
+          </li>
+        </ul>
       </div>
 
       <!-- Thread -->
-      <div v-if="active" class="flex-grow-1 d-flex flex-column">
-        <div class="d-flex align-center ga-3 pa-4 border-b">
-          <VAvatar color="secondary"><span>{{ active.initial }}</span></VAvatar>
+      <div v-if="active" class="flex flex-1 flex-col">
+        <div class="flex items-center gap-3 border-b border-ui p-4">
+          <BaseAvatar color="emerald">{{ active.initial }}</BaseAvatar>
           <div>
-            <div class="text-subtitle-1 font-weight-bold">{{ active.name }}</div>
-            <div class="text-caption text-medium-emphasis">{{ active.role }}</div>
+            <div class="font-bold text-content">{{ active.name }}</div>
+            <div class="text-xs text-muted">{{ active.role }}</div>
           </div>
         </div>
 
-        <div ref="threadRef" class="flex-grow-1 overflow-y-auto pa-4 bg-background">
-          <div v-for="(m, i) in active.messages" :key="i" class="d-flex mb-2" :class="m.from === 'me' ? 'justify-end' : 'justify-start'">
-            <div class="pa-3 rounded-lg text-body-2" :class="m.from === 'me' ? 'bg-primary' : 'bg-surface'" style="max-width: 70%">
+        <div ref="threadRef" class="flex-1 overflow-y-auto bg-bg p-4">
+          <div
+            v-for="(m, i) in active.messages"
+            :key="i"
+            class="mb-2 flex"
+            :class="m.from === 'me' ? 'justify-end' : 'justify-start'"
+          >
+            <div
+              class="rounded-ui-lg p-3 text-sm"
+              :class="m.from === 'me' ? 'bg-brand text-on-brand' : 'border-ui bg-surface text-content'"
+              style="max-width: 70%"
+            >
               {{ m.text }}
-              <div class="text-caption opacity-70 mt-1">{{ m.time }}</div>
+              <div class="mt-1 text-xs opacity-70">{{ m.time }}</div>
             </div>
           </div>
         </div>
 
-        <div class="pa-3 border-t">
-          <VTextField
+        <div class="border-t border-ui p-3">
+          <BaseInput
             v-model="draft"
             placeholder="اكتب رسالة..."
-            hide-details
-            density="comfortable"
-            append-inner-icon="mdi-send"
-            @click:append-inner="sendMessage"
             @keyup.enter="sendMessage"
-          />
+          >
+            <template #suffix>
+              <button
+                type="button"
+                class="icon-btn ms-1 !h-8 !w-8 text-brand"
+                aria-label="إرسال"
+                @click="sendMessage"
+              >
+                <BaseIcon name="mdi-send" :size="20" />
+              </button>
+            </template>
+          </BaseInput>
         </div>
       </div>
-    </VCard>
+    </BaseCard>
   </div>
 </template>
