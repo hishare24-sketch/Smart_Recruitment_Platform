@@ -10,6 +10,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   coach: ['coach_clients', 'manage_programs', 'publish_content'],
   trainer: ['manage_courses', 'view_trainees'],
   consultant: ['consult_companies', 'publish_insights'],
+  content_reviewer: ['review_content', 'moderate_content'],
+  community_guide: ['manage_community', 'moderate_discussions'],
 }
 
 export interface RoleMeta {
@@ -36,10 +38,16 @@ export const ROLE_META: Record<UserRole, RoleMeta> = {
   coach: { icon: 'mdi-compass-outline', labelKey: 'coach', home: 'coach-dashboard', requestable: true, activation: 'instant' },
   trainer: { icon: 'mdi-school-outline', labelKey: 'trainer', home: 'trainer-dashboard', requestable: true, activation: 'instant' },
   consultant: { icon: 'mdi-lightbulb-on-outline', labelKey: 'consultant', home: 'consultant-dashboard', requestable: true, activation: 'instant' },
+  // مجموعة الحوكمة: إدارة منصة قرب المدير — مُسندة بالاعتماد لا بالطلب الذاتي، خارج سوق الخبراء
+  content_reviewer: { icon: 'mdi-file-check-outline', labelKey: 'content_reviewer', home: 'governance-dashboard', requestable: false, activation: 'approval' },
+  community_guide: { icon: 'mdi-account-group-outline', labelKey: 'community_guide', home: 'governance-dashboard', requestable: false, activation: 'approval' },
 }
 
-/** الأدوار المهنية القابلة للتعدد والتبديل — الكل عدا المدير (حساب تشغيل المنصة، الاستثناء الوحيد) */
+/** الأدوار المهنية القابلة للتعدد والتبديل — الكل عدا المدير والحوكمة (حسابات تشغيل المنصة) */
 export const SWITCHABLE_ROLES: UserRole[] = ['seeker', 'interviewer', 'company', 'endorser', 'coach', 'trainer', 'consultant']
+
+/** مجموعة الحوكمة (إدارة منصة) — مفصولة عن أدوار السوق والخدمة */
+export const GOVERNANCE_ROLES: UserRole[] = ['content_reviewer', 'community_guide']
 
 export function roleHome(role: UserRole | undefined): string {
   return role ? ROLE_META[role].home : 'dashboard'

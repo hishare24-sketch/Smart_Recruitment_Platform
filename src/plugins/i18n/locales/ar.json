@@ -51,7 +51,9 @@
     "interviewer": "مقيّم معتمد",
     "coach": "مرشد مهني",
     "trainer": "مدرب تقني",
-    "consultant": "مستشار مهني"
+    "consultant": "مستشار مهني",
+    "content_reviewer": "مراجع محتوى مهني",
+    "community_guide": "موجّه مجتمع مهني"
   },
   "roleSwitcher": {
     "myRoles": "أدواري",

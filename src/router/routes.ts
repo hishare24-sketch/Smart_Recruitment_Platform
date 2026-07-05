@@ -354,6 +354,12 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('@/modules/experts/pages/ConsultantDashboardPage.vue'),
     meta: { layout: 'default', roles: ['consultant'] },
   },
+  {
+    path: '/governance',
+    name: 'governance-dashboard',
+    component: () => import('@/modules/governance/pages/GovernanceDashboardPage.vue'),
+    meta: { layout: 'default', roles: ['content_reviewer', 'community_guide'] },
+  },
 
   // ===== Surveys =====
   {

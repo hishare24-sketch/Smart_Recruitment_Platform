@@ -51,7 +51,9 @@
     "interviewer": "Certified Interviewer",
     "coach": "Career Coach",
     "trainer": "Tech Trainer",
-    "consultant": "Industry Consultant"
+    "consultant": "Industry Consultant",
+    "content_reviewer": "Content Reviewer",
+    "community_guide": "Community Guide"
   },
   "roleSwitcher": {
     "myRoles": "My Roles",
