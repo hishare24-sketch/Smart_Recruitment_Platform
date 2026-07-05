@@ -7,6 +7,18 @@ import { KIND_META, useInterviewersStore } from '@/stores/InterviewersStore'
 import type { MarketInterviewKind } from '@/stores/InterviewersStore'
 import { useNotificationsStore } from '@/stores/NotificationsStore'
 import { useWishesStore } from '@/stores/WishesStore'
+import BaseCard from '@/components/ui/BaseCard.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
+import BaseChip from '@/components/ui/BaseChip.vue'
+import BaseIcon from '@/components/ui/BaseIcon.vue'
+import BaseAvatar from '@/components/ui/BaseAvatar.vue'
+import BaseInput from '@/components/ui/BaseInput.vue'
+import BaseTextarea from '@/components/ui/BaseTextarea.vue'
+import BaseSelect from '@/components/ui/BaseSelect.vue'
+import BaseModal from '@/components/ui/BaseModal.vue'
+import BaseSnackbar from '@/components/ui/BaseSnackbar.vue'
+import BaseProgressRing from '@/components/ui/BaseProgressRing.vue'
+import BaseProgressBar from '@/components/ui/BaseProgressBar.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -15,6 +27,11 @@ const interviewersStore = useInterviewersStore()
 const notifications = useNotificationsStore()
 const candidate = computed(() => store.getById(Number(route.params.id)))
 const snackbar = ref('')
+
+type BaseColor = 'brand' | 'emerald' | 'accent' | 'success' | 'info' | 'warning' | 'error' | 'neutral'
+function mapColor(c?: string): BaseColor {
+  return (({ primary: 'brand', secondary: 'emerald', 'medium-emphasis': 'neutral', 'surface-variant': 'neutral', grey: 'neutral', amber: 'warning' } as Record<string, BaseColor>)[c ?? ''] ?? c ?? 'brand') as BaseColor
+}
 
 // Certified-interviewer reports already on the candidate's record (mock)
 const candidateReports = [
@@ -33,6 +50,7 @@ const wishesStore = useWishesStore()
 const wishDialog = ref(false)
 const wishForm = ref({ role: '', amount: '', duration: 'دائم', reason: '' })
 const DURATIONS = ['دائم', 'سنة', '6 أشهر', 'مهمة']
+const DURATION_OPTIONS = DURATIONS.map(d => ({ value: d, title: d }))
 function openWishDialog() {
   wishForm.value = {
     role: candidate.value?.appliedFor ?? candidate.value?.title ?? '',
@@ -98,200 +116,179 @@ const endorsements = [
 
 <template>
   <div v-if="candidate">
-    <VBtn variant="text" prepend-icon="mdi-arrow-right" class="mb-3" @click="router.back()">
-      رجوع للترشيحات
-    </VBtn>
+    <BaseButton variant="ghost" size="sm" class="mb-3" @click="router.back()">
+      <BaseIcon name="mdi-arrow-right" :size="16" />رجوع للترشيحات
+    </BaseButton>
 
-    <VRow>
-      <VCol cols="12" md="8">
-        <VCard class="pa-5 mb-4">
-          <div class="d-flex align-center ga-4 mb-4">
-            <VAvatar color="secondary" size="72">
-              <span class="text-h4 font-weight-bold">{{ candidate.name.charAt(0) }}</span>
-            </VAvatar>
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-12">
+      <div class="md:col-span-8">
+        <BaseCard class="mb-4">
+          <div class="mb-4 flex items-center gap-4">
+            <BaseAvatar color="emerald" :size="72">
+              <span class="text-2xl font-bold">{{ candidate.name.charAt(0) }}</span>
+            </BaseAvatar>
             <div>
-              <h1 class="text-h5 font-weight-bold">{{ candidate.name }}</h1>
-              <div class="text-body-1 text-medium-emphasis">{{ candidate.title }} · {{ candidate.location }}</div>
-              <VChip size="x-small" label class="mt-1">{{ candidate.level }} · {{ candidate.experienceYears }} سنوات خبرة</VChip>
+              <h1 class="text-xl font-bold text-content">{{ candidate.name }}</h1>
+              <div class="text-muted">{{ candidate.title }} · {{ candidate.location }}</div>
+              <BaseChip color="neutral" class="mt-1">{{ candidate.level }} · {{ candidate.experienceYears }} سنوات خبرة</BaseChip>
             </div>
           </div>
-          <p class="text-body-2 text-medium-emphasis">{{ candidate.summary }}</p>
+          <p class="text-sm text-muted">{{ candidate.summary }}</p>
 
-          <VDivider class="my-4" />
-          <h3 class="text-subtitle-1 font-weight-bold mb-2">المهارات</h3>
-          <div class="d-flex flex-wrap ga-2 mb-4">
-            <VChip v-for="s in candidate.skills" :key="s" color="primary" variant="tonal" size="small">{{ s }}</VChip>
+          <hr class="my-4 border-ui">
+          <h3 class="mb-2 text-base font-bold text-content">المهارات</h3>
+          <div class="mb-4 flex flex-wrap gap-2">
+            <BaseChip v-for="s in candidate.skills" :key="s" color="brand">{{ s }}</BaseChip>
           </div>
 
-          <h3 class="text-subtitle-1 font-weight-bold mb-2">التوصيات</h3>
-          <VRow class="mb-4">
-            <VCol v-for="e in endorsements" :key="e.name" cols="12" sm="6">
-              <VCard variant="outlined" class="pa-3 d-flex align-center ga-3">
-                <VAvatar color="secondary" variant="tonal"><VIcon icon="mdi-account" /></VAvatar>
-                <div class="flex-grow-1">
-                  <div class="text-body-2 font-weight-bold">
-                    {{ e.name }}
-                    <VIcon v-if="e.trusted" icon="mdi-check-decagram" color="success" size="16" />
-                  </div>
-                  <div class="text-caption text-medium-emphasis">{{ e.relation }}</div>
+          <h3 class="mb-2 text-base font-bold text-content">التوصيات</h3>
+          <div class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div v-for="e in endorsements" :key="e.name" class="flex items-center gap-3 rounded-ui-lg border-ui p-3">
+              <BaseAvatar color="emerald" tonal><BaseIcon name="mdi-account" :size="20" /></BaseAvatar>
+              <div class="flex-1">
+                <div class="flex items-center gap-1 text-sm font-bold text-content">
+                  {{ e.name }}
+                  <BaseIcon v-if="e.trusted" name="mdi-check-decagram" :size="16" :style="{ color: 'rgb(var(--v-theme-success))' }" />
                 </div>
-                <VChip size="x-small" label>{{ e.type }}</VChip>
-              </VCard>
-            </VCol>
-          </VRow>
+                <div class="text-xs text-muted">{{ e.relation }}</div>
+              </div>
+              <BaseChip color="neutral">{{ e.type }}</BaseChip>
+            </div>
+          </div>
 
           <!-- Certified-interviewer reports -->
-          <div class="d-flex align-center ga-2 mb-2">
-            <VIcon icon="mdi-account-tie" color="secondary" size="20" />
-            <h3 class="text-subtitle-1 font-weight-bold">تقارير المقيّمين المعتمدين ({{ candidateReports.length }})</h3>
+          <div class="mb-2 flex items-center gap-2">
+            <BaseIcon name="mdi-account-tie" :size="20" :style="{ color: 'rgb(var(--v-theme-secondary))' }" />
+            <h3 class="text-base font-bold text-content">تقارير المقيّمين المعتمدين ({{ candidateReports.length }})</h3>
           </div>
-          <VRow class="mb-4">
-            <VCol v-for="r in candidateReports" :key="r.id" cols="12" sm="6">
-              <VCard variant="outlined" class="pa-3 cursor-pointer" @click="openReport(r)">
-                <div class="d-flex align-center justify-space-between mb-1">
-                  <span class="text-body-2 font-weight-bold">{{ r.interviewer }}</span>
-                  <VChip color="success" size="x-small" label>{{ r.overall }}%</VChip>
-                </div>
-                <div class="text-caption text-medium-emphasis mb-2">{{ KIND_META[r.kind].label }} · المستوى {{ r.level }}</div>
-                <VBtn size="x-small" variant="text" color="primary" prepend-icon="mdi-file-document-outline">عرض التقرير</VBtn>
-              </VCard>
-            </VCol>
-          </VRow>
+          <div class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <button v-for="r in candidateReports" :key="r.id" type="button" class="rounded-ui-lg border-ui p-3 text-start transition hover:bg-surfalt" @click="openReport(r)">
+              <div class="mb-1 flex items-center justify-between">
+                <span class="text-sm font-bold text-content">{{ r.interviewer }}</span>
+                <BaseChip color="success">{{ r.overall }}%</BaseChip>
+              </div>
+              <div class="mb-2 text-xs text-muted">{{ KIND_META[r.kind].label }} · المستوى {{ r.level }}</div>
+              <span class="inline-flex items-center gap-1 text-xs font-medium" :style="{ color: 'rgb(var(--v-theme-primary))' }"><BaseIcon name="mdi-file-document-outline" :size="14" />عرض التقرير</span>
+            </button>
+          </div>
 
-          <div class="d-flex align-center justify-space-between mb-2">
-            <h3 class="text-subtitle-1 font-weight-bold">السير الذاتية المُقدّمة</h3>
-            <VBtn variant="text" size="x-small" color="primary" prepend-icon="mdi-refresh" @click="snackbar = 'تم إرسال طلب سيرة ذاتية محدّثة للمرشح'">
-              طلب سيرة محدّثة
-            </VBtn>
+          <div class="mb-2 flex items-center justify-between">
+            <h3 class="text-base font-bold text-content">السير الذاتية المُقدّمة</h3>
+            <BaseButton variant="ghost" size="sm" @click="snackbar = 'تم إرسال طلب سيرة ذاتية محدّثة للمرشح'">
+              <BaseIcon name="mdi-refresh" :size="14" :style="{ color: 'rgb(var(--v-theme-primary))' }" /><span :style="{ color: 'rgb(var(--v-theme-primary))' }">طلب سيرة محدّثة</span>
+            </BaseButton>
           </div>
-          <VCard variant="outlined" class="pa-3 d-flex align-center ga-3">
-            <VAvatar color="primary" variant="tonal" rounded="lg"><VIcon icon="mdi-file-account-outline" /></VAvatar>
-            <div class="flex-grow-1">
-              <div class="text-body-2 font-weight-bold">سيرة {{ candidate.name.split(' ')[0] }} - {{ candidate.title }}</div>
-              <div class="text-caption text-medium-emphasis">قالب حديث · عربي · قُدّمت مع الطلب</div>
+          <div class="flex items-center gap-3 rounded-ui-lg border-ui p-3">
+            <BaseAvatar color="brand" tonal square><BaseIcon name="mdi-file-account-outline" :size="20" /></BaseAvatar>
+            <div class="flex-1">
+              <div class="text-sm font-bold text-content">سيرة {{ candidate.name.split(' ')[0] }} - {{ candidate.title }}</div>
+              <div class="text-xs text-muted">قالب حديث · عربي · قُدّمت مع الطلب</div>
             </div>
-            <VBtn icon="mdi-eye-outline" variant="text" size="small" :to="{ name: 'public-resume', params: { token: String(candidate.id) } }" />
-            <VBtn icon="mdi-download" variant="text" size="small" />
-          </VCard>
-        </VCard>
-      </VCol>
+            <BaseButton variant="ghost" size="sm" :to="{ name: 'public-resume', params: { token: String(candidate.id) } }"><BaseIcon name="mdi-eye-outline" :size="18" /></BaseButton>
+            <button class="icon-btn h-9 w-9" aria-label="تنزيل"><BaseIcon name="mdi-download" :size="18" /></button>
+          </div>
+        </BaseCard>
+      </div>
 
-      <VCol cols="12" md="4">
-        <VCard class="pa-5 mb-4 text-center">
-          <VProgressCircular :model-value="candidate.matchRate" :size="110" :width="10" color="success">
-            <span class="text-h5 font-weight-bold">{{ candidate.matchRate }}%</span>
-          </VProgressCircular>
-          <div class="text-body-2 text-medium-emphasis mt-2 mb-2">تطابق مع: {{ candidate.appliedFor }}</div>
-          <VChip :color="CANDIDATE_STATUS_META[candidate.status].color" size="small" label class="mb-4">
-            الحالة: {{ CANDIDATE_STATUS_META[candidate.status].label }}
-          </VChip>
+      <div class="md:col-span-4">
+        <BaseCard class="mb-4 text-center">
+          <BaseProgressRing :value="candidate.matchRate" :size="110" :width="10" color="success" class="mx-auto">
+            <span class="text-xl font-bold text-content">{{ candidate.matchRate }}%</span>
+          </BaseProgressRing>
+          <div class="mb-2 mt-2 text-sm text-muted">تطابق مع: {{ candidate.appliedFor }}</div>
+          <div class="mb-4">
+            <BaseChip :color="mapColor(CANDIDATE_STATUS_META[candidate.status].color)">الحالة: {{ CANDIDATE_STATUS_META[candidate.status].label }}</BaseChip>
+          </div>
 
-          <VBtn color="accent" block class="mb-2" prepend-icon="mdi-hand-heart-outline" @click="openWishDialog">إبداء رغبة</VBtn>
-          <VBtn color="primary" block class="mb-2" prepend-icon="mdi-account-tie-voice-outline" @click="requestInterviewDialog = true">طلب مقابلة</VBtn>
-          <VBtn color="primary" variant="tonal" block class="mb-2" prepend-icon="mdi-calendar-clock-outline" @click="store.setStatus(candidate.id, 'interview'); snackbar = 'تمت دعوة المرشح لمقابلة'">جدولة مقابلة</VBtn>
-          <VBtn color="secondary" variant="outlined" block class="mb-2" prepend-icon="mdi-message-outline" :to="{ name: 'messages' }">إرسال رسالة</VBtn>
-          <VBtn color="error" variant="text" block prepend-icon="mdi-close" @click="store.setStatus(candidate.id, 'rejected'); snackbar = 'تم رفض الترشيح'">رفض الترشيح</VBtn>
-        </VCard>
+          <BaseButton variant="accent" block class="mb-2" @click="openWishDialog"><BaseIcon name="mdi-hand-heart-outline" :size="16" />إبداء رغبة</BaseButton>
+          <BaseButton variant="brand" block class="mb-2" @click="requestInterviewDialog = true"><BaseIcon name="mdi-account-tie-voice-outline" :size="16" />طلب مقابلة</BaseButton>
+          <BaseButton variant="tonal-brand" block class="mb-2" @click="store.setStatus(candidate.id, 'interview'); snackbar = 'تمت دعوة المرشح لمقابلة'"><BaseIcon name="mdi-calendar-clock-outline" :size="16" />جدولة مقابلة</BaseButton>
+          <BaseButton variant="outline" block class="mb-2" :to="{ name: 'messages' }"><BaseIcon name="mdi-message-outline" :size="16" />إرسال رسالة</BaseButton>
+          <BaseButton variant="ghost" block @click="store.setStatus(candidate.id, 'rejected'); snackbar = 'تم رفض الترشيح'"><BaseIcon name="mdi-close" :size="16" :style="{ color: 'rgb(var(--v-theme-error))' }" /><span :style="{ color: 'rgb(var(--v-theme-error))' }">رفض الترشيح</span></BaseButton>
+        </BaseCard>
 
-        <VCard class="pa-5">
-          <div class="text-subtitle-1 font-weight-bold mb-3">تحليل التطابق</div>
+        <BaseCard>
+          <div class="mb-3 text-base font-bold text-content">تحليل التطابق</div>
           <div v-for="item in matchBreakdown" :key="item.label" class="mb-3">
-            <div class="d-flex justify-space-between text-body-2 mb-1">
+            <div class="mb-1 flex justify-between text-sm text-content">
               <span>{{ item.label }}</span>
-              <span class="font-weight-bold">{{ item.value }}%</span>
+              <span class="font-bold">{{ item.value }}%</span>
             </div>
-            <VProgressLinear :model-value="item.value" color="primary" height="6" rounded />
+            <BaseProgressBar :value="item.value" color="primary" :height="6" />
           </div>
-        </VCard>
-      </VCol>
-    </VRow>
+        </BaseCard>
+      </div>
+    </div>
 
     <!-- Request interview via certified interviewer -->
-    <VDialog v-model="requestInterviewDialog" max-width="520">
-      <VCard class="pa-2">
-        <VCardTitle>طلب مقابلة تقييمية — {{ candidate.name }}</VCardTitle>
-        <VCardText>
-          <p class="text-body-2 text-medium-emphasis mb-3">اختر مقيّمًا معتمدًا يُجري المقابلة ويوثّق نتيجتها:</p>
-          <VSelect
-            v-model="chosenInterviewerId"
-            :items="interviewersStore.interviewers.map(i => ({ value: i.id, title: `${i.name} · ${i.title}` }))"
-            label="المقيّم المعتمد"
-            prepend-inner-icon="mdi-account-tie"
-            class="mb-3"
-          />
-          <VSelect
-            v-model="chosenKind"
-            :items="kinds.map(k => ({ value: k, title: `${KIND_META[k].label} · ${KIND_META[k].minutes}` }))"
-            label="نوع المقابلة"
-            class="mb-2"
-          />
-          <VAlert color="accent" variant="tonal" density="compact">
-            <div class="d-flex justify-space-between align-center">
-              <span class="text-body-2">التكلفة التقديرية</span>
-              <span class="font-weight-bold">{{ requestPrice }} ﷼</span>
-            </div>
-          </VAlert>
-        </VCardText>
-        <VCardActions class="justify-end">
-          <VBtn variant="text" @click="requestInterviewDialog = false">إلغاء</VBtn>
-          <VBtn color="accent" prepend-icon="mdi-send" :disabled="!chosenInterviewerId" @click="sendInterviewRequest">إرسال الطلب</VBtn>
-        </VCardActions>
-      </VCard>
-    </VDialog>
+    <BaseModal v-model="requestInterviewDialog" :title="`طلب مقابلة تقييمية — ${candidate.name}`" :max-width="520">
+      <p class="mb-3 text-sm text-muted">اختر مقيّمًا معتمدًا يُجري المقابلة ويوثّق نتيجتها:</p>
+      <label class="mb-1 block text-sm font-medium text-muted">المقيّم المعتمد</label>
+      <BaseSelect v-model="chosenInterviewerId" :items="interviewersStore.interviewers.map(i => ({ value: i.id, title: `${i.name} · ${i.title}` }))" prefix-icon="mdi-account-tie" class="mb-3" />
+      <label class="mb-1 block text-sm font-medium text-muted">نوع المقابلة</label>
+      <BaseSelect :model-value="chosenKind" :items="kinds.map(k => ({ value: k, title: `${KIND_META[k].label} · ${KIND_META[k].minutes}` }))" class="mb-2" @update:model-value="v => v && (chosenKind = v)" />
+      <div class="flex items-center justify-between rounded-ui p-2" style="background: rgba(var(--v-theme-accent), 0.16)">
+        <span class="text-sm text-content">التكلفة التقديرية</span>
+        <span class="font-bold text-content">{{ requestPrice }} ﷼</span>
+      </div>
+      <template #actions>
+        <BaseButton variant="ghost" @click="requestInterviewDialog = false">إلغاء</BaseButton>
+        <BaseButton variant="accent" :disabled="!chosenInterviewerId" @click="sendInterviewRequest"><BaseIcon name="mdi-send" :size="16" />إرسال الطلب</BaseButton>
+      </template>
+    </BaseModal>
 
     <!-- Report view dialog -->
-    <VDialog v-model="reportDialog" max-width="480">
-      <VCard v-if="activeReport" class="pa-2">
-        <VCardTitle class="d-flex justify-space-between align-center">
+    <BaseModal v-model="reportDialog" :max-width="480">
+      <template v-if="activeReport" #title>
+        <div class="flex items-center justify-between gap-2">
           <span>تقرير المقابلة</span>
-          <VChip color="success" label>{{ activeReport.overall }}%</VChip>
-        </VCardTitle>
-        <VCardText>
-          <div class="text-caption text-medium-emphasis mb-1">
-            <VIcon icon="mdi-check-decagram" color="primary" size="14" /> {{ activeReport.interviewer }} · {{ KIND_META[activeReport.kind].label }} · المستوى {{ activeReport.level }}
-          </div>
-          <VDivider class="my-2" />
-          <div class="text-body-2 font-weight-bold mb-1">نقاط القوة</div>
-          <VChip v-for="s in activeReport.strengths" :key="s" size="x-small" color="success" variant="tonal" class="ma-1">{{ s }}</VChip>
-          <div class="text-body-2 font-weight-bold mt-2 mb-1">نقاط التحسين</div>
-          <VChip v-for="w in activeReport.improvements" :key="w" size="x-small" color="warning" variant="tonal" class="ma-1">{{ w }}</VChip>
-          <VAlert color="secondary" variant="tonal" density="compact" class="mt-3 text-body-2">
-            <template #prepend><VIcon icon="mdi-lightbulb-on-outline" size="18" /></template>
-            {{ activeReport.recommendation }}
-          </VAlert>
-        </VCardText>
-        <VCardActions class="justify-end">
-          <VBtn variant="text" @click="reportDialog = false">إغلاق</VBtn>
-        </VCardActions>
-      </VCard>
-    </VDialog>
+          <BaseChip color="success">{{ activeReport.overall }}%</BaseChip>
+        </div>
+      </template>
+      <template v-if="activeReport">
+        <div class="mb-1 flex items-center gap-1 text-xs text-muted">
+          <BaseIcon name="mdi-check-decagram" :size="14" :style="{ color: 'rgb(var(--v-theme-primary))' }" /> {{ activeReport.interviewer }} · {{ KIND_META[activeReport.kind].label }} · المستوى {{ activeReport.level }}
+        </div>
+        <hr class="my-2 border-ui">
+        <div class="mb-1 text-sm font-bold text-content">نقاط القوة</div>
+        <div class="flex flex-wrap gap-1">
+          <BaseChip v-for="s in activeReport.strengths" :key="s" color="success">{{ s }}</BaseChip>
+        </div>
+        <div class="mb-1 mt-2 text-sm font-bold text-content">نقاط التحسين</div>
+        <div class="flex flex-wrap gap-1">
+          <BaseChip v-for="w in activeReport.improvements" :key="w" color="warning">{{ w }}</BaseChip>
+        </div>
+        <div class="mt-3 flex items-start gap-2 rounded-ui p-2 text-sm text-content" style="background: rgba(var(--v-theme-secondary), 0.12)">
+          <BaseIcon name="mdi-lightbulb-on-outline" :size="18" :style="{ color: 'rgb(var(--v-theme-secondary))' }" />
+          {{ activeReport.recommendation }}
+        </div>
+      </template>
+      <template #actions>
+        <BaseButton variant="ghost" @click="reportDialog = false">إغلاق</BaseButton>
+      </template>
+    </BaseModal>
 
     <!-- Send-wish dialog -->
-    <VDialog v-model="wishDialog" max-width="480">
-      <VCard class="pa-2">
-        <VCardTitle>إبداء رغبة — {{ candidate?.name }}</VCardTitle>
-        <VCardText>
-          <VTextField v-model="wishForm.role" label="الدور المعروض" prepend-inner-icon="mdi-briefcase-outline" class="mb-3" />
-          <VTextField v-model="wishForm.amount" label="المقابل (مثال: 16,000 ريال)" prepend-inner-icon="mdi-cash-multiple" class="mb-3" />
-          <VSelect v-model="wishForm.duration" :items="DURATIONS" label="المدة" prepend-inner-icon="mdi-calendar-range-outline" class="mb-3" />
-          <VTextarea v-model="wishForm.reason" label="لماذا هذا المرشح؟" rows="2" auto-grow />
-        </VCardText>
-        <VCardActions>
-          <VSpacer />
-          <VBtn variant="text" @click="wishDialog = false">إلغاء</VBtn>
-          <VBtn color="accent" variant="flat" :disabled="!wishForm.role.trim()" prepend-icon="mdi-send" @click="sendWish">إرسال الرغبة</VBtn>
-        </VCardActions>
-      </VCard>
-    </VDialog>
+    <BaseModal v-model="wishDialog" :title="`إبداء رغبة — ${candidate?.name}`" :max-width="480">
+      <BaseInput v-model="wishForm.role" label="الدور المعروض" prefix-icon="mdi-briefcase-outline" class="mb-3" />
+      <BaseInput v-model="wishForm.amount" label="المقابل (مثال: 16,000 ريال)" prefix-icon="mdi-cash-multiple" class="mb-3" />
+      <label class="mb-1 block text-sm font-medium text-muted">المدة</label>
+      <BaseSelect :model-value="wishForm.duration" :items="DURATION_OPTIONS" prefix-icon="mdi-calendar-range-outline" class="mb-3" @update:model-value="v => v && (wishForm.duration = v)" />
+      <BaseTextarea v-model="wishForm.reason" label="لماذا هذا المرشح؟" :rows="2" />
+      <template #actions>
+        <BaseButton variant="ghost" @click="wishDialog = false">إلغاء</BaseButton>
+        <BaseButton variant="accent" :disabled="!wishForm.role.trim()" @click="sendWish"><BaseIcon name="mdi-send" :size="16" />إرسال الرغبة</BaseButton>
+      </template>
+    </BaseModal>
 
-    <VSnackbar :model-value="!!snackbar" color="success" timeout="2500" @update:model-value="snackbar = ''">
+    <BaseSnackbar :model-value="!!snackbar" color="success" :timeout="2500" @update:model-value="snackbar = ''">
       {{ snackbar }}
-    </VSnackbar>
+    </BaseSnackbar>
   </div>
 
-  <VCard v-else class="pa-12 text-center">
-    <VIcon icon="mdi-account-alert-outline" size="64" color="error" />
-    <div class="text-h6 mt-3">المرشح غير موجود</div>
-    <VBtn color="primary" class="mt-3" :to="{ name: 'candidates' }">العودة للترشيحات</VBtn>
-  </VCard>
+  <BaseCard v-else class="py-12 text-center">
+    <BaseIcon name="mdi-account-alert-outline" :size="64" :style="{ color: 'rgb(var(--v-theme-error))' }" />
+    <div class="mt-3 text-lg font-bold text-content">المرشح غير موجود</div>
+    <BaseButton variant="brand" class="mt-3" :to="{ name: 'candidates' }">العودة للترشيحات</BaseButton>
+  </BaseCard>
 </template>
