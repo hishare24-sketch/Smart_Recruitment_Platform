@@ -4,6 +4,17 @@ import { useRoute, useRouter } from 'vue-router'
 import QuestionRenderer from '../components/QuestionRenderer.vue'
 import { QUESTION_TYPE_META, buildQuestions, getAssessmentById, scoreAnswer } from '../services/mockAssessments'
 import { useGamificationStore } from '@/stores/GamificationStore'
+import BaseCard from '@/components/ui/BaseCard.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
+import BaseChip from '@/components/ui/BaseChip.vue'
+import BaseIcon from '@/components/ui/BaseIcon.vue'
+import BaseAvatar from '@/components/ui/BaseAvatar.vue'
+import BaseProgressBar from '@/components/ui/BaseProgressBar.vue'
+
+type BaseColor = 'brand' | 'emerald' | 'accent' | 'success' | 'info' | 'warning' | 'error' | 'neutral'
+function mapColor(c?: string): BaseColor {
+  return (({ primary: 'brand', secondary: 'emerald', 'medium-emphasis': 'neutral', 'surface-variant': 'neutral', grey: 'neutral', orange: 'warning', amber: 'warning' } as Record<string, BaseColor>)[c ?? ''] ?? c ?? 'brand') as BaseColor
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -82,62 +93,61 @@ onBeforeUnmount(() => {
 <template>
   <div v-if="assessment" class="mx-auto" style="max-width: 760px">
     <!-- Top bar: title + timer -->
-    <div class="d-flex align-center justify-space-between mb-4 flex-wrap ga-2">
-      <div class="d-flex align-center ga-3">
-        <VAvatar :color="assessment.color" variant="tonal" rounded="lg">
-          <VIcon :icon="assessment.icon" />
-        </VAvatar>
-        <h1 class="text-h6 font-weight-bold mb-0">{{ assessment.name }}</h1>
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-3">
+        <BaseAvatar :color="mapColor(assessment.color)" tonal square>
+          <BaseIcon :name="assessment.icon" :size="20" />
+        </BaseAvatar>
+        <h1 class="mb-0 text-lg font-bold text-content">{{ assessment.name }}</h1>
       </div>
-      <VChip :color="secondsLeft < 60 ? 'error' : 'primary'" size="large" prepend-icon="mdi-clock-outline">
-        {{ timeLabel }}
-      </VChip>
+      <div
+        class="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-bold"
+        :style="{ background: `rgba(var(--v-theme-${secondsLeft < 60 ? 'error' : 'primary'}), 0.16)`, color: `rgb(var(--v-theme-${secondsLeft < 60 ? 'error' : 'primary'}))` }"
+      >
+        <BaseIcon name="mdi-clock-outline" :size="16" />{{ timeLabel }}
+      </div>
     </div>
 
     <!-- Progress -->
-    <div class="d-flex justify-space-between text-caption mb-1">
-      <span class="text-medium-emphasis">السؤال {{ currentIndex + 1 }} من {{ totalQuestions }}</span>
-      <span class="text-medium-emphasis">تمت الإجابة على {{ answeredCount }}</span>
+    <div class="mb-1 flex justify-between text-xs">
+      <span class="text-muted">السؤال {{ currentIndex + 1 }} من {{ totalQuestions }}</span>
+      <span class="text-muted">تمت الإجابة على {{ answeredCount }}</span>
     </div>
-    <VProgressLinear :model-value="progress" color="accent" height="8" rounded class="mb-5" />
+    <BaseProgressBar :value="progress" color="accent" :height="8" class="mb-5" />
 
     <!-- Question -->
-    <VCard v-if="currentQuestion" class="pa-6 mb-4" min-height="280">
-      <div class="d-flex align-center ga-2 mb-3 flex-wrap">
-        <VChip size="x-small" color="secondary" variant="tonal" label :prepend-icon="QUESTION_TYPE_META[currentQuestion.type].icon">
-          {{ QUESTION_TYPE_META[currentQuestion.type].label }}
-        </VChip>
+    <BaseCard v-if="currentQuestion" class="mb-4 min-h-[280px] p-6">
+      <div class="mb-3 flex flex-wrap items-center gap-2">
+        <BaseChip color="emerald"><BaseIcon :name="QUESTION_TYPE_META[currentQuestion.type].icon" :size="12" />{{ QUESTION_TYPE_META[currentQuestion.type].label }}</BaseChip>
       </div>
-      <div class="text-h6 font-weight-bold mb-5">{{ currentQuestion.text }}</div>
+      <div class="mb-5 text-lg font-bold text-content">{{ currentQuestion.text }}</div>
 
       <QuestionRenderer :key="currentQuestion.id" v-model="answers[currentQuestion.id]" :question="currentQuestion" />
 
       <!-- AI hint -->
       <div class="mt-4">
-        <VExpandTransition>
-          <VAlert v-if="hintShown && currentQuestion.hint" color="secondary" variant="tonal" density="compact" border="start">
-            <template #prepend><VIcon icon="mdi-robot-happy-outline" size="20" /></template>
-            <span class="text-caption">{{ currentQuestion.hint }}</span>
-          </VAlert>
-        </VExpandTransition>
-        <VBtn v-if="!hintShown && currentQuestion.hint" size="x-small" variant="text" color="secondary" prepend-icon="mdi-lightbulb-on-outline" @click="revealHint">
-          تلميح من الـ AI
-        </VBtn>
+        <div v-if="hintShown && currentQuestion.hint" class="flex items-start gap-2 rounded-ui border-s-4 p-2" style="background: rgba(var(--v-theme-secondary), 0.12); border-color: rgb(var(--v-theme-secondary))">
+          <BaseIcon name="mdi-robot-happy-outline" :size="20" :style="{ color: 'rgb(var(--v-theme-secondary))' }" />
+          <span class="text-xs text-content">{{ currentQuestion.hint }}</span>
+        </div>
+        <BaseButton v-if="!hintShown && currentQuestion.hint" size="sm" variant="ghost" @click="revealHint">
+          <BaseIcon name="mdi-lightbulb-on-outline" :size="16" :style="{ color: 'rgb(var(--v-theme-secondary))' }" /><span :style="{ color: 'rgb(var(--v-theme-secondary))' }">تلميح من الـ AI</span>
+        </BaseButton>
       </div>
-    </VCard>
+    </BaseCard>
 
     <!-- Navigation -->
-    <div class="d-flex justify-space-between align-center flex-wrap ga-2">
-      <VBtn variant="outlined" :disabled="currentIndex === 0" prepend-icon="mdi-arrow-right" @click="prev">السابق</VBtn>
-      <VBtn variant="text" size="small" @click="skip">تخطّي السؤال</VBtn>
-      <VBtn v-if="!isLast" color="accent" append-icon="mdi-arrow-left" @click="next">التالي</VBtn>
-      <VBtn v-else color="success" prepend-icon="mdi-flag-checkered" @click="finish">إنهاء الاختبار</VBtn>
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <BaseButton variant="outline" :disabled="currentIndex === 0" @click="prev"><BaseIcon name="mdi-arrow-right" :size="16" />السابق</BaseButton>
+      <BaseButton variant="ghost" size="sm" @click="skip">تخطّي السؤال</BaseButton>
+      <BaseButton v-if="!isLast" variant="accent" @click="next">التالي<BaseIcon name="mdi-arrow-left" :size="16" /></BaseButton>
+      <BaseButton v-else variant="emerald" @click="finish"><BaseIcon name="mdi-flag-checkered" :size="16" />إنهاء الاختبار</BaseButton>
     </div>
   </div>
 
-  <VCard v-else class="pa-12 text-center">
-    <VIcon icon="mdi-alert-circle-outline" size="64" color="error" />
-    <div class="text-h6 mt-3">الاختبار غير موجود</div>
-    <VBtn color="primary" class="mt-3" :to="{ name: 'assessments' }">العودة لمركز التقييم</VBtn>
-  </VCard>
+  <BaseCard v-else class="py-12 text-center">
+    <BaseIcon name="mdi-alert-circle-outline" :size="64" :style="{ color: 'rgb(var(--v-theme-error))' }" />
+    <div class="mt-3 text-lg font-bold text-content">الاختبار غير موجود</div>
+    <BaseButton variant="brand" class="mt-3" :to="{ name: 'assessments' }">العودة لمركز التقييم</BaseButton>
+  </BaseCard>
 </template>
