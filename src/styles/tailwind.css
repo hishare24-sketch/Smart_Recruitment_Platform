@@ -77,10 +77,13 @@
   }
   .input-wrap:focus-within {
     border-color: rgb(var(--v-theme-primary));
-    box-shadow: 0 0 0 1px rgb(var(--v-theme-primary));
+    box-shadow: 0 0 0 3px rgba(var(--v-theme-primary), 0.16);
   }
   .input-wrap.has-error {
     border-color: rgb(var(--v-theme-error));
+  }
+  .input-wrap.has-error:focus-within {
+    box-shadow: 0 0 0 3px rgba(var(--v-theme-error), 0.16);
   }
 
   /* خانة الاختيار (BaseCheckbox) */
