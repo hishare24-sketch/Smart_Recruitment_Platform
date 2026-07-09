@@ -14,6 +14,7 @@ class AuthUserResource extends JsonResource
             'name' => $this->name,
             'email' => $this->email,
             'role' => $this->role,
+            'kind' => $this->kind,
             'tier' => $this->tier,
             'phone' => $this->phone,
             'created_at' => optional($this->created_at)->toISOString(),

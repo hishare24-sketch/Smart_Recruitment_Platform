@@ -142,11 +142,13 @@
 - [ ] **مؤجّل للتحويل الأماميّ:** تشغيل `reverb:start` + الواجهة `socket.io-client`←`laravel-echo`(+pusher-js) + `/broadcasting/auth` بـ Sanctum + تحقّق WS حيّ بين متصفّحين
 - [ ] Redis Pub/Sub (`BROADCAST_CONNECTION` عبر Redis) — للتوسّع على AWS، يُضبط في النشر
 
-### ⬜ المرحلة 6 — الترقيم الحقيقيّ + هجرة البيانات + التقاعد
-- [ ] `->paginate()` + `{data,meta}` لكل قائمة؛ الواجهة تُضيف أزرار الصفحات تدريجيًّا (البند 6)
-- [ ] هجرة بيانات واحدة Postgres (`dev.sqlite`/RDS الحاليّ) → MySQL/RDS
-- [ ] تقاعد `api/` (NestJS): إيقاف، إبقاء العقد فقط مرجعًا
-- [ ] تحديث `deploy.yml`/CI: `php artisan permission:insert` بعد كل نشر
+### 🟡 المرحلة 6 — التحويل الأماميّ + الترقيم + التقاعد — **التحويل الأماميّ مُنجز ومُتحقَّق حيًّا**
+- [x] **التحويل الأماميّ:** `VITE_BASE_API_URL`→`http://localhost:8090/api` (الواجهة تفكّ `{data}` وتتوقّع أخطاء 422 «بأسلوب Laravel» أصلًا). **مُتحقَّق حيًّا في المتصفح:** تسجيل عبر الواجهة → `POST /api/v1/auth/register` **201** من Laravel → **توكن Sanctum حقيقيّ** (`1|…`) في authUser (id/uuid من القاعدة) → أدوار مُعبّأة عبر `fromNestUser` → انتقال onboarding → إماهة المخازن من `/account-states/*` (Bearer يعمل، **0 نداء فاشل**، **0 خطأ console**) → الجلسة تدوم بعد إعادة التحميل. CORS الافتراضيّ يسمح (api/* + أصل *).
+- [ ] `->paginate()` + `{data,meta}` معمّم لبقية القوائم؛ الواجهة تُضيف أزرار الصفحات تدريجيًّا (البند 6)
+- [ ] مؤجّلات المرحلة 5 الأماميّة: `reverb:start` + `socket.io-client`←`laravel-echo` + `/broadcasting/auth` + WS حيّ
+- [ ] هجرة بيانات (إن لزم — dev يبدأ نظيفًا؛ يهمّ فقط لو ثمّة بيانات NestJS إنتاجيّة)
+- [ ] تقاعد `api/` (NestJS): إيقاف، إبقاء العقد `openapi.yaml` مرجعًا
+- [ ] تحديث `deploy.yml`/CI: `php artisan permission:insert` بعد كل نشر + نشر Laravel (Docker/Nginx) بدل GitHub Pages المحاكاة
 
 ---
 

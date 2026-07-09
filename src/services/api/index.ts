@@ -160,6 +160,7 @@ export interface ApiAuthUser {
   name: string
   email: string
   role: string
+  kind?: 'individual' | 'organization'
   tier: 'free' | 'pro' | 'elite'
   phone: string | null
   created_at?: string
@@ -168,7 +169,7 @@ export interface ApiAuthSession { user: ApiAuthUser, token: string }
 
 export const api = {
   auth: {
-    register: (body: { name: string, email: string, password: string, phone?: string, role?: string }) =>
+    register: (body: { name: string, email: string, password: string, phone?: string, role?: string, kind?: string }) =>
       post<ApiAuthSession>(API_PATHS.auth.register, body),
     login: (body: { email: string, password: string }) => post<ApiAuthSession>(API_PATHS.auth.login, body),
     me: () => get<ApiAuthUser>(API_PATHS.auth.me),

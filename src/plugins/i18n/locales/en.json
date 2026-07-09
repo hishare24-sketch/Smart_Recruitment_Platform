@@ -40,6 +40,10 @@
     "noAccount": "Don't have an account?",
     "haveAccount": "Already have an account?",
     "selectRole": "Select your role",
+    "accountKind": "Account type",
+    "individual": "Individual",
+    "organization": "Organization",
+    "accountKindHint": "Doesn't limit your roles — search, hire and offer expertise alike. Activate any role later from your account.",
     "loginSubtitle": "Welcome back! Sign in to continue your career journey",
     "registerSubtitle": "Start your smart career journey today"
   },

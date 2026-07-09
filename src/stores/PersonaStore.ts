@@ -9,10 +9,12 @@ import { syncPrivateDoc } from '@/services/cloudSync'
 interface PersonaState {
   seekerPersona: SeekerPersona
   orgType: OrgType
+  /** القطاعات التي يهتمّ بها المستخدم — المحور المشترك (باحث/جهة/خبير) من sectors.ts */
+  interestedSectors: string[]
 }
 
 const STORAGE_KEY = 'personaProfile'
-const seed: PersonaState = { seekerPersona: 'job_seeker', orgType: 'sme' }
+const seed: PersonaState = { seekerPersona: 'job_seeker', orgType: 'sme', interestedSectors: [] }
 
 function load(): PersonaState {
   try {
@@ -43,6 +45,9 @@ export const usePersonaStore = defineStore('persona', () => {
   function setOrgType(t: OrgType) {
     state.value.orgType = t
   }
+  function setInterestedSectors(ids: string[]) {
+    state.value.interestedSectors = [...new Set(ids)]
+  }
 
-  return { state, syncStatus, setSeekerPersona, setOrgType }
+  return { state, syncStatus, setSeekerPersona, setOrgType, setInterestedSectors }
 })

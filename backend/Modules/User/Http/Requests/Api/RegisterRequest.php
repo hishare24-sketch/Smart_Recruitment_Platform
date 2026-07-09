@@ -19,6 +19,7 @@ class RegisterRequest extends FormRequest
             'password' => 'required|string|min:6',
             'phone' => 'nullable|string|max:30',
             'role' => 'nullable|string|in:seeker,company,endorser,interviewer,coach,trainer,consultant',
+            'kind' => 'nullable|string|in:individual,organization',
         ];
     }
 

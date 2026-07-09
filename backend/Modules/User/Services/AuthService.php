@@ -15,6 +15,7 @@ class AuthService
             'password' => $data['password'],
             'phone' => $data['phone'] ?? null,
             'role' => $data['role'] ?? 'seeker',
+            'kind' => $data['kind'] ?? 'individual',
         ]);
 
         return $this->sessionFor($user);

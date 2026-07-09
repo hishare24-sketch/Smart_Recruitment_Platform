@@ -12,6 +12,7 @@ function buildMockUser(partial: Partial<User> & Pick<User, 'email' | 'role' | 'n
     name: partial.name,
     email: partial.email,
     phone: partial.phone,
+    kind: partial.kind,
     role: partial.role,
     roles: partial.roles ?? defaultRoleEntries(partial.role),
     token: `mock-token-${Date.now()}`,
@@ -29,6 +30,7 @@ function fromNestUser(u: ApiAuthUser, token: string): User {
     name: u.name,
     email: u.email,
     phone: u.phone ?? undefined,
+    kind: u.kind,
     role,
     roles: defaultRoleEntries(role),
     token,
@@ -80,6 +82,7 @@ class AuthService {
           password: payload.password,
           phone: payload.phone,
           role: payload.role,
+          kind: payload.kind,
         })
         return fromNestUser(user, token)
       }
@@ -92,7 +95,8 @@ class AuthService {
       email: payload.email,
       name: payload.name,
       phone: payload.phone,
-      role: payload.role,
+      kind: payload.kind,
+      role: payload.role ?? 'seeker',
     })
   }
 

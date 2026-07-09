@@ -1,15 +1,13 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import type { UserRole } from '@/interfaces/Auth'
+import type { AccountKind } from '@/interfaces/Auth'
 import { useAuthStore } from '@/stores/AuthStore'
 import { useInterviewerBrandStore } from '@/stores/InterviewerBrandStore'
 import { authService } from '../services/AuthService'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
-import BaseCheckbox from '@/components/ui/BaseCheckbox.vue'
-import BaseChip from '@/components/ui/BaseChip.vue'
 import BaseIcon from '@/components/ui/BaseIcon.vue'
 
 const { t } = useI18n()
@@ -17,22 +15,13 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 
-const roleOptions: { value: UserRole, icon: string }[] = [
-  { value: 'seeker', icon: 'mdi-account-search' },
-  { value: 'company', icon: 'mdi-domain' },
-  { value: 'endorser', icon: 'mdi-account-star' },
+// نوع الحساب — سمة عرض غير مقيّدة (لا تحجب أي دور: يمكن للفرد أن يوظّف وللمنشأة أن تبحث)
+const kindOptions: { value: AccountKind, icon: string }[] = [
+  { value: 'individual', icon: 'mdi-account-outline' },
+  { value: 'organization', icon: 'mdi-domain' },
 ]
+const kind = ref<AccountKind>('individual')
 
-const role = ref<UserRole>('seeker')
-// Optional extra professional roles requested at sign-up (doc: multi-role platform)
-const extraRoles = ref<UserRole[]>([])
-const extraOptions = computed<{ value: UserRole, approval: boolean }[]>(() => {
-  if (role.value === 'endorser')
-    return []
-  return (['company', 'interviewer'] as UserRole[])
-    .filter(r => r !== role.value)
-    .map(r => ({ value: r, approval: r === 'interviewer' }))
-})
 const name = ref('')
 const email = ref('')
 const phone = ref('')
@@ -54,26 +43,22 @@ async function submit() {
   }
   isLoading.value = true
   try {
+    // تسجيل محايد — بلا دور؛ كل الأدوار صفات فوريّة تُفعَّل لاحقًا (فلسفة الحساب الموحّد)
     const user = await authService.register({
       name: name.value,
       email: email.value,
       phone: phone.value,
       password: password.value,
       password_confirmation: passwordConfirm.value,
-      role: role.value,
+      kind: kind.value,
     })
     authStore.setAuthUser(user)
-    // Extra roles chosen at sign-up: instant ones activate, approval ones stay pending
-    extraRoles.value.forEach(r => authStore.requestRole(r))
-    // Referral program: joining via an interviewer invite link credits the inviter
+    // برنامج الإحالة: الانضمام عبر رابط دعوة مقيّم يُحسب للمُحيل
     const brand = useInterviewerBrandStore()
     if (route.query.ref === brand.state.referralCode)
       brand.creditReferral()
-    // New seekers see the onboarding wizard; others go to their dashboard
-    if (user.role === 'seeker')
-      router.push({ name: 'onboarding' })
-    else
-      router.push({ name: 'dashboard' })
+    // onboarding اختياريّ يعرّف بالمنصّة والقطاعات والنيّة
+    router.push({ name: 'onboarding' })
   }
   catch (e) {
     error.value = (e as Error).message || 'تعذّر إنشاء الحساب. حاول مرة أخرى.'
@@ -101,51 +86,28 @@ async function submit() {
       {{ error }}
     </div>
 
-    <!-- Role selector -->
+    <!-- نوع الحساب (فرد/منشأة) — غير مقيّد للأدوار -->
     <div class="mb-2 text-sm font-bold">
-      {{ t('auth.selectRole') }}
+      {{ t('auth.accountKind') }}
     </div>
-    <div class="mb-2 grid grid-cols-3 gap-2">
+    <div class="mb-1 grid grid-cols-2 gap-2">
       <button
-        v-for="opt in roleOptions"
+        v-for="opt in kindOptions"
         :key="opt.value"
         type="button"
-        class="rounded-ui border p-3 text-center transition"
-        :class="role === opt.value ? 'bg-brand text-on-brand border-transparent' : 'border-ui hover:bg-surfalt'"
-        @click="role = opt.value"
+        class="rounded-ui inline-flex items-center justify-center gap-2 border p-3 text-center transition"
+        :class="kind === opt.value ? 'bg-brand text-on-brand border-transparent' : 'border-ui hover:bg-surfalt'"
+        @click="kind = opt.value"
       >
-        <BaseIcon :name="opt.icon" :size="28" :style="role === opt.value ? {} : { color: 'rgb(var(--v-theme-primary))' }" />
-        <div class="mt-1 text-xs">
-          {{ t(`roles.${opt.value}`) }}
-        </div>
+        <BaseIcon :name="opt.icon" :size="22" :style="kind === opt.value ? {} : { color: 'rgb(var(--v-theme-primary))' }" />
+        <span class="text-sm">{{ t(`auth.${opt.value}`) }}</span>
       </button>
     </div>
-    <p class="mb-3 text-xs text-muted">
-      {{ t(`roleSwitcher.${role}Desc`) }}
+    <p class="mb-4 text-xs text-muted">
+      {{ t('auth.accountKindHint') }}
     </p>
 
-    <!-- Optional extra roles (multi-role platform) -->
-    <template v-if="extraOptions.length">
-      <div class="mb-1 text-sm font-bold">
-        {{ t('roleSwitcher.extraRoles') }}
-      </div>
-      <BaseCheckbox
-        v-for="opt in extraOptions"
-        :key="opt.value"
-        v-model="extraRoles"
-        :value="opt.value"
-      >
-        <span class="inline-flex items-center gap-2">
-          {{ t(`roles.${opt.value}`) }}
-          <BaseChip v-if="opt.approval" color="warning">{{ t('roleSwitcher.pending') }}</BaseChip>
-        </span>
-      </BaseCheckbox>
-      <p class="mb-2 mt-1 text-xs text-muted">
-        {{ t('roleSwitcher.extraRolesHint') }}
-      </p>
-    </template>
-
-    <form class="mt-3 space-y-3" @submit.prevent="submit">
+    <form class="space-y-3" @submit.prevent="submit">
       <BaseInput v-model="name" :label="t('auth.name')" prefix-icon="mdi-account-outline" autocomplete="name" />
       <BaseInput v-model="email" :label="t('auth.email')" type="email" prefix-icon="mdi-email-outline" autocomplete="email" />
       <BaseInput v-model="phone" :label="t('auth.phone')" prefix-icon="mdi-phone-outline" autocomplete="tel" />

@@ -53,6 +53,7 @@ const NEST_PRIVATE_STORES = new Set([
   'messages', 'wishes', 'saved', 'reviews', 'gamification', 'candidates',
   'roleProfiles', 'resumes', 'searchPrefs', 'expertRoles', 'peerRequests',
   'roleRequests', 'endorser', 'interviewerBrand',
+  'persona', // شخصيّة الحساب: seekerPersona/orgType + القطاعات المهتمّ بها (onboarding)
 ])
 
 /**
