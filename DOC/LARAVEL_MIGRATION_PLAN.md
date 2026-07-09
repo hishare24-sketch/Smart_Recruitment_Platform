@@ -107,10 +107,10 @@
 - [ ] **مؤجّل:** التحقّق عبر الواجهة الفعليّة + تحويل `VITE_BASE_API_URL`→:8090 — يبقى على NestJS حتى تُرحَّل موارد كافية (تبديل مبكّر يكسر المخازن التي تعتمد نقاط NestJS غير المنفَّذة بعد في Laravel)
 > **درس Sail حاسم:** حاويات composer/artisan المؤقّتة **كـ root** تُنشئ ملفّات في `storage`/`bootstrap/cache` لا يملكها مستخدم `sail` → الخادم يدخل حلقة إعادة تشغيل (Permission denied على laravel.log). **الحلّ بعد أي عمليّة root:** `docker compose exec -u root laravel.test chown -R sail:sail storage bootstrap/cache`.
 
-### ⬜ المرحلة 2 — الموارد مورد-بمورد (لكل مورد في العقد)
+### 🟡 المرحلة 2 — الموارد مورد-بمورد (لكل مورد في العقد) — جارية
 لكل مورد: Entities → Migrations (+index) → Requests (Api/Admin) → Resources → Services → Controller رفيع → Feature Test.
-- [ ] **Profile** — المهارات/الإثباتات/الخبرات/الشهادات + طلبات الإثبات
-- [ ] **PublicProfile** — الصفحة العامة بلا مصادقة + تحرير المالك `/me` + تفاعلات الزوّار
+- [x] **Profile** — كيان بأعمدة JSON (skills/experiences/certificates/prefs/proof_requests، user_id فريد) + `GET/PATCH /profile` (وثيقة PrivateProfile) + skills add(201)/remove(204) + skill proofs + proof-requests get/resolve. **مُتحقَّق حيًّا (curl) + 6 Feature tests خضراء.** أُرسيت أداة الاختبار: MySQL `testing` (Sail) + RefreshDatabase + Sanctum::actingAs + `AssertsApiJson`. **قرار:** Profile وثيقة مملوكة لمستخدم (JSON) لا تطبيع — يطابق NestJS + الواجهة.
+- [x] **PublicProfile** — كيان (doc/stats/testimonials/comments/inbox، slug مشتقّ) + `GET/PATCH /me` (auth) + `GET /{slug}` عام + view/follow/rate/comment/contact/schedule/testimonial/proof-request (بلا مصادقة). `present()` = doc مسطّح + slug/stats/تفاعلات. **التفاعل العابر:** طلب إثبات الزائر يصل ملف المالك عبر `ProfileService::pushProofRequest` (تبعيّة PublicProfile→Profile). **مُتحقَّق حيًّا (curl) + 7 Feature tests خضراء.** (الحزمة كلها: 15 اختبارًا)
 - [ ] **Account** — `/account/plan` + `/wallet` (رصيد ترحيبيّ + خصم الترقية → 402)
 - [ ] **Survey** — استبيانات + ردود + حدّ الباقة (free/pro/elite → 403) + صرف نقاط
 - [ ] **Marketplace** — فرص + طلبات + تقديم + طلباتي (فلترة `q/category/type`)
