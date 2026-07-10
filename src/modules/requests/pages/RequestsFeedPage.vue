@@ -13,14 +13,13 @@ import { sectorFacet, sectorFromFieldAndSkills } from '@/composables/sectorFacet
 import { sectorForField } from '@/services/sectors'
 import type { FacetSpec, SortSpec } from '@/composables/useFacetedList'
 import FacetedList from '@/components/shared/FacetedList.vue'
+import MatchBadge from '@/components/shared/MatchBadge.vue'
 import { uniq } from '@/utils/array'
-import { matchColor } from '@/utils/match'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseChip from '@/components/ui/BaseChip.vue'
 import BaseIcon from '@/components/ui/BaseIcon.vue'
 import BaseAvatar from '@/components/ui/BaseAvatar.vue'
-import BaseProgressRing from '@/components/ui/BaseProgressRing.vue'
 
 type BaseColor = 'brand' | 'emerald' | 'accent' | 'success' | 'info' | 'warning' | 'error' | 'neutral'
 function mapColor(c: string): BaseColor {
@@ -186,10 +185,7 @@ function open(id: number) {
               </div>
             </div>
             <div class="flex flex-col items-center text-center" style="min-width: 84px" title="نسبة التطابق الذكي مع مهاراتك المُثبتة">
-              <BaseProgressRing :value="liveMatch(item as MarketRequest)" :color="matchColor(liveMatch(item as MarketRequest))" :size="58" :width="5">
-                <span class="text-xs font-bold">{{ liveMatch(item as MarketRequest) }}%</span>
-              </BaseProgressRing>
-              <div class="mt-1 text-xs text-muted">تطابق</div>
+              <MatchBadge :value="liveMatch(item as MarketRequest)" variant="ring" label="تطابق" />
               <BaseChip v-if="store.hasApplied((item as MarketRequest).id)" color="success" class="mt-1"><BaseIcon name="mdi-check" :size="12" /> مقدّم</BaseChip>
             </div>
           </div>

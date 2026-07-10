@@ -10,8 +10,8 @@ import { ALL_SKILLS } from '@/services/taxonomy'
 import { sectorForField } from '@/services/sectors'
 import { useSectorContext } from '@/composables/useSectorContext'
 import { sectorFacet, sectorFromFieldAndSkills } from '@/composables/sectorFacet'
-import { matchChipColor } from '@/utils/match'
 import FacetedList from '@/components/shared/FacetedList.vue'
+import MatchBadge from '@/components/shared/MatchBadge.vue'
 import type { FacetSpec, SortSpec } from '@/composables/useFacetedList'
 import { ai } from '@/services/ai'
 import type { DayPeriod, TimeSuggestion } from '@/services/ai'
@@ -197,7 +197,7 @@ function chipStyle(vColor: string, active: boolean) {
               <div class="text-sm font-bold text-content">{{ r.interviewer.name }}</div>
               <div class="text-xs text-muted">{{ INTERVIEWER_TYPE_META[r.interviewer.type].label }}</div>
             </div>
-            <BaseChip :color="matchChipColor(r.match)" :aria-label="`نسبة التطابق ${r.match}%`">{{ r.match }}%</BaseChip>
+            <MatchBadge :value="r.match" variant="chip" />
           </div>
           <p class="text-xs text-muted">{{ r.reason }}</p>
         </button>
@@ -262,7 +262,7 @@ function chipStyle(vColor: string, active: boolean) {
                 </div>
                 <div class="text-xs text-muted">{{ iv.title }}</div>
               </div>
-              <BaseChip :color="matchChipColor(matchOf(iv.id))" :aria-label="`نسبة التطابق ${matchOf(iv.id)}%`">{{ matchOf(iv.id) }}%</BaseChip>
+              <MatchBadge :value="matchOf(iv.id)" variant="chip" />
             </div>
 
             <div class="mb-2 flex flex-wrap items-center gap-2">
