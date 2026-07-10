@@ -5,6 +5,7 @@
 //  • ring — حلقة دائريّة مضغوطة (صفّ الطلبات الأفقيّ)
 //  • chip — رقاقة صغيرة (رأس بطاقة المقيّم)
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { matchChipColor, matchColor } from '@/utils/match'
 import BaseProgressBar from '@/components/ui/BaseProgressBar.vue'
 import BaseProgressRing from '@/components/ui/BaseProgressRing.vue'
@@ -18,11 +19,13 @@ const props = withDefaults(defineProps<{
   ringSize?: number
   ringWidth?: number
   barHeight?: number
-}>(), { variant: 'bar', label: 'نسبة التطابق', ringSize: 58, ringWidth: 5, barHeight: 6 })
+}>(), { variant: 'bar', ringSize: 58, ringWidth: 5, barHeight: 6 })
 
+const { t } = useI18n()
 const tokenColor = computed(() => matchColor(props.value)) // رمز ثيم (شريط/حلقة)
 const chipColor = computed(() => matchChipColor(props.value)) // لوحة BaseChip
-const ariaLabel = computed(() => `نسبة التطابق ${props.value}%`)
+const resolvedLabel = computed(() => props.label ?? t('discovery.matchRate'))
+const ariaLabel = computed(() => `${t('discovery.matchRate')} ${props.value}%`)
 </script>
 
 <template>
@@ -32,7 +35,7 @@ const ariaLabel = computed(() => `نسبة التطابق ${props.value}%`)
     :aria-label="ariaLabel" :aria-valuenow="value" aria-valuemin="0" aria-valuemax="100"
   >
     <div class="mb-1 flex justify-between text-xs">
-      <span class="text-muted">{{ label }}</span>
+      <span class="text-muted">{{ resolvedLabel }}</span>
       <span class="font-bold" :style="{ color: `rgb(var(--v-theme-${tokenColor}))` }">{{ value }}%</span>
     </div>
     <BaseProgressBar :value="value" :color="tokenColor" :height="barHeight" />

@@ -1,5 +1,6 @@
 <script setup lang="ts" generic="T">
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { FacetSpec, SortSpec } from '@/composables/useFacetedList'
 import { useFacetedList } from '@/composables/useFacetedList'
 import { useMediaQuery } from '@/composables/useMediaQuery'
@@ -24,6 +25,8 @@ const props = withDefaults(defineProps<{
   primaryPreset?: { label: string, icon?: string, values: string[] }
   savedViews?: SavedView[]
 }>(), { noun: 'نتيجة', searchPlaceholder: 'ابحث بالاسم أو المهارة…', view: 'grid' })
+
+const { t } = useI18n()
 
 const api = useFacetedList<T>({
   items: () => props.items,
@@ -114,7 +117,7 @@ function pickSort(key: string) {
     <div class="mb-3">
       <BaseInput v-model="api.state.q" prefix-icon="mdi-magnify" :placeholder="searchPlaceholder">
         <template #suffix>
-          <button v-if="api.state.q" type="button" class="text-muted" aria-label="مسح" @click="api.state.q = ''">
+          <button v-if="api.state.q" type="button" class="text-muted" :aria-label="t('discovery.clear')" @click="api.state.q = ''">
             <BaseIcon name="mdi-close" :size="18" />
           </button>
         </template>
@@ -131,7 +134,7 @@ function pickSort(key: string) {
       >
         <BaseIcon :name="primaryPreset.icon ?? 'mdi-star-outline'" :size="15" /> {{ primaryPreset.label }}
       </button>
-      <button type="button" class="chip" :class="isAll ? 'chip-on' : ''" @click="pickAll">الكل</button>
+      <button type="button" class="chip" :class="isAll ? 'chip-on' : ''" @click="pickAll">{{ t('discovery.all') }}</button>
       <button
         v-for="opt in ribbonOptions.slice(0, RIBBON_LIMIT)"
         :key="opt.value"
@@ -142,14 +145,14 @@ function pickSort(key: string) {
         <BaseIcon v-if="opt.icon" :name="opt.icon" :size="15" /> {{ opt.label }}
       </button>
       <button type="button" class="chip" @click="filterOpen = true">
-        <BaseIcon name="mdi-dots-horizontal" :size="15" /> المزيد
+        <BaseIcon name="mdi-dots-horizontal" :size="15" /> {{ t('discovery.more') }}
       </button>
     </div>
 
     <!-- ③ رقائق الفاسِت السريعة + كل الفلاتر + فرز -->
     <div class="hbar mb-3 flex items-center gap-2.5 overflow-x-auto pb-1">
       <button type="button" class="btn-bar" @click="filterOpen = true">
-        <BaseIcon name="mdi-tune-variant" :size="16" /> كل الفلاتر
+        <BaseIcon name="mdi-tune-variant" :size="16" /> {{ t('discovery.allFilters') }}
         <span v-if="api.hasActiveFacets.value" class="ms-1 rounded-full bg-brand px-1.5 text-xs text-on-brand">{{ api.appliedChips.value.length }}</span>
       </button>
       <button
@@ -184,13 +187,13 @@ function pickSort(key: string) {
         </button>
       </TransitionGroup>
       <button v-if="api.appliedChips.value.length" type="button" class="text-xs text-brand hover:underline" @click="api.clearAll()">
-        امسح الكل
+        {{ t('discovery.clearAll') }}
       </button>
     </div>
 
     <!-- ⑤ العروض المحفوظة -->
     <div v-if="savedViews && savedViews.length" class="hbar mb-3 flex items-center gap-2.5 overflow-x-auto pb-1">
-      <span class="whitespace-nowrap text-xs text-muted">عروضك:</span>
+      <span class="whitespace-nowrap text-xs text-muted">{{ t('discovery.yourViews') }}</span>
       <button
         v-for="(v, i) in savedViews"
         :key="i"
@@ -213,9 +216,9 @@ function pickSort(key: string) {
     <slot v-else name="empty">
       <div class="rounded-ui border-ui py-12 text-center">
         <BaseIcon name="mdi-magnify-close" :size="56" class="text-muted" />
-        <div class="mt-3 font-bold text-content">لا نتائج مطابقة</div>
-        <div class="mb-3 text-sm text-muted">جرّب توسيع الفلاتر أو تعديل البحث</div>
-        <button type="button" class="btn-bar mx-auto" @click="api.clearAll()">إعادة تعيين الفلاتر</button>
+        <div class="mt-3 font-bold text-content">{{ t('discovery.noResults') }}</div>
+        <div class="mb-3 text-sm text-muted">{{ t('discovery.noResultsHint') }}</div>
+        <button type="button" class="btn-bar mx-auto" @click="api.clearAll()">{{ t('discovery.resetFilters') }}</button>
       </div>
     </slot>
 
@@ -224,8 +227,8 @@ function pickSort(key: string) {
       <div class="p-4">
         <div v-if="!isWide" class="handle" />
         <div class="mb-1 flex items-center">
-          <span class="flex-1 text-base font-bold text-content">كل الفلاتر</span>
-          <button class="icon-btn h-8 w-8" aria-label="إغلاق" @click="filterOpen = false"><BaseIcon name="mdi-close" :size="20" /></button>
+          <span class="flex-1 text-base font-bold text-content">{{ t('discovery.allFilters') }}</span>
+          <button class="icon-btn h-8 w-8" :aria-label="t('discovery.close')" @click="filterOpen = false"><BaseIcon name="mdi-close" :size="20" /></button>
         </div>
 
         <template v-for="f in facets" :key="f.key">
@@ -233,7 +236,7 @@ function pickSort(key: string) {
           <template v-if="f.kind === 'multi'">
             <div class="mb-2 mt-4 text-sm font-bold text-content">{{ f.label }}</div>
             <div v-if="f.searchable" class="relative mb-2">
-              <BaseInput v-model="sheetSearch[f.key]" prefix-icon="mdi-magnify" placeholder="ابحث…" />
+              <BaseInput v-model="sheetSearch[f.key]" prefix-icon="mdi-magnify" :placeholder="t('discovery.searchShort')" />
             </div>
             <!-- قابل للبحث (تصنيف كبير): أهمّ N صفوف + «عرض الكل» -->
             <div v-if="f.searchable">
@@ -259,7 +262,7 @@ function pickSort(key: string) {
                 class="w-full py-2.5 text-center text-sm font-medium text-brand"
                 @click="showAllOpts[f.key] = !showAllOpts[f.key]"
               >
-                {{ showAllOpts[f.key] ? 'عرض أقل' : `عرض كل ${f.label} (${(f.options?.() ?? []).length})` }}
+                {{ showAllOpts[f.key] ? t('discovery.showLess') : t('discovery.showAllOf', { label: f.label, count: (f.options?.() ?? []).length }) }}
               </button>
             </div>
             <!-- قائمة قصيرة: رقائق -->
@@ -281,13 +284,13 @@ function pickSort(key: string) {
               type="button"
               class="chip" :class="api.state.bools[f.key] ? 'chip-on' : ''"
               @click="api.setBool(f.key, !api.state.bools[f.key])"
-            >{{ f.label }} فقط</button>
+            >{{ t('discovery.onlyLabel', { label: f.label }) }}</button>
           </template>
 
           <!-- فاسِت مدى (حدّ أدنى أو أقصى) -->
           <template v-else>
             <div class="mb-1 mt-4 text-sm font-bold text-content">
-              {{ f.label }} — {{ (api.state.ranges[f.key] ?? (f.range?.mode === 'max' ? f.range?.max : 0) ?? 0).toLocaleString('en-US') }} {{ f.range?.mode === 'max' ? 'فأقل' : 'فأكثر' }}
+              {{ f.label }} — {{ (api.state.ranges[f.key] ?? (f.range?.mode === 'max' ? f.range?.max : 0) ?? 0).toLocaleString('en-US') }} {{ f.range?.mode === 'max' ? t('discovery.orLess') : t('discovery.orMore') }}
             </div>
             <BaseSlider
               :model-value="api.state.ranges[f.key] ?? (f.range?.mode === 'max' ? (f.range?.max ?? 100) : 0)"
@@ -302,10 +305,10 @@ function pickSort(key: string) {
 
         <div class="sticky bottom-0 mt-4 flex gap-2 bg-surface pt-3">
           <button type="button" class="btn-bar" @click="api.clearAll()">
-            <BaseIcon name="mdi-refresh" :size="16" /> إعادة
+            <BaseIcon name="mdi-refresh" :size="16" /> {{ t('discovery.reset') }}
           </button>
           <button type="button" class="flex-1 rounded-ui bg-brand py-2.5 text-center font-bold text-on-brand" @click="filterOpen = false">
-            عرض {{ api.results.value.length }} {{ noun }}
+            {{ t('discovery.showN', { count: api.results.value.length, noun }) }}
           </button>
         </div>
       </div>
@@ -315,7 +318,7 @@ function pickSort(key: string) {
     <BaseDrawer v-model="sortOpen" side="bottom">
       <div class="p-4">
         <div class="handle" />
-        <div class="mb-2 text-base font-bold text-content">ترتيب حسب</div>
+        <div class="mb-2 text-base font-bold text-content">{{ t('discovery.sortBy') }}</div>
         <button
           v-for="s in sorts"
           :key="s.key"

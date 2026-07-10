@@ -145,5 +145,29 @@
     "recentActivity": "نشاطات حديثة",
     "matchRate": "نسبة التطابق",
     "viewAll": "استعراض الكل"
+  },
+  "discovery": {
+    "all": "الكل",
+    "more": "المزيد",
+    "allFilters": "كل الفلاتر",
+    "sortBy": "ترتيب حسب",
+    "clearAll": "امسح الكل",
+    "yourViews": "عروضك:",
+    "reset": "إعادة",
+    "noResults": "لا نتائج مطابقة",
+    "noResultsHint": "جرّب توسيع الفلاتر أو تعديل البحث",
+    "resetFilters": "إعادة تعيين الفلاتر",
+    "searchShort": "ابحث…",
+    "showAllOf": "عرض كل {label} ({count})",
+    "showLess": "عرض أقل",
+    "onlyLabel": "{label} فقط",
+    "orMore": "فأكثر",
+    "orLess": "فأقل",
+    "showN": "عرض {count} {noun}",
+    "close": "إغلاق",
+    "clear": "مسح",
+    "matchRate": "نسبة التطابق",
+    "smartMatchRate": "نسبة التطابق الذكي",
+    "matchShort": "تطابق"
   }
 }

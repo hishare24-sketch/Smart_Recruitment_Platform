@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import type { Opportunity } from '../interfaces/Opportunity'
 import { EMPLOYMENT_TYPE_LABELS, formatSalary } from '../interfaces/Opportunity'
 import { useSavedStore } from '@/stores/SavedStore'
@@ -17,6 +18,7 @@ import BaseIcon from '@/components/ui/BaseIcon.vue'
 import BaseAvatar from '@/components/ui/BaseAvatar.vue'
 
 const props = defineProps<{ opportunity: Opportunity }>()
+const { t } = useI18n()
 const router = useRouter()
 const savedStore = useSavedStore()
 const applicationsStore = useApplicationsStore()
@@ -88,7 +90,7 @@ function openDetails() {
     </div>
 
     <!-- Match rate -->
-    <MatchBadge :value="matchRate" variant="bar" label="نسبة التطابق الذكي" />
+    <MatchBadge :value="matchRate" variant="bar" :label="t('discovery.smartMatchRate')" />
 
     <div class="mt-4 flex items-center justify-between pt-2">
       <span class="flex items-center gap-1 text-xs text-muted">

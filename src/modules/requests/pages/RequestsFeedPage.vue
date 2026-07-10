@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import PageHeader from '@/components/shared/PageHeader.vue'
 import { KIND_META, STATE_META, useRequestsStore } from '@/stores/RequestsStore'
 import type { MarketRequest, RequestKind } from '@/stores/RequestsStore'
@@ -26,6 +27,7 @@ function mapColor(c: string): BaseColor {
   return (({ primary: 'brand', secondary: 'emerald', 'medium-emphasis': 'neutral' } as Record<string, BaseColor>)[c] ?? c) as BaseColor
 }
 
+const { t } = useI18n()
 const router = useRouter()
 const store = useRequestsStore()
 const profile = useProfileStore()
@@ -185,7 +187,7 @@ function open(id: number) {
               </div>
             </div>
             <div class="flex flex-col items-center text-center" style="min-width: 84px" title="نسبة التطابق الذكي مع مهاراتك المُثبتة">
-              <MatchBadge :value="liveMatch(item as MarketRequest)" variant="ring" label="تطابق" />
+              <MatchBadge :value="liveMatch(item as MarketRequest)" variant="ring" :label="t('discovery.matchShort')" />
               <BaseChip v-if="store.hasApplied((item as MarketRequest).id)" color="success" class="mt-1"><BaseIcon name="mdi-check" :size="12" /> مقدّم</BaseChip>
             </div>
           </div>
