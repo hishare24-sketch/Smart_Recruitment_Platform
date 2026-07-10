@@ -368,7 +368,9 @@
       "interviewers": "المقيّمون",
       "plans": "الباقات",
       "treasury": "الخزينة",
-      "surveyTemplates": "نماذج الاستبيانات"
+      "surveyTemplates": "نماذج الاستبيانات",
+      "groupSystem": "النظام",
+      "audit": "سجلّ التدقيق"
     },
     "groups": {
       "users": "المستخدمون والأدوار",
@@ -704,6 +706,34 @@
       "removeQuestion": "حذف السؤال",
       "confirmDeleteTitle": "حذف النموذج؟",
       "confirmDeleteMsg": "سيُزال «{name}» (النماذج النظاميّة محميّة)."
+    },
+    "audit": {
+      "title": "سجلّ التدقيق",
+      "subtitle": "تتبّع كلّ أفعال الأدمن على المنصّة",
+      "searchPlaceholder": "بحث بالفاعل أو المسار...",
+      "statTotal": "إجمالي الأفعال",
+      "statToday": "اليوم",
+      "statActors": "الفاعلون",
+      "activityTrend": "نشاط التدقيق",
+      "byAction": "التوزيع حسب الفعل",
+      "colTime": "الوقت",
+      "colActor": "الفاعل",
+      "colAction": "الفعل",
+      "colResource": "المورد",
+      "colMethod": "الطريقة",
+      "colStatus": "الحالة",
+      "detailTitle": "تفصيل القيد",
+      "path": "المسار",
+      "act_create": "إنشاء",
+      "act_update": "تعديل",
+      "act_delete": "حذف",
+      "act_close": "إغلاق",
+      "act_approve": "اعتماد",
+      "act_reject": "رفض",
+      "act_adjust": "تعديل رصيد",
+      "act_suspend": "تعليق",
+      "act_activate": "تفعيل",
+      "act_permissions": "صلاحيّات"
     }
   }
 }

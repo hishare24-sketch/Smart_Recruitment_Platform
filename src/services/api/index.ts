@@ -115,6 +115,8 @@ export const API_PATHS = {
     suspend: (id: number) => `/admin/users/${id}/suspend`,
     activate: (id: number) => `/admin/users/${id}/activate`,
     adminRole: (id: number) => `/admin/users/${id}/admin-role`,
+    auditLogs: '/admin/audit-logs',
+    auditStats: '/admin/audit-logs/stats',
     roles: '/admin/roles',
     rolesStats: '/admin/roles/stats',
     role: (role: string) => `/admin/roles/${role}`,
@@ -243,6 +245,8 @@ export interface AdminStats {
   usersByKind: Record<string, number>
   signups: { date: string, count: number }[]
 }
+export interface AdminAuditLog { id: number, actor: string, actorId: number | null, method: string, resource: string | null, action: string, path: string, targetId: number | null, status: number, ip: string | null, at?: string }
+export interface AdminAuditStats { total: number, today: number, actors: number, byAction: { label: string, value: number }[], byResource: { label: string, value: number }[], series: { date: string, value: number }[] }
 export interface AdminRole { name: string, usersCount: number, permissions: string[] }
 export interface AdminRolesResponse { roles: AdminRole[], permissions: string[] }
 export interface AdminRolesStats { totalRoles: number, systemRoles: number, customRoles: number, adminUsers: number, holders: { label: string, value: number }[], permissionCounts: { label: string, value: number }[] }
@@ -252,7 +256,7 @@ export type AdminUserPatch = Partial<Pick<AdminUser, 'name' | 'email' | 'role' |
 export interface AdminUserDetail extends AdminUser { wallet: number, stats: { opportunities: number, applications: number, surveys: number } }
 export interface AdminOpportunity { id: number, title: string, company: string, location: string, salary: string, category: string, skills: string[], createdAt?: string }
 export interface AdminMarketRequest { id: number, type: string, title: string, org: string, state: string, compensation: string, remote: boolean, createdAt?: string }
-export interface AdminMarketQuery { page?: number, perPage?: number, sort?: string, q?: string, category?: string, type?: string, state?: string, status?: string, specialty?: string }
+export interface AdminMarketQuery { page?: number, perPage?: number, sort?: string, q?: string, category?: string, type?: string, state?: string, status?: string, specialty?: string, action?: string, resource?: string, method?: string }
 export interface AdminSurvey { id: number, title: string, state: string, points_pool: number, responses: number, owner: string | null, createdAt?: string }
 export interface AdminSurveysStats { total: number, active: number, responses: number, avgResponses: number, distribution: { label: string, value: number }[], series: { date: string, value: number }[] }
 export interface AdminTemplateQuestion { text: string, type: string, options?: string[], rows?: string[], scaleMin?: string, scaleMax?: string }
@@ -354,6 +358,8 @@ export const api = {
     suspendUser: (id: number) => post<AdminUser>(API_PATHS.admin.suspend(id)),
     activateUser: (id: number) => post<AdminUser>(API_PATHS.admin.activate(id)),
     setAdminRole: (id: number, role: string | null) => put<AdminUser>(API_PATHS.admin.adminRole(id), { role }),
+    auditLogs: (params?: AdminMarketQuery) => getPage<AdminAuditLog>(API_PATHS.admin.auditLogs, params as Record<string, unknown>),
+    auditStats: () => get<AdminAuditStats>(API_PATHS.admin.auditStats),
     roles: () => get<AdminRolesResponse>(API_PATHS.admin.roles),
     rolesStats: () => get<AdminRolesStats>(API_PATHS.admin.rolesStats),
     createRole: (name: string, permissions: string[]) => post<AdminRole>(API_PATHS.admin.roles, { name, permissions }),

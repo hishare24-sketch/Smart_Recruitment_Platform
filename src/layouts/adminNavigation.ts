@@ -54,4 +54,11 @@ export const ADMIN_NAV: AdminNavGroup[] = [
       { title: 'admin.nav.interviewers', icon: 'mdi-account-tie-outline', to: 'admin-interviewers', permission: 'view_interviewers' },
     ],
   },
+  {
+    key: 'system',
+    titleKey: 'admin.nav.groupSystem',
+    items: [
+      { title: 'admin.nav.audit', icon: 'mdi-history', to: 'admin-audit', permission: 'view_audit' },
+    ],
+  },
 ]

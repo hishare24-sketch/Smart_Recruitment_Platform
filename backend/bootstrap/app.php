@@ -24,8 +24,8 @@ return Application::configure(basePath: dirname(__DIR__))
                 }
             });
 
-            // لوحة الأدمن: /api/admin — يجمّع Modules/*/Routes/web.php
-            Route::group(['prefix' => 'api/admin', 'middleware' => ['api', 'auth:sanctum', 'admin']], function (): void {
+            // لوحة الأدمن: /api/admin — يجمّع Modules/*/Routes/web.php (+ تدقيق آليّ للأفعال)
+            Route::group(['prefix' => 'api/admin', 'middleware' => ['api', 'auth:sanctum', 'admin', \Modules\Audit\Http\Middleware\AuditMiddleware::class]], function (): void {
                 foreach (glob(base_path('Modules/*/Routes/web.php')) as $file) {
                     require $file;
                 }

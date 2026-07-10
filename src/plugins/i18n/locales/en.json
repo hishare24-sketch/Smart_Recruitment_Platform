@@ -368,7 +368,9 @@
       "interviewers": "Interviewers",
       "plans": "Plans",
       "treasury": "Treasury",
-      "surveyTemplates": "Survey templates"
+      "surveyTemplates": "Survey templates",
+      "groupSystem": "System",
+      "audit": "Audit log"
     },
     "groups": {
       "users": "Users & Roles",
@@ -704,6 +706,34 @@
       "removeQuestion": "Remove question",
       "confirmDeleteTitle": "Delete template?",
       "confirmDeleteMsg": "\"{name}\" will be removed (system templates are protected)."
+    },
+    "audit": {
+      "title": "Audit log",
+      "subtitle": "Track every admin action on the platform",
+      "searchPlaceholder": "Search by actor or path...",
+      "statTotal": "Total actions",
+      "statToday": "Today",
+      "statActors": "Actors",
+      "activityTrend": "Audit activity",
+      "byAction": "By action",
+      "colTime": "Time",
+      "colActor": "Actor",
+      "colAction": "Action",
+      "colResource": "Resource",
+      "colMethod": "Method",
+      "colStatus": "Status",
+      "detailTitle": "Entry detail",
+      "path": "Path",
+      "act_create": "Create",
+      "act_update": "Update",
+      "act_delete": "Delete",
+      "act_close": "Close",
+      "act_approve": "Approve",
+      "act_reject": "Reject",
+      "act_adjust": "Adjust",
+      "act_suspend": "Suspend",
+      "act_activate": "Activate",
+      "act_permissions": "Permissions"
     }
   }
 }
