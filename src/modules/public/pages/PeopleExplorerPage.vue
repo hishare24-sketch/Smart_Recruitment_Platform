@@ -10,6 +10,12 @@ import { sectorFacet } from '@/composables/sectorFacet'
 import type { FacetSpec, SortSpec } from '@/composables/useFacetedList'
 import FacetedList from '@/components/shared/FacetedList.vue'
 import { uniq } from '@/utils/array'
+import BaseCard from '@/components/ui/BaseCard.vue'
+import BaseChip from '@/components/ui/BaseChip.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
+import BaseAvatar from '@/components/ui/BaseAvatar.vue'
+import BaseIcon from '@/components/ui/BaseIcon.vue'
+import BaseModal from '@/components/ui/BaseModal.vue'
 
 // ===== استكشاف الأشخاص — دليل الصفحات التعريفية العامة: بوابة هوية أهل المنصة =====
 const router = useRouter()
@@ -110,88 +116,74 @@ function open(p: PersonCard) {
       search-placeholder="ابحث بالاسم أو التخصص أو المهارة…"
     >
       <template #item="{ item }">
-        <VCard
-          class="pa-4 h-100 d-flex flex-column person-card" role="button" tabindex="0"
-          @click="open(item as PersonCard)"
-          @keydown.enter="open(item as PersonCard)"
-          @keydown.space.prevent="open(item as PersonCard)"
-        >
-          <template v-for="p in [item as PersonCard]" :key="p.slug">
-          <div class="d-flex align-center ga-3 mb-2">
-            <VAvatar color="primary" variant="tonal" size="48">
-              <span class="text-h6 font-weight-bold">{{ p.initial }}</span>
-            </VAvatar>
-            <div class="flex-grow-1">
-              <div class="d-flex align-center ga-1">
-                <span class="text-body-1 font-weight-bold">{{ p.name }}</span>
-                <VChip v-if="p.live" size="x-small" color="success" variant="tonal" label>حيّ</VChip>
+        <template v-for="p in [item as PersonCard]" :key="p.slug">
+          <BaseCard
+            hover class="flex h-full cursor-pointer flex-col" role="button" tabindex="0"
+            @click="open(p)"
+            @keydown.enter="open(p)"
+            @keydown.space.prevent="open(p)"
+          >
+            <div class="mb-2 flex items-center gap-3">
+              <BaseAvatar color="brand" :size="48" tonal>
+                <span class="text-lg font-bold">{{ p.initial }}</span>
+              </BaseAvatar>
+              <div class="flex-1">
+                <div class="flex items-center gap-1">
+                  <span class="font-bold text-content">{{ p.name }}</span>
+                  <BaseChip v-if="p.live" color="success">حيّ</BaseChip>
+                </div>
+                <div class="text-xs text-muted">{{ p.headline }}</div>
+                <div class="text-xs text-muted"><BaseIcon name="mdi-map-marker-outline" :size="12" /> {{ p.location }}</div>
               </div>
-              <div class="text-caption text-medium-emphasis">{{ p.headline }}</div>
-              <div class="text-caption text-medium-emphasis"><VIcon icon="mdi-map-marker-outline" size="12" /> {{ p.location }}</div>
             </div>
-          </div>
 
-          <div class="d-flex flex-wrap ga-1 mb-2">
-            <VChip v-for="r in p.roles" :key="r" size="x-small" color="secondary" variant="tonal" label>{{ r }}</VChip>
-          </div>
-          <div class="d-flex flex-wrap ga-1 mb-3">
-            <VChip v-for="sk in p.skills.slice(0, 3)" :key="sk" size="x-small" variant="outlined" label>{{ sk }}</VChip>
-          </div>
+            <div class="mb-2 flex flex-wrap gap-1">
+              <BaseChip v-for="r in p.roles" :key="r" color="emerald">{{ r }}</BaseChip>
+            </div>
+            <div class="mb-3 flex flex-wrap gap-1">
+              <BaseChip v-for="sk in p.skills.slice(0, 3)" :key="sk" color="neutral">{{ sk }}</BaseChip>
+            </div>
 
-          <VSpacer />
-          <div class="d-flex align-center ga-3 text-caption text-medium-emphasis">
-            <span><VIcon icon="mdi-shield-check-outline" size="14" color="primary" /> {{ p.credibility }}%</span>
-            <span><VIcon icon="mdi-account-group-outline" size="14" color="accent" /> {{ p.followers }}</span>
-            <span><VIcon icon="mdi-star" size="14" color="warning" /> {{ p.rating }}</span>
-            <VSpacer />
-            <VIcon icon="mdi-arrow-left-circle-outline" size="18" color="primary" />
-          </div>
-          </template>
-        </VCard>
+            <div class="mt-auto flex items-center gap-3 text-xs text-muted">
+              <span title="المصداقية"><BaseIcon name="mdi-shield-check-outline" :size="14" style="color: rgb(var(--v-theme-primary))" /> {{ p.credibility }}%</span>
+              <span title="المتابعون"><BaseIcon name="mdi-account-group-outline" :size="14" style="color: rgb(var(--v-theme-accent))" /> {{ p.followers }}</span>
+              <span title="التقييم"><BaseIcon name="mdi-star" :size="14" style="color: rgb(var(--v-theme-warning))" /> {{ p.rating }}</span>
+              <BaseIcon name="mdi-arrow-left-circle-outline" :size="18" class="ms-auto" style="color: rgb(var(--v-theme-primary))" />
+            </div>
+          </BaseCard>
+        </template>
       </template>
     </FacetedList>
 
     <!-- CTA: صفحتك أنت -->
-    <VCard class="brand-gradient pa-5 mt-4 text-center" theme="darkTheme">
-      <p class="text-body-1 text-white mb-3">هذه صفحاتهم — أين صفحتك؟ قوّها وشاركها ليجدك أصحاب الفرص هنا.</p>
-      <VBtn color="accent" :to="{ name: 'public-profile-manage' }">إدارة صفحتي التعريفية</VBtn>
-    </VCard>
+    <div class="brand-gradient rounded-ui-lg mt-4 p-5 text-center">
+      <p class="mb-3 text-white">هذه صفحاتهم — أين صفحتك؟ قوّها وشاركها ليجدك أصحاب الفرص هنا.</p>
+      <BaseButton variant="accent" :to="{ name: 'public-profile-manage' }">إدارة صفحتي التعريفية</BaseButton>
+    </div>
 
     <!-- معاينة ملف تجريبي -->
-    <VDialog :model-value="!!previewPerson" max-width="420" @update:model-value="previewPerson = null">
-      <VCard v-if="previewPerson" class="pa-5">
-        <div class="d-flex align-center ga-3 mb-3">
-          <VAvatar color="primary" variant="tonal" size="56"><span class="text-h5 font-weight-bold">{{ previewPerson.initial }}</span></VAvatar>
+    <BaseModal :model-value="!!previewPerson" :max-width="420" @update:model-value="previewPerson = null">
+      <div v-if="previewPerson">
+        <div class="mb-3 flex items-center gap-3">
+          <BaseAvatar color="brand" :size="56" tonal><span class="text-xl font-bold">{{ previewPerson.initial }}</span></BaseAvatar>
           <div>
-            <div class="text-subtitle-1 font-weight-bold">{{ previewPerson.name }}</div>
-            <div class="text-caption text-medium-emphasis">{{ previewPerson.headline }}</div>
+            <div class="font-bold text-content">{{ previewPerson.name }}</div>
+            <div class="text-xs text-muted">{{ previewPerson.headline }}</div>
           </div>
         </div>
-        <div class="d-flex ga-3 text-caption text-medium-emphasis mb-3">
-          <span><VIcon icon="mdi-shield-check-outline" size="14" color="primary" /> مصداقية {{ previewPerson.credibility }}%</span>
-          <span><VIcon icon="mdi-account-group-outline" size="14" color="accent" /> {{ previewPerson.followers }} متابعًا</span>
-          <span><VIcon icon="mdi-star" size="14" color="warning" /> {{ previewPerson.rating }}</span>
+        <div class="mb-3 flex gap-3 text-xs text-muted">
+          <span><BaseIcon name="mdi-shield-check-outline" :size="14" style="color: rgb(var(--v-theme-primary))" /> مصداقية {{ previewPerson.credibility }}%</span>
+          <span><BaseIcon name="mdi-account-group-outline" :size="14" style="color: rgb(var(--v-theme-accent))" /> {{ previewPerson.followers }} متابعًا</span>
+          <span><BaseIcon name="mdi-star" :size="14" style="color: rgb(var(--v-theme-warning))" /> {{ previewPerson.rating }}</span>
         </div>
-        <div class="d-flex flex-wrap ga-1 mb-3">
-          <VChip v-for="sk in previewPerson.skills" :key="sk" size="x-small" color="primary" variant="tonal" label>{{ sk }}</VChip>
+        <div class="mb-3 flex flex-wrap gap-1">
+          <BaseChip v-for="sk in previewPerson.skills" :key="sk" color="brand">{{ sk }}</BaseChip>
         </div>
-        <VAlert color="secondary" variant="tonal" density="compact" border="start" class="text-caption mb-3">
+        <div class="rounded-ui mb-3 border-s-4 p-3 text-xs" style="border-color: rgb(var(--v-theme-secondary)); background: rgba(var(--v-theme-secondary), 0.1)">
           ملف تجريبي للعرض — الصفحات الكاملة لكل الأعضاء تتفعل مع الربط الخلفي.
-        </VAlert>
-        <VBtn variant="tonal" color="primary" block @click="previewPerson = null">إغلاق</VBtn>
-      </VCard>
-    </VDialog>
+        </div>
+        <BaseButton variant="tonal-brand" block @click="previewPerson = null">إغلاق</BaseButton>
+      </div>
+    </BaseModal>
   </div>
 </template>
-
-<style scoped>
-.person-card {
-  cursor: pointer;
-  transition: border-color 0.15s ease, transform 0.15s ease;
-  border: 1px solid transparent;
-}
-.person-card:hover {
-  border-color: rgb(var(--v-theme-primary));
-  transform: translateY(-2px);
-}
-</style>
