@@ -39,12 +39,15 @@ export function useSectorContext() {
   const auth = useAuthStore()
 
   // — المصادر (codes داخليًّا) —
+  // نستبعد S21 («أخرى/يحتاج تصنيف») من السياق: كتلة حوكمة احتياطيّة لا تصلح
+  // لتخصيص أيّ سطح (بذر/فلترة/توصية) — قاعدة other_hidden في sectors.ts.
+  const isContextual = (code: string) => code !== 'S21'
   /** الاختيار الصريح من onboarding/الإعدادات */
-  const explicitCodes = computed(() => toCodes(persona.state.interestedSectors))
+  const explicitCodes = computed(() => toCodes(persona.state.interestedSectors).filter(isContextual))
   /** المشتقّ من مهارات الملف (سلّم الاحتياط) */
   const derivedCodes = computed(() => {
     const code = dominantSector(profile.skills.map(s => s.name))
-    return code ? [code] : []
+    return code && isContextual(code) ? [code] : []
   })
   /** الاتّحاد — المصدر الموحّد للتخصيص (explicit ∪ derived) */
   const effectiveCodes = computed(() => uniq([...explicitCodes.value, ...derivedCodes.value]))
@@ -67,6 +70,8 @@ export function useSectorContext() {
   const effective = computed(() => effectiveCodes.value.map(toSlug).filter((s): s is string => !!s))
   const primary = computed(() => (primaryCode.value ? toSlug(primaryCode.value) : undefined))
   const has = computed(() => effectiveCodes.value.length > 0)
+  /** هل لدى المستخدم اختيار قطاعيّ **صريح**؟ (أقوى من المشتقّ — يحكم البذر الافتراضيّ) */
+  const hasExplicit = computed(() => explicitCodes.value.length > 0)
 
   // — أدوات الاستهلاك الموحّدة —
 
@@ -130,6 +135,7 @@ export function useSectorContext() {
     effective,
     primary,
     has,
+    hasExplicit,
     // الأدوات
     boost,
     inEffective,

@@ -60,7 +60,11 @@ function recoMatch(o: typeof mockOpportunities[number]): number {
 }
 const recommended = computed(() => [...mockOpportunities].sort((a, b) => {
   const d = recoMatch(b) - recoMatch(a)
-  return d !== 0 ? d : sector.boost(sectorForField(b.department)?.id) - sector.boost(sectorForField(a.department)?.id)
+  if (d !== 0)
+    return d
+  const boostDiff = sector.boost(sectorForField(b.department)?.id) - sector.boost(sectorForField(a.department)?.id)
+  // كاسر تعادل أخير: ترتيب matchRate المنسّق (يحفظ سلوك التوصية لملف فارغ بلا سياق)
+  return boostDiff !== 0 ? boostDiff : b.matchRate - a.matchRate
 }).slice(0, 5))
 const topCandidates = computed(() => [...candidatesStore.candidates].sort((a, b) => b.matchRate - a.matchRate).slice(0, 5))
 

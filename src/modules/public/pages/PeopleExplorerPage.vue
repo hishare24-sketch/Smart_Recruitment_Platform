@@ -12,7 +12,7 @@ const pub = usePublicProfileStore()
 const sector = useSectorContext()
 
 // قطاع الشخص يُشتقّ من مهاراته (لا حقل قطاع صريح على البطاقة) — للترتيب والتقييد
-const sectorScope = ref<'mine' | 'all'>(sector.has.value ? 'mine' : 'all')
+const sectorScope = ref<'mine' | 'all'>(sector.hasExplicit.value ? 'mine' : 'all')
 function personSector(skills: string[]): string | undefined {
   return dominantSector(skills)
 }

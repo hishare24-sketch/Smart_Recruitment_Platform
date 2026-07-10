@@ -38,7 +38,7 @@ const profile = useProfileStore()
 const sector = useSectorContext()
 
 // نطاق القطاع: «قطاعاتي» (اتّحاد قطاعات المستخدم) ⟷ «الكل» — بذر افتراضيّ لا قفل
-const sectorScope = ref<'mine' | 'all'>(sector.has.value ? 'mine' : 'all')
+const sectorScope = ref<'mine' | 'all'>(sector.hasExplicit.value ? 'mine' : 'all')
 /** قطاع الطلب (slug) من حقل المجال عبر resolver الترحيل */
 function reqSector(r: MarketRequest): string | undefined {
   return sectorForField(r.field)?.id
@@ -108,7 +108,7 @@ function resetFilters() {
   maxWeeks.value = 20
   minBudget.value = 0
   treeSel.value = {}
-  sectorScope.value = sector.has.value ? 'mine' : 'all'
+  sectorScope.value = sector.hasExplicit.value ? 'mine' : 'all'
 }
 
 function toggleKind(k: RequestKind) {

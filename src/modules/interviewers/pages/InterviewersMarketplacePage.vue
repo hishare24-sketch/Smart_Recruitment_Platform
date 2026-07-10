@@ -39,7 +39,7 @@ const sector = useSectorContext()
 
 // نطاق القطاع: «قطاعاتي» (اتّحاد قطاعات المستخدم) ⟷ «الكل» — بذر افتراضيّ لا قفل.
 // العدسة هنا: مقيّمون/خبراء «في قطاعاتي» (نفس السياق، مخرَج مختلف حسب الدور).
-const sectorScope = ref<'mine' | 'all'>(sector.has.value ? 'mine' : 'all')
+const sectorScope = ref<'mine' | 'all'>(sector.hasExplicit.value ? 'mine' : 'all')
 /** قطاع المقيّم (slug) من حقل مجاله عبر resolver الترحيل */
 function ivSector(iv: { field: string }): string | undefined {
   return sectorForField(iv.field)?.id

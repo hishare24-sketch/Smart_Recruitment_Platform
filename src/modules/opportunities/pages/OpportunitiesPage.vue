@@ -28,7 +28,7 @@ const sector = useSectorContext()
 
 // نطاق القطاع: «قطاعاتي» (اتّحاد قطاعات المستخدم) ⟷ «الكل». بذر افتراضيّ عند وجود
 // سياق، لكنه ليس قفلًا — المستخدم يقلبه فورًا. بلا سياق → لا شريحة، سلوك اليوم.
-const sectorScope = ref<'mine' | 'all'>(sector.has.value ? 'mine' : 'all')
+const sectorScope = ref<'mine' | 'all'>(sector.hasExplicit.value ? 'mine' : 'all')
 /** قطاع الفرصة (slug) من حقل القسم عبر resolver الترحيل */
 function oppSector(o: Opportunity): string | undefined {
   return sectorForField(o.department)?.id
@@ -131,7 +131,7 @@ function resetFilters() {
   minSalary.value = 0
   savedOnly.value = false
   treeSel.value = {}
-  sectorScope.value = sector.has.value ? 'mine' : 'all'
+  sectorScope.value = sector.hasExplicit.value ? 'mine' : 'all'
 }
 </script>
 

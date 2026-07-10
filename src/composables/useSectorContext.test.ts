@@ -62,6 +62,35 @@ describe('useSectorContext — المصادر والاتّحاد', () => {
   })
 })
 
+describe('useSectorContext — hasExplicit والحوكمة (S21)', () => {
+  it('hasExplicit=false للمشتقّ وحده، true عند اختيار صريح', () => {
+    setSkills(['PHP']) // technology مشتقّ فقط
+    const ctx = useSectorContext()
+    expect(ctx.has.value).toBe(true)
+    expect(ctx.hasExplicit.value).toBe(false)
+    usePersonaStore().setInterestedSectors(['finance'])
+    expect(ctx.hasExplicit.value).toBe(true)
+  })
+
+  it('يستبعد S21 («أخرى») من السياق — لا يصلح للتخصيص', () => {
+    setSkills([])
+    usePersonaStore().setInterestedSectors(['other', 'technology']) // other = S21
+    const ctx = useSectorContext()
+    expect(ctx.effective.value).toEqual(['technology'])
+    expect(ctx.primary.value).toBe('technology')
+    expect(ctx.inEffective('other')).toBe(false)
+  })
+
+  it('S21 وحده كاختيار صريح ⇒ لا سياق فعّال (has=false)', () => {
+    setSkills([])
+    usePersonaStore().setInterestedSectors(['other'])
+    const ctx = useSectorContext()
+    expect(ctx.has.value).toBe(false)
+    expect(ctx.hasExplicit.value).toBe(false)
+    expect(ctx.primary.value).toBeUndefined()
+  })
+})
+
 describe('useSectorContext — القطاع الأبرز (primary)', () => {
   it('يختار الأعلى أولويّة عرض بين القطاعات الصريحة', () => {
     setSkills([])

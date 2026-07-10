@@ -100,12 +100,11 @@ const phone = ref(authStore.authUser?.phone ?? '')
 // (يخرج من حبس onboarding؛ التحرير هنا يُزامَن فورًا مع PersonaStore ← Laravel)
 const showAllSectors = ref(false)
 const sectorList = computed(() => (showAllSectors.value ? SECTORS : visibleSectors()))
-const interestedSectors = ref<string[]>([...personaStore.state.interestedSectors])
+// مشتقّ مباشرةً من المتجر (لا نسخة محليّة تتيبّس) — يبقى متّسقًا مع مزامنة Laravel
+const interestedSectors = computed(() => personaStore.state.interestedSectors)
 function toggleSector(id: string) {
-  interestedSectors.value = interestedSectors.value.includes(id)
-    ? interestedSectors.value.filter(s => s !== id)
-    : [...interestedSectors.value, id]
-  personaStore.setInterestedSectors(interestedSectors.value)
+  const cur = interestedSectors.value
+  personaStore.setInterestedSectors(cur.includes(id) ? cur.filter(s => s !== id) : [...cur, id])
 }
 
 // Preferences
