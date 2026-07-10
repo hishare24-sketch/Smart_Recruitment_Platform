@@ -365,7 +365,8 @@
       "surveys": "الاستبيانات",
       "wallets": "المحافظ",
       "groupQuality": "الجودة والاعتماد",
-      "interviewers": "المقيّمون"
+      "interviewers": "المقيّمون",
+      "plans": "الباقات"
     },
     "groups": {
       "users": "المستخدمون والأدوار",
@@ -547,6 +548,31 @@
       "confirmRejectMsg": "لن يظهر «{name}» في السوق العامّ.",
       "confirmDeleteTitle": "حذف المقيّم؟",
       "confirmDeleteMsg": "سيُزال «{name}» نهائيًّا."
+    },
+    "plans": {
+      "title": "الباقات",
+      "subtitle": "كتالوج الباقات — الأسعار والمزايا والحدود",
+      "searchPlaceholder": "بحث باسم الباقة أو مفتاحها...",
+      "colName": "الباقة",
+      "colKey": "المفتاح",
+      "colPrice": "السعر",
+      "colSurveyLimit": "حدّ الاستبيانات",
+      "colFeatures": "المزايا",
+      "colSubscribers": "المشتركون",
+      "colActive": "الحالة",
+      "unlimited": "بلا حدّ",
+      "statusActive": "مفعّلة",
+      "statusInactive": "معطّلة",
+      "edit": "تحرير",
+      "editTitle": "تحرير باقة {name}",
+      "fieldName": "الاسم",
+      "fieldPrice": "السعر (ر.س)",
+      "fieldSurveyLimit": "حدّ الاستبيانات",
+      "fieldFeatures": "المزايا (ميزة بكل سطر)",
+      "fieldActive": "الباقة مفعّلة",
+      "unlimitedSurveys": "استبيانات بلا حدّ",
+      "featuresHint": "ميزة واحدة في كل سطر",
+      "save": "حفظ"
     }
   }
 }

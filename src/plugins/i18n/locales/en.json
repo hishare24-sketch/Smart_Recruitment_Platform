@@ -365,7 +365,8 @@
       "surveys": "Surveys",
       "wallets": "Wallets",
       "groupQuality": "Quality & Accreditation",
-      "interviewers": "Interviewers"
+      "interviewers": "Interviewers",
+      "plans": "Plans"
     },
     "groups": {
       "users": "Users & Roles",
@@ -547,6 +548,31 @@
       "confirmRejectMsg": "\"{name}\" will be hidden from the public marketplace.",
       "confirmDeleteTitle": "Delete interviewer?",
       "confirmDeleteMsg": "\"{name}\" will be permanently removed."
+    },
+    "plans": {
+      "title": "Plans",
+      "subtitle": "Plan catalog — pricing, features and limits",
+      "searchPlaceholder": "Search by plan name or key...",
+      "colName": "Plan",
+      "colKey": "Key",
+      "colPrice": "Price",
+      "colSurveyLimit": "Survey limit",
+      "colFeatures": "Features",
+      "colSubscribers": "Subscribers",
+      "colActive": "Status",
+      "unlimited": "Unlimited",
+      "statusActive": "Active",
+      "statusInactive": "Inactive",
+      "edit": "Edit",
+      "editTitle": "Edit {name} plan",
+      "fieldName": "Name",
+      "fieldPrice": "Price (SAR)",
+      "fieldSurveyLimit": "Survey limit",
+      "fieldFeatures": "Features (one per line)",
+      "fieldActive": "Plan active",
+      "unlimitedSurveys": "Unlimited surveys",
+      "featuresHint": "One feature per line",
+      "save": "Save"
     }
   }
 }

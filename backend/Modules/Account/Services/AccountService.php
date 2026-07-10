@@ -3,13 +3,22 @@
 namespace Modules\Account\Services;
 
 use Illuminate\Support\Carbon;
+use Modules\Account\Entities\Plan;
 use Modules\Account\Entities\Wallet;
 use Modules\User\Entities\User;
 
 class AccountService
 {
-    /** سعر كل باقة — الترقية تدفع الفرق من المحفظة، التخفيض مجّانيّ. */
+    /** أسعار احتياطيّة — تُستعمل حين لا يوجد كتالوج باقات مبذور (يُبقي السلوك ثابتًا). */
     private const PLAN_PRICE = ['free' => 0, 'pro' => 50, 'elite' => 150];
+
+    /** سعر باقة — من كتالوج plans إن وُجد، وإلّا من الثابت الاحتياطيّ. */
+    private function planPrice(string $tier): float
+    {
+        $plan = Plan::where('key', $tier)->first();
+
+        return $plan !== null ? (float) $plan->price : (float) (self::PLAN_PRICE[$tier] ?? 0);
+    }
 
     /** محفظة المستخدم — تُنشأ برصيد ترحيبيّ عند أول وصول. */
     public function getWallet(int $userId): Wallet
@@ -38,7 +47,7 @@ class AccountService
     {
         $user = User::findOrFail($userId);
         $current = $user->tier ?? 'free';
-        $cost = max(0, self::PLAN_PRICE[$tier] - self::PLAN_PRICE[$current]);
+        $cost = max(0, $this->planPrice($tier) - $this->planPrice($current));
 
         if ($cost > 0) {
             $wallet = $this->getWallet($userId);
