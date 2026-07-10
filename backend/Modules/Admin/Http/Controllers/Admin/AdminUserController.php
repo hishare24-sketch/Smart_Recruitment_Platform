@@ -52,12 +52,20 @@ class AdminUserController extends Controller
         return $this->dashboardResponse($users);
     }
 
-    /** تفصيل مستخدم واحد. */
+    /** تفصيل مستخدم واحد — مُثرًى بالمحفظة وعدّادات النشاط (استعراض عميق). */
     public function show(User $user)
     {
         $this->authorize('view_users');
 
-        return $this->dataResponse((new AdminUserResource($user->load('roles')))->resolve());
+        $data = (new AdminUserResource($user->load('roles')))->resolve();
+        $data['wallet'] = (float) (\Modules\Account\Entities\Wallet::where('user_id', $user->id)->value('balance') ?? 0);
+        $data['stats'] = [
+            'opportunities' => \Modules\Marketplace\Entities\Opportunity::where('user_id', $user->id)->count(),
+            'applications' => \Modules\Marketplace\Entities\Application::where('user_id', $user->id)->count(),
+            'surveys' => \Modules\Survey\Entities\Survey::where('user_id', $user->id)->count(),
+        ];
+
+        return $this->dataResponse($data);
     }
 
     /** تحديث بيانات المستخدم الأساسيّة. */

@@ -406,7 +406,17 @@
       "confirmSuspendTitle": "تعليق الحساب؟",
       "confirmSuspendMsg": "لن يستطيع {name} تسجيل الدخول حتى إعادة التفعيل.",
       "bulkSuspend": "تعليق المحدّد",
-      "bulkActivate": "تفعيل المحدّد"
+      "bulkActivate": "تفعيل المحدّد",
+      "filterRole": "الدور",
+      "detailTitle": "تفاصيل المستخدم",
+      "uuid": "المعرّف",
+      "joined": "تاريخ الانضمام",
+      "wallet": "المحفظة",
+      "activity": "النشاط",
+      "statOpportunities": "فرص منشورة",
+      "statApplications": "تقديمات",
+      "statSurveys": "استبيانات",
+      "viewProfile": "عرض الصفحة العامة"
     },
     "roles": {
       "title": "الأدوار والصلاحيّات",

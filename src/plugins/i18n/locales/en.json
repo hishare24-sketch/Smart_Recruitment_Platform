@@ -406,7 +406,17 @@
       "confirmSuspendTitle": "Suspend account?",
       "confirmSuspendMsg": "{name} won't be able to sign in until reactivated.",
       "bulkSuspend": "Suspend selected",
-      "bulkActivate": "Activate selected"
+      "bulkActivate": "Activate selected",
+      "filterRole": "Role",
+      "detailTitle": "User details",
+      "uuid": "ID",
+      "joined": "Joined",
+      "wallet": "Wallet",
+      "activity": "Activity",
+      "statOpportunities": "Opportunities",
+      "statApplications": "Applications",
+      "statSurveys": "Surveys",
+      "viewProfile": "View public profile"
     },
     "roles": {
       "title": "Roles & Permissions",

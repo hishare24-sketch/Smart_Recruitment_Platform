@@ -89,6 +89,7 @@ async function bulkDelete() {
       :active-filters="filters"
       :search-placeholder="t('admin.requests.searchPlaceholder')"
       selectable
+      export-name="requests"
       @update:sort-key="r.setSort"
       @update:selected="v => (selected = v)"
       @update:search="r.setSearch"

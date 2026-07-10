@@ -8,6 +8,7 @@ import BaseIcon from '@/components/ui/BaseIcon.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseSelect from '@/components/ui/BaseSelect.vue'
 import BaseDrawer from '@/components/ui/BaseDrawer.vue'
+import BaseAvatar from '@/components/ui/BaseAvatar.vue'
 import BaseSnackbar from '@/components/ui/BaseSnackbar.vue'
 import BaseTooltip from '@/components/ui/BaseTooltip.vue'
 import ResourceScaffold from '@/modules/admin/components/ResourceScaffold.vue'
@@ -15,8 +16,9 @@ import type { FilterDef } from '@/modules/admin/components/ResourceScaffold.vue'
 import type { TableColumn } from '@/components/ui/BaseTable.vue'
 import { useAdminResource } from '@/modules/admin/composables/useAdminResource'
 import { confirm } from '@/components/ui/confirm'
-import { type AdminUser, type AdminUserPatch, api } from '@/services/api'
+import { type AdminUser, type AdminUserDetail, type AdminUserPatch, api } from '@/services/api'
 import { useAuthStore } from '@/stores/AuthStore'
+import type { UserRole } from '@/interfaces/Auth'
 
 const { t } = useI18n()
 const auth = useAuthStore()
@@ -34,7 +36,9 @@ const columns: TableColumn[] = [
   { key: 'created_at', label: t('admin.users.colCreated'), sortable: true },
 ]
 
+const ROLE_OPTIONS: UserRole[] = ['seeker', 'company', 'interviewer', 'coach', 'trainer', 'consultant', 'endorser', 'content_reviewer', 'community_guide', 'admin']
 const filterDefs: FilterDef[] = [
+  { key: 'role', label: t('admin.users.filterRole'), options: ROLE_OPTIONS.map(role => ({ value: role, label: t(`roles.${role}`) })) },
   { key: 'tier', label: t('admin.users.filterTier'), options: [{ value: 'free', label: 'Free' }, { value: 'pro', label: 'Pro' }, { value: 'elite', label: 'Elite' }] },
   { key: 'kind', label: t('admin.users.filterKind'), options: [{ value: 'individual', label: t('admin.users.individual') }, { value: 'organization', label: t('admin.users.organization') }] },
   { key: 'status', label: t('admin.users.filterStatus'), options: [{ value: 'active', label: t('admin.users.active') }, { value: 'suspended', label: t('admin.users.suspended') }] },
@@ -48,17 +52,27 @@ const ADMIN_ROLE_OPTIONS = [
   { value: 'governance', title: 'governance' },
 ]
 
-function fmtDate(iso?: string) {
-  return iso ? new Date(iso).toLocaleDateString() : '—'
-}
+function fmtDate(iso?: string) { return iso ? new Date(iso).toLocaleDateString() : '—' }
+const selfId = computed(() => auth.authUser?.id)
 
 // ——— تغذية راجعة ———
 const snack = ref({ show: false, text: '', color: 'success' })
-function toast(text: string, color = 'success') {
-  snack.value = { show: true, text, color }
-}
-function fail(e: unknown) {
-  toast((e as { message?: string })?.message ?? t('admin.toast.failed'), 'error')
+function toast(text: string, color = 'success') { snack.value = { show: true, text, color } }
+function fail(e: unknown) { toast((e as { message?: string })?.message ?? t('admin.toast.failed'), 'error') }
+
+// ——— استعراض عميق (النقر على صفّ) ———
+const detailOpen = ref(false)
+const detail = ref<AdminUserDetail | null>(null)
+const detailLoading = ref(false)
+async function openDetail(u: AdminUser) {
+  detailOpen.value = true
+  detail.value = null
+  detailLoading.value = true
+  try {
+    detail.value = await api.admin.user(u.id)
+  }
+  catch (e) { fail(e) }
+  finally { detailLoading.value = false }
 }
 
 // ——— تعليق / تفعيل ———
@@ -73,19 +87,11 @@ async function toggleSuspend(u: AdminUser) {
     })
     if (!ok)
       return
-    try {
-      await api.admin.suspendUser(u.id)
-      toast(t('admin.toast.suspended'))
-      r.refresh()
-    }
+    try { await api.admin.suspendUser(u.id); toast(t('admin.toast.suspended')); detailOpen.value = false; r.refresh() }
     catch (e) { fail(e) }
   }
   else {
-    try {
-      await api.admin.activateUser(u.id)
-      toast(t('admin.toast.activated'))
-      r.refresh()
-    }
+    try { await api.admin.activateUser(u.id); toast(t('admin.toast.activated')); detailOpen.value = false; r.refresh() }
     catch (e) { fail(e) }
   }
 }
@@ -110,6 +116,7 @@ function openEdit(u: AdminUser) {
   editing.value = u
   form.value = { name: u.name, email: u.email, tier: u.tier, kind: u.kind }
   formAdminRole.value = u.adminRoles[0] ?? ''
+  detailOpen.value = false
   editOpen.value = true
 }
 async function saveEdit() {
@@ -126,8 +133,6 @@ async function saveEdit() {
   }
   catch (e) { fail(e) }
 }
-
-const selfId = computed(() => auth.authUser?.id)
 </script>
 
 <template>
@@ -146,14 +151,16 @@ const selfId = computed(() => auth.authUser?.id)
       :active-filters="filters"
       :search-placeholder="t('admin.users.searchPlaceholder')"
       selectable
+      inspectable
+      export-name="users"
       @update:sort-key="r.setSort"
       @update:selected="v => (selected = v)"
       @update:search="r.setSearch"
       @filter="r.setFilter"
       @update:page="r.setPage"
       @update:per-page="r.setPerPage"
+      @row-click="openDetail"
     >
-      <!-- خلايا مخصّصة -->
       <template #cell-tier="{ row }">
         <BaseChip :color="tierColor[row.tier] || 'neutral'">{{ row.tier }}</BaseChip>
       </template>
@@ -170,7 +177,6 @@ const selfId = computed(() => auth.authUser?.id)
         <span class="text-muted">{{ fmtDate(row.createdAt) }}</span>
       </template>
 
-      <!-- إجراءات الصفّ -->
       <template #actions="{ row }">
         <div class="flex items-center justify-end gap-1">
           <BaseTooltip :text="t('admin.users.edit')">
@@ -192,7 +198,6 @@ const selfId = computed(() => auth.authUser?.id)
         </div>
       </template>
 
-      <!-- إجراءات جماعيّة -->
       <template #bulk>
         <BaseButton size="sm" variant="ghost" @click="bulkStatus(false)">
           <BaseIcon name="mdi-account-check-outline" :size="16" style="color: rgb(var(--v-theme-success))" />{{ t('admin.users.bulkActivate') }}
@@ -203,7 +208,96 @@ const selfId = computed(() => auth.authUser?.id)
       </template>
     </ResourceScaffold>
 
-    <!-- درج التعديل -->
+    <!-- ===== درج الاستعراض العميق ===== -->
+    <BaseDrawer v-model="detailOpen" :width="440" side="end">
+      <div class="flex h-full flex-col">
+        <div class="flex items-center gap-2 border-b border-ui p-4">
+          <BaseIcon name="mdi-account-details-outline" :size="22" class="text-brand" />
+          <h2 class="text-base font-bold text-content">{{ t('admin.users.detailTitle') }}</h2>
+        </div>
+
+        <div v-if="detailLoading" class="flex flex-1 items-center justify-center">
+          <BaseIcon name="mdi-loading" :size="28" class="animate-spin text-brand" />
+        </div>
+
+        <div v-else-if="detail" class="flex-1 space-y-4 overflow-y-auto p-4">
+          <!-- الهويّة -->
+          <div class="flex items-center gap-3">
+            <BaseAvatar :color="detail.status === 'suspended' ? 'error' : 'emerald'" :size="52">
+              {{ detail.name.trim().charAt(0) }}
+            </BaseAvatar>
+            <div class="min-w-0">
+              <div class="truncate text-lg font-bold text-content">{{ detail.name }}</div>
+              <div class="truncate text-sm text-muted" dir="ltr">{{ detail.email }}</div>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap gap-1.5">
+            <BaseChip color="neutral">{{ t(`roles.${detail.role}`) }}</BaseChip>
+            <BaseChip :color="tierColor[detail.tier] || 'neutral'">{{ detail.tier }}</BaseChip>
+            <BaseChip :color="detail.status === 'suspended' ? 'error' : 'success'">{{ detail.status === 'suspended' ? t('admin.users.suspended') : t('admin.users.active') }}</BaseChip>
+            <BaseChip v-for="ar in detail.adminRoles" :key="ar" color="brand">{{ ar }}</BaseChip>
+          </div>
+
+          <!-- الحقول -->
+          <dl class="space-y-1.5 text-sm">
+            <div class="flex justify-between gap-2">
+              <dt class="text-muted">{{ t('admin.users.uuid') }}</dt>
+              <dd class="truncate font-mono text-xs text-content" dir="ltr">{{ detail.uuid }}</dd>
+            </div>
+            <div class="flex justify-between gap-2">
+              <dt class="text-muted">{{ t('admin.users.filterKind') }}</dt>
+              <dd class="text-content">{{ detail.kind === 'organization' ? t('admin.users.organization') : t('admin.users.individual') }}</dd>
+            </div>
+            <div class="flex justify-between gap-2">
+              <dt class="text-muted">{{ t('admin.users.joined') }}</dt>
+              <dd class="text-content">{{ fmtDate(detail.createdAt) }}</dd>
+            </div>
+            <div class="flex justify-between gap-2">
+              <dt class="text-muted">{{ t('admin.users.wallet') }}</dt>
+              <dd class="font-bold text-content">{{ detail.wallet.toLocaleString() }} <span class="text-xs text-muted">ر.س</span></dd>
+            </div>
+          </dl>
+
+          <!-- النشاط -->
+          <div>
+            <div class="mb-2 text-xs font-bold uppercase tracking-wide text-muted">{{ t('admin.users.activity') }}</div>
+            <div class="grid grid-cols-3 gap-2">
+              <div v-for="s in [
+                { label: t('admin.users.statOpportunities'), value: detail.stats.opportunities, icon: 'mdi-briefcase-outline' },
+                { label: t('admin.users.statApplications'), value: detail.stats.applications, icon: 'mdi-file-send-outline' },
+                { label: t('admin.users.statSurveys'), value: detail.stats.surveys, icon: 'mdi-clipboard-text-outline' },
+              ]" :key="s.label" class="rounded-ui border-ui p-2.5 text-center">
+                <BaseIcon :name="s.icon" :size="18" class="mb-1 text-brand" />
+                <div class="text-lg font-bold text-content">{{ s.value }}</div>
+                <div class="text-[11px] text-muted">{{ s.label }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- إجراءات -->
+        <div v-if="detail" class="flex flex-wrap justify-end gap-2 border-t border-ui p-4">
+          <BaseButton
+            variant="ghost"
+            :disabled="detail.id === selfId"
+            @click="toggleSuspend(detail)"
+          >
+            <BaseIcon
+              :name="detail.status === 'active' ? 'mdi-account-cancel-outline' : 'mdi-account-check-outline'"
+              :size="18"
+              :style="detail.status === 'active' ? 'color: rgb(var(--v-theme-error))' : 'color: rgb(var(--v-theme-success))'"
+            />
+            {{ detail.status === 'active' ? t('admin.users.suspend') : t('admin.users.activate') }}
+          </BaseButton>
+          <BaseButton variant="brand" @click="openEdit(detail)">
+            <BaseIcon name="mdi-pencil-outline" :size="18" />{{ t('admin.users.edit') }}
+          </BaseButton>
+        </div>
+      </div>
+    </BaseDrawer>
+
+    <!-- ===== درج التعديل ===== -->
     <BaseDrawer v-model="editOpen" :width="420" side="end">
       <div v-if="editing" class="flex h-full flex-col">
         <div class="flex items-center gap-2 border-b border-ui p-4">

@@ -223,6 +223,8 @@ export interface AdminRole { name: string, usersCount: number, permissions: stri
 export interface AdminRolesResponse { roles: AdminRole[], permissions: string[] }
 export interface AdminUserQuery { page?: number, perPage?: number, sort?: string, q?: string, role?: string, tier?: string, kind?: string, status?: string }
 export type AdminUserPatch = Partial<Pick<AdminUser, 'name' | 'email' | 'role' | 'tier' | 'kind'>> & { phone?: string | null }
+/** تفصيل مستخدم مُثرًى للاستعراض العميق */
+export interface AdminUserDetail extends AdminUser { wallet: number, stats: { opportunities: number, applications: number, surveys: number } }
 export interface AdminOpportunity { id: number, title: string, company: string, location: string, salary: string, category: string, skills: string[], createdAt?: string }
 export interface AdminMarketRequest { id: number, type: string, title: string, org: string, state: string, compensation: string, remote: boolean, createdAt?: string }
 export interface AdminMarketQuery { page?: number, perPage?: number, sort?: string, q?: string, category?: string, type?: string, state?: string }
@@ -305,7 +307,7 @@ export const api = {
   admin: {
     stats: () => get<AdminStats>(API_PATHS.admin.stats),
     users: (params?: AdminUserQuery) => getPage<AdminUser>(API_PATHS.admin.users, params as Record<string, unknown>),
-    user: (id: number) => get<AdminUser>(API_PATHS.admin.user(id)),
+    user: (id: number) => get<AdminUserDetail>(API_PATHS.admin.user(id)),
     updateUser: (id: number, body: AdminUserPatch) => patch<AdminUser>(API_PATHS.admin.user(id), body),
     suspendUser: (id: number) => post<AdminUser>(API_PATHS.admin.suspend(id)),
     activateUser: (id: number) => post<AdminUser>(API_PATHS.admin.activate(id)),
