@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import type { Opportunity } from '../interfaces/Opportunity'
 import { EMPLOYMENT_TYPE_LABELS, formatSalary } from '../interfaces/Opportunity'
 import { useSavedStore } from '@/stores/SavedStore'
@@ -9,15 +10,15 @@ import { useProfileStore } from '@/stores/ProfileStore'
 import { matchScore } from '@/services/matching'
 import { opportunityMatchProfile, seekerMatchProfile } from '@/services/matchProfile'
 import { useSectorContext } from '@/composables/useSectorContext'
-import { matchColor } from '@/utils/match'
+import MatchBadge from '@/components/shared/MatchBadge.vue'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseChip from '@/components/ui/BaseChip.vue'
 import BaseIcon from '@/components/ui/BaseIcon.vue'
 import BaseAvatar from '@/components/ui/BaseAvatar.vue'
-import BaseProgressBar from '@/components/ui/BaseProgressBar.vue'
 
 const props = defineProps<{ opportunity: Opportunity }>()
+const { t } = useI18n()
 const router = useRouter()
 const savedStore = useSavedStore()
 const applicationsStore = useApplicationsStore()
@@ -89,15 +90,7 @@ function openDetails() {
     </div>
 
     <!-- Match rate -->
-    <div class="mt-1">
-      <div class="mb-1 flex justify-between text-xs">
-        <span class="text-muted">نسبة التطابق الذكي</span>
-        <span class="font-bold" :style="{ color: `rgb(var(--v-theme-${matchColor(matchRate)}))` }">
-          {{ matchRate }}%
-        </span>
-      </div>
-      <BaseProgressBar :value="matchRate" :color="matchColor(matchRate)" :height="6" />
-    </div>
+    <MatchBadge :value="matchRate" variant="bar" :label="t('discovery.smartMatchRate')" />
 
     <div class="mt-4 flex items-center justify-between pt-2">
       <span class="flex items-center gap-1 text-xs text-muted">

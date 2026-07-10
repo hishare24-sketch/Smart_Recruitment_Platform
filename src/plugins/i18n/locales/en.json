@@ -145,5 +145,29 @@
     "recentActivity": "Recent Activity",
     "matchRate": "Match Rate",
     "viewAll": "View All"
+  },
+  "discovery": {
+    "all": "All",
+    "more": "More",
+    "allFilters": "All filters",
+    "sortBy": "Sort by",
+    "clearAll": "Clear all",
+    "yourViews": "Your views:",
+    "reset": "Reset",
+    "noResults": "No matching results",
+    "noResultsHint": "Try widening the filters or adjusting your search",
+    "resetFilters": "Reset filters",
+    "searchShort": "Search…",
+    "showAllOf": "Show all {label} ({count})",
+    "showLess": "Show less",
+    "onlyLabel": "{label} only",
+    "orMore": "or more",
+    "orLess": "or less",
+    "showN": "Show {count} {noun}",
+    "close": "Close",
+    "clear": "Clear",
+    "matchRate": "Match rate",
+    "smartMatchRate": "Smart match rate",
+    "matchShort": "Match"
   }
 }
