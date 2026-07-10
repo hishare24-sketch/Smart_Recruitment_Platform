@@ -9,7 +9,8 @@ import { useSavedStore } from '@/stores/SavedStore'
 import { useProfileStore } from '@/stores/ProfileStore'
 import { matchScore } from '@/services/matching'
 import { opportunityMatchProfile, seekerMatchProfile } from '@/services/matchProfile'
-import { getSector, sectorForField, visibleSectors } from '@/services/sectors'
+import { sectorForField, visibleSectors } from '@/services/sectors'
+import { categorizeSkill } from '@/services/taxonomy'
 import { useSectorContext } from '@/composables/useSectorContext'
 import type { FacetSpec, SortSpec } from '@/composables/useFacetedList'
 import FacetedList from '@/components/shared/FacetedList.vue'
@@ -58,7 +59,8 @@ const facets = computed<FacetSpec<Opportunity>[]>(() => [
   {
     // القطاع فاسِت محوريّ = كامل التصنيف المرئيّ (مرتّب بالأولويّة، يُخفي «أخرى»)
     key: 'sector', label: 'القطاعات', kind: 'multi', primary: true, searchable: true,
-    value: o => oppSector(o),
+    // القطاع من القسم أو من أي مهارة تُصنَّف إليه (يحفظ تسامح الشجرة القديمة)
+    value: o => [oppSector(o), ...o.skills.map(s => categorizeSkill(s))].filter((x): x is string => !!x),
     options: () => visibleSectors().map(s => ({ value: s.id, label: s.label, icon: s.icon })),
   },
   {
@@ -77,8 +79,9 @@ const facets = computed<FacetSpec<Opportunity>[]>(() => [
 ])
 
 const sorts = computed<SortSpec<Opportunity>[]>(() => [
-  { key: 'match', label: 'الأعلى تطابقًا', cmp: (a, b) => liveMatch(b) - liveMatch(a) },
+  { key: 'match', label: 'الأعلى تطابقًا', cmp: (a, b) => { const d = liveMatch(b) - liveMatch(a); return d !== 0 ? d : sector.boost(oppSector(b)) - sector.boost(oppSector(a)) } },
   { key: 'newest', label: 'الأحدث', cmp: (a, b) => a.postedDaysAgo - b.postedDaysAgo },
+  { key: 'oldest', label: 'الأقدم', cmp: (a, b) => b.postedDaysAgo - a.postedDaysAgo },
   { key: 'salary', label: 'الأعلى راتبًا', cmp: (a, b) => b.salaryMax - a.salaryMax },
   { key: 'salaryLow', label: 'الأقل راتبًا', cmp: (a, b) => a.salaryMax - b.salaryMax },
 ])

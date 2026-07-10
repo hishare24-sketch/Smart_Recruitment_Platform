@@ -63,6 +63,20 @@ describe('runFacets — التصفية', () => {
     expect(runFacets(JOBS, cfg, base({ ranges: { salary: 14000 } })).map(j => j.id)).toEqual([1, 4])
   })
 
+  it('فاسِت مدى بنمط «حدّ أقصى» (mode: max): يُبقي ≤ العتبة، وغير نشِط عند القيمة القصوى', () => {
+    const maxCfg = {
+      facets: [{ key: 'salary', label: 'راتب', kind: 'range' as const, numberValue: (j: Job) => j.salary, range: { min: 0, max: 30000, step: 1000, mode: 'max' as const } }],
+      sorts,
+      text: cfg.text,
+    }
+    // حدّ أقصى 12000 → يُبقي من راتبه ≤ 12000 (id 2 و3)
+    expect(runFacets(JOBS, maxCfg, base({ ranges: { salary: 12000 } })).map(j => j.id)).toEqual([2, 3])
+    // عند القيمة القصوى (30000) → غير نشِط، يُعيد الكل
+    expect(runFacets(JOBS, maxCfg, base({ ranges: { salary: 30000 } }))).toHaveLength(4)
+    // غير محدَّد → غير نشِط
+    expect(runFacets(JOBS, maxCfg, base())).toHaveLength(4)
+  })
+
   it('البحث النصّيّ يطابق العنوان والمهارات', () => {
     expect(runFacets(JOBS, cfg, base({ q: 'figma' })).map(j => j.id)).toEqual([3])
     expect(runFacets(JOBS, cfg, base({ q: 'مطوّر' })).map(j => j.id)).toEqual([1])

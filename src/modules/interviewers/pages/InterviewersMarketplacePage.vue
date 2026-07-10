@@ -6,7 +6,7 @@ import { BOOKING_STATUS_META, INTERVIEWER_TIER_META, INTERVIEWER_TIERS, INTERVIE
 import type { Interviewer, InterviewerType } from '@/stores/InterviewersStore'
 import { useProfileStore } from '@/stores/ProfileStore'
 import AttachmentsDialog from '@/components/shared/AttachmentsDialog.vue'
-import { ALL_SKILLS } from '@/services/taxonomy'
+import { ALL_SKILLS, categorizeSkill } from '@/services/taxonomy'
 import { sectorForField, visibleSectors } from '@/services/sectors'
 import { useSectorContext } from '@/composables/useSectorContext'
 import FacetedList from '@/components/shared/FacetedList.vue'
@@ -111,7 +111,8 @@ function matchOf(id: number) {
 const facets = computed<FacetSpec<Interviewer>[]>(() => [
   {
     key: 'sector', label: 'القطاعات', kind: 'multi', primary: true, searchable: true,
-    value: iv => ivSector(iv),
+    // القطاع من المجال أو من أي تخصّص يُصنَّف إليه (يحفظ تسامح الشجرة القديمة)
+    value: iv => [ivSector(iv), ...iv.specialties.map(s => categorizeSkill(s))].filter((x): x is string => !!x),
     options: () => visibleSectors().map(s => ({ value: s.id, label: s.label, icon: s.icon })),
   },
   {
@@ -124,6 +125,7 @@ const facets = computed<FacetSpec<Interviewer>[]>(() => [
     options: () => skillOptions.value.map(s => ({ value: s, label: s })),
   },
   { key: 'rating', label: 'أدنى تقييم', kind: 'range', numberValue: iv => iv.rating, range: { min: 0, max: 5, step: 0.5 } },
+  { key: 'price', label: 'الحدّ الأقصى للسعر', kind: 'range', numberValue: iv => iv.priceMin, range: { min: 30, max: 500, step: 10, mode: 'max' } },
 ])
 const sorts = computed<SortSpec<Interviewer>[]>(() => [
   { key: 'match', label: 'الأعلى تطابقًا', cmp: (a, b) => { const d = matchOf(b.id) - matchOf(a.id); return d !== 0 ? d : sector.boost(ivSector(b)) - sector.boost(ivSector(a)) } },

@@ -38,9 +38,13 @@ const RIBBON_LIMIT = 8
 
 const filterOpen = ref(false)
 const sortOpen = ref(false)
-const sheetSearch = ref('')
-const showAllOpts = ref(false)
+// حالة مستقلّة لكل فاسِت باحث (بحث + توسّع) — لا تتقاطع عند وجود فاسِتين قابلين للبحث
+const sheetSearch = ref<Record<string, string>>({})
+const showAllOpts = ref<Record<string, boolean>>({})
 const PRIMARY_TOPN = 6
+function facetQuery(key: string): string {
+  return sheetSearch.value[key] ?? ''
+}
 
 const activeSort = computed(() => props.sorts.find(s => s.key === api.state.sortKey) ?? props.sorts[0])
 
@@ -81,14 +85,14 @@ function onQuickChip(f: FacetSpec<T>) {
 
 // — محتوى الشيت (خيارات فاسِت متعدّد قابلة للبحث) —
 function sheetOptions(f: FacetSpec<T>) {
-  const q = sheetSearch.value.trim()
+  const q = facetQuery(f.key).trim()
   const opts = f.options?.() ?? []
   return f.searchable && q ? opts.filter(o => o.label.includes(q)) : opts
 }
-// قائمة مُختصرة (أهمّ N) للتصنيف القابل للبحث — تُوسَّع بـ«عرض كل القطاعات»
+// قائمة مُختصرة (أهمّ N) للتصنيف القابل للبحث — تُوسَّع بـ«عرض الكل»
 function displayOptions(f: FacetSpec<T>) {
   const all = sheetOptions(f)
-  if (sheetSearch.value.trim() || showAllOpts.value)
+  if (facetQuery(f.key).trim() || showAllOpts.value[f.key])
     return all
   return all.slice(0, PRIMARY_TOPN)
 }
@@ -199,7 +203,9 @@ function pickSort(key: string) {
     <slot name="banner" />
 
     <div v-if="api.results.value.length" class="grid gap-4" :class="view === 'grid' ? 'md:grid-cols-2' : 'grid-cols-1'">
-      <slot v-for="item in api.results.value" name="item" :item="item" :key="itemKey(item)" />
+      <template v-for="item in api.results.value" :key="itemKey(item)">
+        <slot name="item" :item="item" />
+      </template>
     </div>
     <slot v-else name="empty">
       <div class="rounded-ui border-ui py-12 text-center">
@@ -224,7 +230,7 @@ function pickSort(key: string) {
           <template v-if="f.kind === 'multi'">
             <div class="mb-2 mt-4 text-sm font-bold text-content">{{ f.label }}</div>
             <div v-if="f.searchable" class="relative mb-2">
-              <BaseInput v-model="sheetSearch" prefix-icon="mdi-magnify" placeholder="ابحث…" />
+              <BaseInput v-model="sheetSearch[f.key]" prefix-icon="mdi-magnify" placeholder="ابحث…" />
             </div>
             <!-- قابل للبحث (تصنيف كبير): أهمّ N صفوف + «عرض الكل» -->
             <div v-if="f.searchable">
@@ -245,12 +251,12 @@ function pickSort(key: string) {
                 <span class="flex-1 truncate text-sm">{{ opt.label }}</span>
               </button>
               <button
-                v-if="!sheetSearch.trim() && hiddenCount(f) > 0"
+                v-if="!facetQuery(f.key).trim() && hiddenCount(f) > 0"
                 type="button"
                 class="w-full py-2.5 text-center text-sm font-medium text-brand"
-                @click="showAllOpts = !showAllOpts"
+                @click="showAllOpts[f.key] = !showAllOpts[f.key]"
               >
-                {{ showAllOpts ? 'عرض أقل' : `عرض كل ${f.label} (${(f.options?.() ?? []).length})` }}
+                {{ showAllOpts[f.key] ? 'عرض أقل' : `عرض كل ${f.label} (${(f.options?.() ?? []).length})` }}
               </button>
             </div>
             <!-- قائمة قصيرة: رقائق -->
@@ -275,13 +281,13 @@ function pickSort(key: string) {
             >{{ f.label }} فقط</button>
           </template>
 
-          <!-- فاسِت مدى -->
+          <!-- فاسِت مدى (حدّ أدنى أو أقصى) -->
           <template v-else>
             <div class="mb-1 mt-4 text-sm font-bold text-content">
-              {{ f.label }} — {{ (api.state.ranges[f.key] ?? 0).toLocaleString('en-US') }} فأكثر
+              {{ f.label }} — {{ (api.state.ranges[f.key] ?? (f.range?.mode === 'max' ? f.range?.max : 0) ?? 0).toLocaleString('en-US') }} {{ f.range?.mode === 'max' ? 'فأقل' : 'فأكثر' }}
             </div>
             <BaseSlider
-              :model-value="api.state.ranges[f.key] ?? 0"
+              :model-value="api.state.ranges[f.key] ?? (f.range?.mode === 'max' ? (f.range?.max ?? 100) : 0)"
               :min="f.range?.min ?? 0"
               :max="f.range?.max ?? 100"
               :step="f.range?.step ?? 1"

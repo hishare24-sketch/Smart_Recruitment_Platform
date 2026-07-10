@@ -37,8 +37,12 @@ export interface FacetSpec<T> {
   boolValue?: (item: T) => boolean
   /** قيمة رقميّة للعنصر (range) */
   numberValue?: (item: T) => number
-  /** مدى المنزلق (range) */
-  range?: { min: number, max: number, step: number }
+  /**
+   * مدى المنزلق (range). `mode`:
+   * - 'min' (افتراضيّ): حدّ أدنى — يُبقي العناصر ≥ القيمة (غير نشِط عند 0).
+   * - 'max': حدّ أقصى — يُبقي العناصر ≤ القيمة (غير نشِط عند القيمة القصوى).
+   */
+  range?: { min: number, max: number, step: number, mode?: 'min' | 'max' }
 }
 
 /** تعريف فرز واحد (مفتاح + تسمية + مقارِن) */
@@ -71,6 +75,23 @@ function itemValues<T>(facet: FacetSpec<T>, item: T): string[] {
   return Array.isArray(v) ? v : [v]
 }
 
+/** هل فاسِت المدى نشِط؟ (min: >0 · max: أقلّ من القيمة القصوى) */
+function rangeActive<T>(f: FacetSpec<T>, state: FacetState): boolean {
+  const v = state.ranges[f.key]
+  if (f.range?.mode === 'max')
+    return v != null && v < (f.range.max ?? Number.POSITIVE_INFINITY)
+  return (v ?? 0) > 0
+}
+
+/** هل يمرّ العنصر عبر فاسِت المدى؟ */
+function rangePasses<T>(f: FacetSpec<T>, item: T, state: FacetState): boolean {
+  if (!rangeActive(f, state))
+    return true
+  const n = f.numberValue?.(item) ?? 0
+  const v = state.ranges[f.key]!
+  return f.range?.mode === 'max' ? n <= v : n >= v
+}
+
 /** المحرّك النقيّ: يصفّي ثم يفرز قائمة حسب الحالة (قابل للاختبار مباشرةً) */
 export function runFacets<T>(
   items: T[],
@@ -95,8 +116,7 @@ export function runFacets<T>(
           return false
       }
       else if (f.kind === 'range') {
-        const min = state.ranges[f.key] ?? 0
-        if (min > 0 && (f.numberValue?.(item) ?? 0) < min)
+        if (!rangePasses(f, item, state))
           return false
       }
     }
@@ -161,7 +181,7 @@ export function useFacetedList<T>(opts: {
       return (state.sel[key] ?? []).length > 0
     if (f.kind === 'bool')
       return !!state.bools[key]
-    return (state.ranges[key] ?? 0) > 0
+    return rangeActive(f, state)
   }
   /** عدد الاختيارات النشِطة لفاسِت متعدّد (لعرض «(2)» على الرقاقة) */
   function activeCount(key: string): number {
@@ -192,6 +212,8 @@ export function useFacetedList<T>(opts: {
     for (const f of opts.facets) {
       if (f.kind === 'multi') {
         const sel = state.sel[f.key] ?? []
+        if (!sel.length)
+          continue
         const optMap = new Map((f.options?.() ?? []).map(o => [o.value, o.label]))
         for (const v of sel) {
           chips.push({
@@ -204,11 +226,12 @@ export function useFacetedList<T>(opts: {
       else if (f.kind === 'bool' && state.bools[f.key]) {
         chips.push({ key: f.key, label: f.label, remove: () => setBool(f.key, false) })
       }
-      else if (f.kind === 'range' && (state.ranges[f.key] ?? 0) > 0) {
+      else if (f.kind === 'range' && rangeActive(f, state)) {
+        const v = state.ranges[f.key].toLocaleString('en-US')
         chips.push({
           key: f.key,
-          label: `${f.label} ${state.ranges[f.key].toLocaleString('en-US')}+`,
-          remove: () => setRange(f.key, 0),
+          label: f.range?.mode === 'max' ? `${f.label} ≤ ${v}` : `${f.label} ${v}+`,
+          remove: () => setRange(f.key, f.range?.mode === 'max' ? (f.range?.max ?? 0) : 0),
         })
       }
     }

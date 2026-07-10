@@ -10,6 +10,7 @@ import { matchScore } from '@/services/matching'
 import { requestMatchProfile, seekerMatchProfile } from '@/services/matchProfile'
 import { useSectorContext } from '@/composables/useSectorContext'
 import { sectorForField, visibleSectors } from '@/services/sectors'
+import { categorizeSkill } from '@/services/taxonomy'
 import type { FacetSpec, SortSpec } from '@/composables/useFacetedList'
 import FacetedList from '@/components/shared/FacetedList.vue'
 import BaseCard from '@/components/ui/BaseCard.vue'
@@ -62,8 +63,13 @@ const kinds = Object.keys(KIND_META) as RequestKind[]
 const facets = computed<FacetSpec<MarketRequest>[]>(() => [
   {
     key: 'sector', label: 'القطاعات', kind: 'multi', primary: true, searchable: true,
-    value: r => reqSector(r),
+    // القطاع من المجال أو من أي مهارة تُصنَّف إليه (يحفظ تسامح الشجرة القديمة)
+    value: r => [reqSector(r), ...r.skills.map(s => categorizeSkill(s))].filter((x): x is string => !!x),
     options: () => visibleSectors().map(s => ({ value: s.id, label: s.label, icon: s.icon })),
+  },
+  {
+    key: 'field', label: 'المجال', kind: 'multi', searchable: true, value: r => r.field,
+    options: () => store.fields.map(f => ({ value: f, label: f })),
   },
   {
     key: 'kind', label: 'نوع الطلب', kind: 'multi', value: r => r.kind,
@@ -75,11 +81,13 @@ const facets = computed<FacetSpec<MarketRequest>[]>(() => [
   },
   { key: 'remote', label: 'عن بُعد', kind: 'bool', boolValue: r => r.remote },
   { key: 'budget', label: 'الحدّ الأدنى للمقابل', kind: 'range', numberValue: r => r.budgetValue, range: { min: 0, max: 50000, step: 2500 } },
+  { key: 'duration', label: 'المدة (أسابيع)', kind: 'range', numberValue: r => r.durationWeeks, range: { min: 1, max: 20, step: 1, mode: 'max' } },
 ])
 
 const sorts = computed<SortSpec<MarketRequest>[]>(() => [
   { key: 'match', label: 'الأعلى تطابقًا', cmp: (a, b) => { const d = liveMatch(b) - liveMatch(a); return d !== 0 ? d : sector.boost(reqSector(b)) - sector.boost(reqSector(a)) } },
   { key: 'newest', label: 'الأحدث', cmp: (a, b) => b.postedOrder - a.postedOrder },
+  { key: 'oldest', label: 'الأقدم', cmp: (a, b) => a.postedOrder - b.postedOrder },
   { key: 'rating', label: 'الأعلى تقييمًا', cmp: (a, b) => b.orgRating - a.orgRating },
   { key: 'price', label: 'الأقل مقابلًا', cmp: (a, b) => a.budgetValue - b.budgetValue },
   { key: 'applicants', label: 'الأكثر تقدّمًا', cmp: (a, b) => b.applicants - a.applicants },
