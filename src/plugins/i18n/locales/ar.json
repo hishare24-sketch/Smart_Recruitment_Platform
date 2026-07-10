@@ -344,11 +344,14 @@
       "groupMain": "الرئيسيّة",
       "groupPeople": "المستخدمون والصلاحيّات",
       "groupMarketplace": "السوق",
+      "groupOperations": "العمليّات والماليّة",
       "overview": "النظرة العامّة",
       "users": "المستخدمون",
       "roles": "الأدوار والصلاحيّات",
       "opportunities": "الفرص",
-      "requests": "الطلبات"
+      "requests": "الطلبات",
+      "surveys": "الاستبيانات",
+      "wallets": "المحافظ"
     },
     "groups": {
       "users": "المستخدمون والأدوار",
@@ -462,12 +465,50 @@
       "confirmDeleteMsg": "سيُزال «{title}» نهائيًّا.",
       "bulkDelete": "حذف المحدّد"
     },
+    "surveys": {
+      "title": "الاستبيانات",
+      "subtitle": "إشراف على استبيانات المنصّة",
+      "searchPlaceholder": "بحث بعنوان الاستبيان...",
+      "colTitle": "العنوان",
+      "colOwner": "المالك",
+      "colState": "الحالة",
+      "colPoints": "النقاط",
+      "colResponses": "الردود",
+      "colCreated": "التاريخ",
+      "filterState": "الحالة",
+      "close": "إغلاق",
+      "delete": "حذف",
+      "confirmCloseTitle": "إغلاق الاستبيان؟",
+      "confirmCloseMsg": "سيتوقّف استقبال الردود لـ «{title}».",
+      "confirmDeleteTitle": "حذف الاستبيان؟",
+      "confirmDeleteMsg": "سيُزال «{title}» نهائيًّا."
+    },
+    "wallets": {
+      "title": "المحافظ",
+      "subtitle": "تحكّم ماليّ — عرض الأرصدة وتعديلها",
+      "searchPlaceholder": "بحث باسم المالك أو بريده...",
+      "colUser": "المالك",
+      "colEmail": "البريد",
+      "colBalance": "الرصيد",
+      "colTx": "الحركات",
+      "colUpdated": "آخر تحديث",
+      "adjust": "تعديل الرصيد",
+      "adjustTitle": "تعديل رصيد {name}",
+      "amount": "المبلغ (+ إضافة / − خصم)",
+      "note": "ملاحظة (اختياري)",
+      "credit": "إضافة",
+      "debit": "خصم",
+      "current": "الرصيد الحاليّ",
+      "apply": "تطبيق"
+    },
     "toast": {
       "updated": "تم الحفظ",
       "failed": "تعذّرت العملية",
       "suspended": "عُلّق الحساب",
       "activated": "فُعّل الحساب",
-      "roleUpdated": "حُدّث الدور"
+      "roleUpdated": "حُدّث الدور",
+      "closed": "أُغلق الاستبيان",
+      "adjusted": "عُدّل الرصيد"
     }
   }
 }

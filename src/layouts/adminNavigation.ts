@@ -36,4 +36,12 @@ export const ADMIN_NAV: AdminNavGroup[] = [
       { title: 'admin.nav.requests', icon: 'mdi-file-document-outline', to: 'admin-requests', permission: 'view_requests' },
     ],
   },
+  {
+    key: 'operations',
+    titleKey: 'admin.nav.groupOperations',
+    items: [
+      { title: 'admin.nav.surveys', icon: 'mdi-clipboard-text-outline', to: 'admin-surveys', permission: 'view_surveys' },
+      { title: 'admin.nav.wallets', icon: 'mdi-wallet-outline', to: 'admin-wallets', permission: 'view_wallets' },
+    ],
+  },
 ]

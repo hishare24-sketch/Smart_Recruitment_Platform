@@ -121,6 +121,11 @@ export const API_PATHS = {
     opportunity: (id: number) => `/admin/opportunities/${id}`,
     requests: '/admin/requests',
     request: (id: number) => `/admin/requests/${id}`,
+    surveys: '/admin/surveys',
+    survey: (id: number) => `/admin/surveys/${id}`,
+    surveyClose: (id: number) => `/admin/surveys/${id}/close`,
+    wallets: '/admin/wallets',
+    walletAdjust: (id: number) => `/admin/wallets/${id}/adjust`,
   },
   /** وسيط Claude — المفتاح يبقى في الخادم، والعقد يطابق أسماء src/services/ai/types.ts */
   ai: (contract: string) => `/v1/ai/${contract}`,
@@ -228,6 +233,8 @@ export interface AdminUserDetail extends AdminUser { wallet: number, stats: { op
 export interface AdminOpportunity { id: number, title: string, company: string, location: string, salary: string, category: string, skills: string[], createdAt?: string }
 export interface AdminMarketRequest { id: number, type: string, title: string, org: string, state: string, compensation: string, remote: boolean, createdAt?: string }
 export interface AdminMarketQuery { page?: number, perPage?: number, sort?: string, q?: string, category?: string, type?: string, state?: string }
+export interface AdminSurvey { id: number, title: string, state: string, points_pool: number, responses: number, owner: string | null, createdAt?: string }
+export interface AdminWallet { id: number, userId: number, userName: string | null, userEmail: string | null, balance: number, transactions: number, updatedAt?: string }
 
 export const api = {
   auth: {
@@ -318,6 +325,11 @@ export const api = {
     deleteOpportunity: (id: number) => del(API_PATHS.admin.opportunity(id)),
     requests: (params?: AdminMarketQuery) => getPage<AdminMarketRequest>(API_PATHS.admin.requests, params as Record<string, unknown>),
     deleteRequest: (id: number) => del(API_PATHS.admin.request(id)),
+    surveys: (params?: AdminMarketQuery) => getPage<AdminSurvey>(API_PATHS.admin.surveys, params as Record<string, unknown>),
+    closeSurvey: (id: number) => post(API_PATHS.admin.surveyClose(id)),
+    deleteSurvey: (id: number) => del(API_PATHS.admin.survey(id)),
+    wallets: (params?: AdminMarketQuery) => getPage<AdminWallet>(API_PATHS.admin.wallets, params as Record<string, unknown>),
+    adjustWallet: (id: number, amount: number, note?: string) => post<AdminWallet>(API_PATHS.admin.walletAdjust(id), { amount, note }),
   },
   /** تنفيذ عقد AI عبر وسيط الخادم — بديل claudeAi المباشر (يحمي المفتاح) */
   ai: <T>(contract: string, payload: Record<string, unknown>) => post<T>(API_PATHS.ai(contract), payload),

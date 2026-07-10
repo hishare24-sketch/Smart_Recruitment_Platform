@@ -322,6 +322,18 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('@/modules/admin/pages/AdminRequestsPage.vue'),
     meta: { layout: 'admin', roles: ['admin'], permission: 'view_requests', title: 'admin.nav.requests' },
   },
+  {
+    path: '/admin/surveys',
+    name: 'admin-surveys',
+    component: () => import('@/modules/admin/pages/AdminSurveysPage.vue'),
+    meta: { layout: 'admin', roles: ['admin'], permission: 'view_surveys', title: 'admin.nav.surveys' },
+  },
+  {
+    path: '/admin/wallets',
+    name: 'admin-wallets',
+    component: () => import('@/modules/admin/pages/AdminWalletsPage.vue'),
+    meta: { layout: 'admin', roles: ['admin'], permission: 'view_wallets', title: 'admin.nav.wallets' },
+  },
 
   // ===== Ecosystem expert roles (coach / trainer / consultant) =====
   {

@@ -344,11 +344,14 @@
       "groupMain": "Main",
       "groupPeople": "Users & Access",
       "groupMarketplace": "Marketplace",
+      "groupOperations": "Operations & Finance",
       "overview": "Overview",
       "users": "Users",
       "roles": "Roles & Permissions",
       "opportunities": "Opportunities",
-      "requests": "Requests"
+      "requests": "Requests",
+      "surveys": "Surveys",
+      "wallets": "Wallets"
     },
     "groups": {
       "users": "Users & Roles",
@@ -462,12 +465,50 @@
       "confirmDeleteMsg": "“{title}” will be permanently removed.",
       "bulkDelete": "Delete selected"
     },
+    "surveys": {
+      "title": "Surveys",
+      "subtitle": "Moderate platform surveys",
+      "searchPlaceholder": "Search by survey title...",
+      "colTitle": "Title",
+      "colOwner": "Owner",
+      "colState": "State",
+      "colPoints": "Points",
+      "colResponses": "Responses",
+      "colCreated": "Date",
+      "filterState": "State",
+      "close": "Close",
+      "delete": "Delete",
+      "confirmCloseTitle": "Close survey?",
+      "confirmCloseMsg": "“{title}” will stop accepting responses.",
+      "confirmDeleteTitle": "Delete survey?",
+      "confirmDeleteMsg": "“{title}” will be permanently removed."
+    },
+    "wallets": {
+      "title": "Wallets",
+      "subtitle": "Financial control — view and adjust balances",
+      "searchPlaceholder": "Search by owner name or email...",
+      "colUser": "Owner",
+      "colEmail": "Email",
+      "colBalance": "Balance",
+      "colTx": "Transactions",
+      "colUpdated": "Updated",
+      "adjust": "Adjust balance",
+      "adjustTitle": "Adjust {name}'s balance",
+      "amount": "Amount (+ credit / − debit)",
+      "note": "Note (optional)",
+      "credit": "Credit",
+      "debit": "Debit",
+      "current": "Current balance",
+      "apply": "Apply"
+    },
     "toast": {
       "updated": "Saved",
       "failed": "Action failed",
       "suspended": "Account suspended",
       "activated": "Account activated",
-      "roleUpdated": "Role updated"
+      "roleUpdated": "Role updated",
+      "closed": "Survey closed",
+      "adjusted": "Balance adjusted"
     }
   }
 }
