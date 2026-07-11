@@ -373,7 +373,8 @@
       "audit": "Audit log",
       "settings": "Platform settings",
       "billing": "Billing",
-      "governance": "Governance"
+      "governance": "Governance",
+      "broadcast": "Broadcast"
     },
     "groups": {
       "users": "Users & Roles",
@@ -829,6 +830,38 @@
       "confirm_resolved_title": "Resolve item?",
       "confirmMsg": "\"{subject}\"",
       "done": "Item reviewed"
+    },
+    "broadcast": {
+      "title": "Broadcast & notifications",
+      "subtitle": "Send targeted announcements and notifications to users",
+      "searchPlaceholder": "Search by broadcast title...",
+      "statTotal": "Broadcasts",
+      "statReach": "Total reach",
+      "statAudience": "Audience size",
+      "byChannel": "By channel",
+      "empty": "No broadcasts yet",
+      "colTitle": "Title",
+      "colChannel": "Channel",
+      "colAudience": "Audience",
+      "colRecipients": "Recipients",
+      "colSender": "Sender",
+      "colDate": "Date",
+      "ch_notification": "Notification",
+      "ch_banner": "Banner",
+      "ch_email": "Email",
+      "aud_all": "Everyone",
+      "aud_role": "By role",
+      "aud_tier": "By plan",
+      "newBroadcast": "New broadcast",
+      "send": "Send",
+      "sent": "Sent to {n} users",
+      "fieldTitle": "Title",
+      "fieldBody": "Message",
+      "fieldChannel": "Channel",
+      "fieldAudience": "Audience",
+      "fieldTarget": "Target",
+      "estimate": "Target audience",
+      "recipients": "{n} users"
     }
   }
 }

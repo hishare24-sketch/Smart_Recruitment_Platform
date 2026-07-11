@@ -122,6 +122,9 @@ export const API_PATHS = {
     moderation: '/admin/moderation',
     moderationStats: '/admin/moderation/stats',
     moderationResolve: (id: number) => `/admin/moderation/${id}/resolve`,
+    broadcasts: '/admin/broadcasts',
+    broadcastsStats: '/admin/broadcasts/stats',
+    broadcastAudience: '/admin/broadcasts/audience',
     roles: '/admin/roles',
     rolesStats: '/admin/roles/stats',
     role: (role: string) => `/admin/roles/${role}`,
@@ -259,6 +262,9 @@ export interface AdminStats {
 export interface AdminSetting { key: string, value: string | number | boolean, type: 'string' | 'number' | 'boolean' | 'select', group: string, label: string, description: string | null, options: { value: string, label: string }[], sort: number }
 export interface AdminModerationItem { id: number, type: string, subject: string, submitter: string, targetRef: string | null, reason: string | null, status: string, resolver: string | null, resolvedAt?: string, createdAt?: string }
 export interface AdminModerationStats { total: number, pending: number, approved: number, rejected: number, byType: { label: string, value: number }[], byStatus: { label: string, value: number }[], series: { date: string, value: number }[] }
+export interface AdminBroadcast { id: number, title: string, body: string, channel: string, audience: string, audience_value: string | null, status: string, recipients: number, sender: string | null, sentAt?: string, createdAt?: string }
+export interface AdminBroadcastCreate { title: string, body: string, channel: string, audience: string, audience_value?: string }
+export interface AdminBroadcastStats { total: number, reach: number, audienceSize: number, byChannel: { label: string, value: number }[], byAudience: { label: string, value: number }[] }
 export interface AdminAuditLog { id: number, actor: string, actorId: number | null, method: string, resource: string | null, action: string, path: string, targetId: number | null, status: number, ip: string | null, at?: string }
 export interface AdminAuditStats { total: number, today: number, actors: number, byAction: { label: string, value: number }[], byResource: { label: string, value: number }[], series: { date: string, value: number }[] }
 export interface AdminRole { name: string, usersCount: number, permissions: string[] }
@@ -389,6 +395,10 @@ export const api = {
     moderation: (params?: AdminMarketQuery) => getPage<AdminModerationItem>(API_PATHS.admin.moderation, params as Record<string, unknown>),
     moderationStats: () => get<AdminModerationStats>(API_PATHS.admin.moderationStats),
     resolveModeration: (id: number, decision: 'approved' | 'rejected' | 'resolved') => post<AdminModerationItem>(API_PATHS.admin.moderationResolve(id), { decision }),
+    broadcasts: (params?: AdminMarketQuery) => getPage<AdminBroadcast>(API_PATHS.admin.broadcasts, params as Record<string, unknown>),
+    broadcastsStats: () => get<AdminBroadcastStats>(API_PATHS.admin.broadcastsStats),
+    broadcastAudience: (audience: string, audience_value?: string) => get<{ count: number }>(API_PATHS.admin.broadcastAudience, { audience, audience_value }),
+    sendBroadcast: (body: AdminBroadcastCreate) => post<AdminBroadcast>(API_PATHS.admin.broadcasts, body),
     roles: () => get<AdminRolesResponse>(API_PATHS.admin.roles),
     rolesStats: () => get<AdminRolesStats>(API_PATHS.admin.rolesStats),
     createRole: (name: string, permissions: string[]) => post<AdminRole>(API_PATHS.admin.roles, { name, permissions }),

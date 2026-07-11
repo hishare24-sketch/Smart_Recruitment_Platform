@@ -373,7 +373,8 @@
       "audit": "سجلّ التدقيق",
       "settings": "إعدادات المنصّة",
       "billing": "الفوترة والاشتراكات",
-      "governance": "الحوكمة والإشراف"
+      "governance": "الحوكمة والإشراف",
+      "broadcast": "الإشعارات والبثّ"
     },
     "groups": {
       "users": "المستخدمون والأدوار",
@@ -829,6 +830,38 @@
       "confirm_resolved_title": "إغلاق العنصر؟",
       "confirmMsg": "«{subject}»",
       "done": "تمّ البتّ في العنصر"
+    },
+    "broadcast": {
+      "title": "الإشعارات والبثّ",
+      "subtitle": "إرسال إعلانات وإشعارات للمستخدمين باستهداف",
+      "searchPlaceholder": "بحث بعنوان البثّ...",
+      "statTotal": "عمليّات البثّ",
+      "statReach": "إجمالي الوصول",
+      "statAudience": "حجم الجمهور",
+      "byChannel": "التوزيع حسب القناة",
+      "empty": "لا عمليّات بثّ بعد",
+      "colTitle": "العنوان",
+      "colChannel": "القناة",
+      "colAudience": "الجمهور",
+      "colRecipients": "المستلمون",
+      "colSender": "المُرسِل",
+      "colDate": "التاريخ",
+      "ch_notification": "إشعار",
+      "ch_banner": "شريط",
+      "ch_email": "بريد",
+      "aud_all": "الجميع",
+      "aud_role": "حسب الدور",
+      "aud_tier": "حسب الباقة",
+      "newBroadcast": "بثّ جديد",
+      "send": "إرسال",
+      "sent": "أُرسل إلى {n} مستخدم",
+      "fieldTitle": "العنوان",
+      "fieldBody": "النصّ",
+      "fieldChannel": "القناة",
+      "fieldAudience": "الجمهور",
+      "fieldTarget": "الاستهداف",
+      "estimate": "الجمهور المستهدف",
+      "recipients": "{n} مستخدم"
     }
   }
 }
