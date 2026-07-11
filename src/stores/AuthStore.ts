@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import type { RoleEntry, RoleStatus, User, UserRole } from '@/interfaces/Auth'
 import { ROLE_META, ROLE_PERMISSIONS, defaultRoleEntries } from '@/services/roles'
+import { USE_REAL_API, api } from '@/services/api'
 
 const STORAGE_KEY = 'authUser'
 
@@ -94,6 +95,27 @@ export const useAuthStore = defineStore('auth', () => {
     persist()
   }
 
+  /**
+   * يزامن صلاحيّات/أدوار الأدمن من الخادم (me) عند الإقلاع — فتظهر الميزات الإداريّة
+   * الجديدة بمجرّد إعادة التحميل، بلا حاجة لتسجيل خروج/دخول. آمن الفشل (يُبقي الجلسة).
+   */
+  async function syncPermissions(): Promise<void> {
+    if (!authUser.value || !USE_REAL_API)
+      return
+    try {
+      const me = await api.auth.me()
+      const isAdmin = (me.adminRoles?.length ?? 0) > 0
+      // صلاحيّات الأدمن مصدرها الخادم؛ غير الأدمن يحتفظ بصلاحيّات دوره المحليّة
+      if (isAdmin && me.permissions?.length) {
+        authUser.value.permissions = me.permissions
+        if (authUser.value.role !== 'admin')
+          authUser.value.role = 'admin'
+      }
+      persist()
+    }
+    catch { /* تعذّر التزامن — تبقى الجلسة الحاليّة كما هي */ }
+  }
+
   /** التبديل إلى دور مفعّل — يحدّث الدور النشط وصلاحياته. يعيد false إن لم يكن الدور مفعّلًا. */
   function switchRole(r: UserRole): boolean {
     if (!authUser.value || !hasRole(r))
@@ -163,6 +185,7 @@ export const useAuthStore = defineStore('auth', () => {
     setAuthUser,
     clearAuthUser,
     setUserPermissions,
+    syncPermissions,
     switchRole,
     requestRole,
     activateRole,

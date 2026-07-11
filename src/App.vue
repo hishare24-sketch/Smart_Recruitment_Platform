@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useTheme } from 'vuetify'
@@ -8,8 +8,14 @@ import BlankLayout from '@/layouts/BlankLayout.vue'
 import FormsLayout from '@/layouts/FormsLayout.vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import { useThemeStore } from '@/stores/ThemeStore'
+import { useAuthStore } from '@/stores/AuthStore'
 
 const route = useRoute()
+
+// يزامن صلاحيّات الأدمن من الخادم مرّة عند الإقلاع — فتظهر الميزات الإداريّة الجديدة
+// بمجرّد إعادة التحميل بلا تسجيل خروج/دخول.
+const authStore = useAuthStore()
+onMounted(() => { authStore.syncPermissions() })
 const { locale } = useI18n()
 const theme = useTheme()
 
