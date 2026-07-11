@@ -362,6 +362,7 @@
       "roles": "Roles & Permissions",
       "opportunities": "Opportunities",
       "requests": "Requests",
+      "pipeline": "Hiring pipeline",
       "surveys": "Surveys",
       "wallets": "Wallets",
       "groupQuality": "Quality & Accreditation",
@@ -1074,6 +1075,25 @@
       "domFinance": "Finance",
       "domEngagement": "Engagement",
       "domQuality": "Quality"
+    },
+    "pipeline": {
+      "title": "Hiring Pipeline",
+      "subtitle": "Track candidates through hiring stages on a kanban board — from applied to hired",
+      "allOpportunities": "All opportunities",
+      "total": "Total candidates",
+      "active": "Active",
+      "hired": "Hired",
+      "rejected": "Rejected",
+      "hireRate": "Hire rate",
+      "applied": "Applied",
+      "emptyStage": "No candidates",
+      "moved": "Moved {name} to \"{stage}\"",
+      "stage_applied": "Applied",
+      "stage_screening": "Screening",
+      "stage_interview": "Interview",
+      "stage_offer": "Offer",
+      "stage_hired": "Hired",
+      "stage_rejected": "Rejected"
     },
     "health": {
       "title": "System Health & Observability",

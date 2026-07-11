@@ -362,6 +362,7 @@
       "roles": "الأدوار والصلاحيّات",
       "opportunities": "الفرص",
       "requests": "الطلبات",
+      "pipeline": "خطّ التوظيف",
       "surveys": "الاستبيانات",
       "wallets": "المحافظ",
       "groupQuality": "الجودة والاعتماد",
@@ -1074,6 +1075,25 @@
       "domFinance": "الماليّة",
       "domEngagement": "التفاعل",
       "domQuality": "الجودة"
+    },
+    "pipeline": {
+      "title": "خطّ أنابيب التوظيف",
+      "subtitle": "تتبّع المتقدّمين عبر مراحل التوظيف بلوحة كانبان — من التقديم إلى التوظيف",
+      "allOpportunities": "كل الفرص",
+      "total": "إجمالي المتقدّمين",
+      "active": "نشطون",
+      "hired": "تمّ توظيفهم",
+      "rejected": "مرفوضون",
+      "hireRate": "نسبة التوظيف",
+      "applied": "تقدّم في",
+      "emptyStage": "لا متقدّمين",
+      "moved": "نُقل {name} إلى «{stage}»",
+      "stage_applied": "تقدّم",
+      "stage_screening": "فرز",
+      "stage_interview": "مقابلة",
+      "stage_offer": "عرض",
+      "stage_hired": "توظيف",
+      "stage_rejected": "مرفوض"
     },
     "health": {
       "title": "صحّة النظام والمراقبة",

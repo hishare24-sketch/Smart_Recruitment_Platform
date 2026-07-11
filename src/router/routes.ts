@@ -323,6 +323,12 @@ export const routes: RouteRecordRaw[] = [
     meta: { layout: 'admin', roles: ['admin'], permission: 'view_requests', title: 'admin.nav.requests' },
   },
   {
+    path: '/admin/pipeline',
+    name: 'admin-pipeline',
+    component: () => import('@/modules/admin/pages/AdminPipelinePage.vue'),
+    meta: { layout: 'admin', roles: ['admin'], permission: 'view_pipeline', title: 'admin.nav.pipeline' },
+  },
+  {
     path: '/admin/surveys',
     name: 'admin-surveys',
     component: () => import('@/modules/admin/pages/AdminSurveysPage.vue'),

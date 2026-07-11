@@ -197,6 +197,11 @@ export const API_PATHS = {
     reportsOverview: '/admin/reports/overview',
     reportsReport: '/admin/reports/report',
     systemHealth: '/admin/system/health',
+    pipelineBoard: '/admin/pipeline/board',
+    pipelineStats: '/admin/pipeline/stats',
+    pipelineOpportunities: '/admin/pipeline/opportunities',
+    pipelineMove: (id: number) => `/admin/pipeline/applications/${id}/move`,
+    pipelineBulkMove: '/admin/pipeline/bulk-move',
   },
   /** وسيط Claude — المفتاح يبقى في الخادم، والعقد يطابق أسماء src/services/ai/types.ts */
   ai: (contract: string) => `/v1/ai/${contract}`,
@@ -407,6 +412,13 @@ export interface ReportResult {
   rows: (string | number)[][]
 }
 export type ReportDomain = 'growth' | 'finance' | 'funnel' | 'engagement' | 'quality'
+// ——— خطّ أنابيب التوظيف (ATS) ———
+export type PipelineStageKey = 'applied' | 'screening' | 'interview' | 'offer' | 'hired' | 'rejected'
+export interface PipelineCard { id: number, candidate: string, candidateEmail: string | null, opportunity: string, company: string | null, opportunityId: number, stage: PipelineStageKey, note: string | null, appliedAt: string | null, stageChangedAt: string | null }
+export interface PipelineStage { key: PipelineStageKey, count: number, items: PipelineCard[] }
+export interface PipelineBoard { stages: PipelineStage[] }
+export interface PipelineStats { total: number, active: number, hired: number, rejected: number, hireRate: number, byStage: { label: string, value: number }[] }
+export interface PipelineOpportunity { id: number, title: string, company: string | null, applications: number }
 // ——— صحّة النظام ———
 export interface HealthService { key: string, label: string, status: 'ok' | 'warn' | 'down', detail: string, metric: number | null, driver: string | null }
 export interface HealthMetrics { users: number, pendingJobs: number, failedJobs: number, requestsToday: number, errorsToday: number, php: string, laravel: string, env: string, debug: boolean }
@@ -607,6 +619,11 @@ export const api = {
     reportsOverview: () => get<ReportOverview>(API_PATHS.admin.reportsOverview),
     report: (domain: ReportDomain, from?: string, to?: string) => get<ReportResult>(API_PATHS.admin.reportsReport, { domain, from, to }),
     systemHealth: () => get<SystemHealth>(API_PATHS.admin.systemHealth),
+    pipelineBoard: (opportunityId?: number) => get<PipelineBoard>(API_PATHS.admin.pipelineBoard, opportunityId ? { opportunity_id: opportunityId } : undefined),
+    pipelineStats: (opportunityId?: number) => get<PipelineStats>(API_PATHS.admin.pipelineStats, opportunityId ? { opportunity_id: opportunityId } : undefined),
+    pipelineOpportunities: () => get<PipelineOpportunity[]>(API_PATHS.admin.pipelineOpportunities),
+    movePipeline: (id: number, toStage: string, note?: string) => post<PipelineCard>(API_PATHS.admin.pipelineMove(id), { to_stage: toStage, note }),
+    bulkMovePipeline: (ids: number[], toStage: string) => post<{ moved: number }>(API_PATHS.admin.pipelineBulkMove, { ids, to_stage: toStage }),
     toggleAiCapability: (id: number) => post<AiCapability>(API_PATHS.admin.aiCapabilityToggle(id)),
     addAiKnowledge: (body: AiKnowledgePayload) => post<AiKnowledgeEntry>(API_PATHS.admin.aiKnowledge, body),
     updateAiKnowledge: (id: number, body: Partial<AiKnowledgePayload>) => put<AiKnowledgeEntry>(API_PATHS.admin.aiKnowledgeItem(id), body),
