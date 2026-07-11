@@ -68,6 +68,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     titleKey: 'admin.nav.groupIntelligence',
     items: [
       { title: 'admin.nav.ai', icon: 'mdi-robot-outline', to: 'admin-ai', permission: 'view_ai' },
+      { title: 'admin.nav.chat', icon: 'mdi-forum-outline', to: 'admin-chat', permission: 'view_chat' },
     ],
   },
   {

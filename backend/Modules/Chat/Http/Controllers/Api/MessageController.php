@@ -4,6 +4,7 @@ namespace Modules\Chat\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Modules\Chat\Entities\ChatSetting;
 use Modules\Chat\Events\MessageSent;
 use Modules\Chat\Http\Requests\Api\ReadThreadRequest;
 use Modules\Chat\Http\Requests\Api\SendMessageRequest;
@@ -16,6 +17,11 @@ class MessageController extends Controller
 
     public function send(SendMessageRequest $request)
     {
+        // حوكمة المحادثات تحكم الإرسال فعليًّا (fallback مُفعّل عند غياب الإعداد — يُبقي السلوك القديم).
+        if (! ChatSetting::flag('direct_messages_enabled', true)) {
+            abort(403, __('Direct messaging is currently disabled by the platform administrator.'));
+        }
+
         $user = $request->user();
         $message = $this->service->send($user->uuid, $user->name, $request->validated());
         $payload = (new DirectMessageResource($message))->resolve();

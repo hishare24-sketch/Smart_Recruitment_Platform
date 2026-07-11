@@ -53,6 +53,9 @@ class PermissionEnum
 
             // الذكاء الاصطناعيّ (حوكمة المساعد)
             'view_ai', 'manage_ai',
+
+            // المحادثات (إشراف وحوكمة)
+            'view_chat', 'manage_chat',
         ];
     }
 }

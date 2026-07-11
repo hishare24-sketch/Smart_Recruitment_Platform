@@ -378,7 +378,8 @@
       "groupSupport": "Support",
       "support": "Support tickets",
       "groupIntelligence": "Artificial Intelligence",
-      "ai": "AI governance"
+      "ai": "AI governance",
+      "chat": "Chat oversight"
     },
     "groups": {
       "users": "Users & Roles",
@@ -390,7 +391,8 @@
       "billing": "Plans & Wallet",
       "analytics": "Analytics",
       "support": "Support",
-      "ai": "Artificial Intelligence"
+      "ai": "Artificial Intelligence",
+      "communications": "Communications"
     },
     "overview": {
       "title": "Overview",
@@ -989,6 +991,51 @@
       "toastKnowledgeAdded": "Entry added",
       "toastKnowledgeSaved": "Entry saved",
       "toastKnowledgeDeleted": "Entry deleted"
+    },
+    "chat": {
+      "title": "Chat Oversight",
+      "subtitle": "Govern messaging and the AI assistant, and monitor platform conversations",
+      "statThreads": "Threads",
+      "statMessages": "Messages",
+      "statActiveToday": "Active today",
+      "statParticipants": "Participants",
+      "activity": "Message activity (14 days)",
+      "aiCardTitle": "AI assistant integration",
+      "aiCardHint": "Assistant status is governed by the AI module — disabling any gate stops the in-chat assistant.",
+      "assistantLive": "Assistant live",
+      "assistantOff": "Assistant off",
+      "on": "On",
+      "off": "Off",
+      "gateAiMaster": "AI master switch",
+      "gateChatSection": "Chat assistant section",
+      "gateProvider": "Provider/Model",
+      "gateLevel": "Assistant level",
+      "manageAi": "Manage AI governance",
+      "governanceTitle": "Chat governance",
+      "swDirectTitle": "Direct messages",
+      "swDirectHint": "Disabling this blocks user-to-user messaging immediately",
+      "swAssistantTitle": "In-chat AI assistant",
+      "swAssistantHint": "Offer the AI assistant to users (integrated with AI governance)",
+      "swModerationTitle": "Message moderation",
+      "swModerationHint": "Monitor content and flag suspicious messages",
+      "testTitle": "Test the AI assistant",
+      "testHint": "Try the assistant with current settings — the reply is composed by the governed level, injects knowledge, and is blocked if AI is off.",
+      "testPlaceholder": "Type a test message as a user...",
+      "testRun": "Try",
+      "tokensCap": "{n} token cap",
+      "simulated": "Simulation",
+      "usedKnowledge": "Grounded in",
+      "oversightTitle": "Conversation monitoring",
+      "searchPlaceholder": "Search by participant or text...",
+      "colParticipants": "Participants",
+      "colLast": "Last message",
+      "colMessages": "Messages",
+      "colUnread": "Unread",
+      "colActivity": "Last activity",
+      "empty": "No conversations.",
+      "read": "Read",
+      "readOnlyNote": "Read-only oversight view — you cannot intervene in the conversation.",
+      "saved": "Setting saved"
     }
   }
 }

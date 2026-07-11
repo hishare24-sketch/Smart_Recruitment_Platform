@@ -400,6 +400,12 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('@/modules/admin/pages/AdminAiPage.vue'),
     meta: { layout: 'admin', roles: ['admin'], permission: 'view_ai', title: 'admin.nav.ai' },
   },
+  {
+    path: '/admin/chat',
+    name: 'admin-chat',
+    component: () => import('@/modules/admin/pages/AdminChatPage.vue'),
+    meta: { layout: 'admin', roles: ['admin'], permission: 'view_chat', title: 'admin.nav.chat' },
+  },
 
   // ===== Ecosystem expert roles (coach / trainer / consultant) =====
   {

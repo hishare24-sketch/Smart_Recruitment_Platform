@@ -18,6 +18,7 @@ export const ADMIN_PERMISSIONS = [
   'view_support', 'manage_support',
   'view_analytics', 'view_audit', 'view_settings', 'manage_settings',
   'view_ai', 'manage_ai',
+  'view_chat', 'manage_chat',
 ] as const
 
 export type AdminPermission = typeof ADMIN_PERMISSIONS[number]
@@ -36,4 +37,5 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
   { key: 'support', labelKey: 'admin.groups.support', permissions: ['view_support', 'manage_support'] },
   { key: 'analytics', labelKey: 'admin.groups.analytics', permissions: ['view_analytics', 'view_audit', 'view_settings', 'manage_settings'] },
   { key: 'ai', labelKey: 'admin.groups.ai', permissions: ['view_ai', 'manage_ai'] },
+  { key: 'communications', labelKey: 'admin.groups.communications', permissions: ['view_chat', 'manage_chat'] },
 ]

@@ -174,6 +174,12 @@ export const API_PATHS = {
     aiCapabilityToggle: (id: number) => `/admin/ai/capabilities/${id}/toggle`,
     aiKnowledge: '/admin/ai/knowledge',
     aiKnowledgeItem: (id: number) => `/admin/ai/knowledge/${id}`,
+    chat: '/admin/chat',
+    chatSettings: '/admin/chat/settings',
+    chatStats: '/admin/chat/stats',
+    chatThreads: '/admin/chat/threads',
+    chatThread: (key: string) => `/admin/chat/threads/${encodeURIComponent(key)}`,
+    chatAssistantPreview: '/admin/chat/assistant-preview',
   },
   /** وسيط Claude — المفتاح يبقى في الخادم، والعقد يطابق أسماء src/services/ai/types.ts */
   ai: (contract: string) => `/v1/ai/${contract}`,
@@ -356,6 +362,16 @@ export interface AiSettingsPatch {
 }
 export interface AiQuotaField { maxTokensPerRequest: number, dailyTokens: number, weeklyTokens: number, monthlyTokens: number }
 export interface AiKnowledgePayload { title: string, content: string, tags?: string[], enabled?: boolean }
+// ——— إشراف المحادثات ———
+export interface ChatSettings { directMessagesEnabled: boolean, assistantEnabled: boolean, moderationEnabled: boolean, retentionDays: number }
+export interface ChatAiLinkage { aiEnabled: boolean, chatCapabilityEnabled: boolean, assistantEnabled: boolean, effectiveEnabled: boolean, provider: string, model: string | null, assistantLevel: number }
+export interface ChatConfig { settings: ChatSettings, aiLinkage: ChatAiLinkage }
+export interface ChatThread { key: string, participants: string[], messagesCount: number, lastBody: string, lastSender: string, lastMessageAt: string | null, unread: number }
+export interface ChatMessage { id: number, senderId: string, senderName: string, body: string, read: boolean, at: string | null }
+export interface ChatThreadDetail { key: string, participants: string[], messages: ChatMessage[] }
+export interface ChatStats { threads: number, messages: number, activeToday: number, participants: number, series: { date: string, value: number }[], topSenders: { label: string, value: number }[] }
+export interface ChatAssistantPreview { reply: string, level: number, tokensCap: number, provider: string, model: string | null, simulated: boolean, usedKnowledge: string[] }
+export interface ChatSettingsPatch { direct_messages_enabled?: boolean, assistant_enabled?: boolean, moderation_enabled?: boolean, retention_days?: number }
 
 export const api = {
   auth: {
@@ -513,6 +529,13 @@ export const api = {
     addAiKnowledge: (body: AiKnowledgePayload) => post<AiKnowledgeEntry>(API_PATHS.admin.aiKnowledge, body),
     updateAiKnowledge: (id: number, body: Partial<AiKnowledgePayload>) => put<AiKnowledgeEntry>(API_PATHS.admin.aiKnowledgeItem(id), body),
     deleteAiKnowledge: (id: number) => del(API_PATHS.admin.aiKnowledgeItem(id)),
+    // إشراف المحادثات
+    chatConfig: () => get<ChatConfig>(API_PATHS.admin.chat),
+    updateChatSettings: (body: ChatSettingsPatch) => put<ChatSettings>(API_PATHS.admin.chatSettings, body),
+    chatStats: () => get<ChatStats>(API_PATHS.admin.chatStats),
+    chatThreads: (params?: { page?: number, perPage?: number, q?: string }) => getPage<ChatThread>(API_PATHS.admin.chatThreads, params as Record<string, unknown>),
+    chatThread: (key: string) => get<ChatThreadDetail>(API_PATHS.admin.chatThread(key)),
+    chatAssistantPreview: (prompt: string) => post<ChatAssistantPreview>(API_PATHS.admin.chatAssistantPreview, { prompt }),
   },
   /** تنفيذ عقد AI عبر وسيط الخادم — بديل claudeAi المباشر (يحمي المفتاح) */
   ai: <T>(contract: string, payload: Record<string, unknown>) => post<T>(API_PATHS.ai(contract), payload),
