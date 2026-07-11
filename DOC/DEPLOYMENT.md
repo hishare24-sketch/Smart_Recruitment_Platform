@@ -35,10 +35,10 @@
 - Render يبني الصورة، ثمّ `preDeployCommand` يشغّل **`migrate --force` + `permission:insert`** تلقائيًّا.
 - تحقّق الصحّة: `GET https://<api>/up` → 200.
 
-### 5) Resend + Firebase (تكامل — دفعة تالية)
-> السقالة تُبقي المفاتيح جاهزة؛ يبقى تركيب الحزمتين:
-- **Resend:** `composer require resend/resend-laravel` — يُفعّل محرّك البريد `resend`.
-- **Firebase FCM:** `composer require laravel-notification-channels/fcm` + قناة إشعار تقرأ `FIREBASE_CREDENTIALS`، تكمّل بثّ Reverb الحاليّ.
+### 5) Resend + Firebase (مربوطان في الباك-إند ✅)
+- **Resend (البريد):** الحزمة `resend/resend-laravel` مُثبَّتة، ومحرّك البريد `resend` مُعدّ. يُرسَل **بريد ترحيبيّ مُصفَّر** عند التسجيل. **يكفي ضبط `RESEND_API_KEY` + `MAIL_FROM_ADDRESS` في Render** ليعمل الإرسال الحقيقيّ.
+- **Firebase FCM (Push):** الحزمة `kreait/laravel-firebase` مُثبَّتة + `FcmService` محكوم يُرسِل Push لأجهزة المستخدم مع كلّ إشعار (يُكمّل بثّ Reverb)، وينظّف التوكنات غير الصالحة. جدول `device_tokens` + نقطتا العميل `POST/DELETE /api/v1/device-tokens`. **يكفي ضبط `FIREBASE_CREDENTIALS` في Render** ليعمل الإرسال.
+  - **متبقٍّ أماميّ (اختياريّ):** ويب-Push الفعليّ يحتاج Service Worker + Firebase JS SDK + إذن المتصفّح، ثمّ استدعاء `POST /api/v1/device-tokens`. الباك-إند جاهز لاستقباله.
 
 ### 6) الدومين + Reverb + الواجهة
 1. اربط دومينك بخدمة `recruitment-api` (Render → Settings → Custom Domain، SSL تلقائيّ).
