@@ -77,6 +77,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     titleKey: 'admin.nav.groupSystem',
     items: [
       { title: 'admin.nav.reports', icon: 'mdi-chart-box-outline', to: 'admin-reports', permission: 'view_reports' },
+      { title: 'admin.nav.health', icon: 'mdi-heart-pulse', to: 'admin-system-health', permission: 'view_health' },
       { title: 'admin.nav.broadcast', icon: 'mdi-bullhorn-outline', to: 'admin-broadcast', permission: 'view_broadcast' },
       { title: 'admin.nav.audit', icon: 'mdi-history', to: 'admin-audit', permission: 'view_audit' },
       { title: 'admin.nav.settings', icon: 'mdi-cog-outline', to: 'admin-settings', permission: 'view_settings' },

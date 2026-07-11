@@ -371,6 +371,7 @@
       "surveyTemplates": "Survey templates",
       "groupSystem": "System",
       "reports": "Insights & Reports",
+      "health": "System health",
       "audit": "Audit log",
       "settings": "Platform settings",
       "billing": "Billing",
@@ -1073,6 +1074,24 @@
       "domFinance": "Finance",
       "domEngagement": "Engagement",
       "domQuality": "Quality"
+    },
+    "health": {
+      "title": "System Health & Observability",
+      "subtitle": "Live operational checks: database, cache, queue, broadcast, AI provider + recent errors",
+      "refresh": "Refresh",
+      "overall": "Overall status",
+      "st_ok": "Healthy",
+      "st_warn": "Warning",
+      "st_down": "Down",
+      "mUsers": "Users",
+      "mPending": "Pending jobs",
+      "mFailed": "Failed jobs",
+      "mRequests": "Requests today",
+      "mErrors": "Errors today",
+      "activity": "Request activity (14 days)",
+      "errorsTrend": "Errors trend",
+      "recentErrors": "Recent errors",
+      "noErrors": "No errors — everything running smoothly."
     },
     "hub": {
       "title": "Support & Assistant Hub",

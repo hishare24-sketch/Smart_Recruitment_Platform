@@ -196,6 +196,7 @@ export const API_PATHS = {
     chatAssistantPreview: '/admin/chat/assistant-preview',
     reportsOverview: '/admin/reports/overview',
     reportsReport: '/admin/reports/report',
+    systemHealth: '/admin/system/health',
   },
   /** وسيط Claude — المفتاح يبقى في الخادم، والعقد يطابق أسماء src/services/ai/types.ts */
   ai: (contract: string) => `/v1/ai/${contract}`,
@@ -406,6 +407,17 @@ export interface ReportResult {
   rows: (string | number)[][]
 }
 export type ReportDomain = 'growth' | 'finance' | 'funnel' | 'engagement' | 'quality'
+// ——— صحّة النظام ———
+export interface HealthService { key: string, label: string, status: 'ok' | 'warn' | 'down', detail: string, metric: number | null, driver: string | null }
+export interface HealthMetrics { users: number, pendingJobs: number, failedJobs: number, requestsToday: number, errorsToday: number, php: string, laravel: string, env: string, debug: boolean }
+export interface HealthError { at: string | null, action: string, resource: string | null, status: number, actor: string | null }
+export interface SystemHealth {
+  services: HealthService[]
+  metrics: HealthMetrics
+  recentErrors: HealthError[]
+  series: { date: string, value: number, errors: number }[]
+  overall: 'ok' | 'warn' | 'down'
+}
 // ——— المساعد الذكيّ للمستخدم + الدعم ———
 export interface AssistantGovernanceState { aiEnabled: boolean, capabilityEnabled: boolean, assistantEnabled: boolean, effectiveEnabled: boolean, level: number, provider: string, model: string | null }
 export interface AssistantActivity { wallet: number, opportunities: number, applications: number, surveys: number }
@@ -594,6 +606,7 @@ export const api = {
       put<{ planQuotas: AiQuota[], docMaxReads: number }>(API_PATHS.admin.aiQuotas, body),
     reportsOverview: () => get<ReportOverview>(API_PATHS.admin.reportsOverview),
     report: (domain: ReportDomain, from?: string, to?: string) => get<ReportResult>(API_PATHS.admin.reportsReport, { domain, from, to }),
+    systemHealth: () => get<SystemHealth>(API_PATHS.admin.systemHealth),
     toggleAiCapability: (id: number) => post<AiCapability>(API_PATHS.admin.aiCapabilityToggle(id)),
     addAiKnowledge: (body: AiKnowledgePayload) => post<AiKnowledgeEntry>(API_PATHS.admin.aiKnowledge, body),
     updateAiKnowledge: (id: number, body: Partial<AiKnowledgePayload>) => put<AiKnowledgeEntry>(API_PATHS.admin.aiKnowledgeItem(id), body),

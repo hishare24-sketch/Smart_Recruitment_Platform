@@ -59,6 +59,9 @@ class PermissionEnum
 
             // الرؤى والتقارير
             'view_reports',
+
+            // صحّة النظام والمراقبة
+            'view_health',
         ];
     }
 }
