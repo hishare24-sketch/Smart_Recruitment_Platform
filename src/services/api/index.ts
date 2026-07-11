@@ -167,6 +167,13 @@ export const API_PATHS = {
     invoices: '/admin/invoices',
     invoicesStats: '/admin/invoices/stats',
     invoiceRefund: (id: number) => `/admin/invoices/${id}/refund`,
+    ai: '/admin/ai',
+    aiStats: '/admin/ai/stats',
+    aiSettings: '/admin/ai/settings',
+    aiQuotas: '/admin/ai/quotas',
+    aiCapabilityToggle: (id: number) => `/admin/ai/capabilities/${id}/toggle`,
+    aiKnowledge: '/admin/ai/knowledge',
+    aiKnowledgeItem: (id: number) => `/admin/ai/knowledge/${id}`,
   },
   /** وسيط Claude — المفتاح يبقى في الخادم، والعقد يطابق أسماء src/services/ai/types.ts */
   ai: (contract: string) => `/v1/ai/${contract}`,
@@ -311,6 +318,44 @@ export interface AdminPlanCreate { key: string, name: string, price: number, sur
 export interface AdminPlansStats { totalPlans: number, activePlans: number, subscribers: number, mrr: number, distribution: { label: string, value: number }[] }
 export interface AdminInvoice { id: number, user: string, userId: number | null, plan_key: string, plan_name: string | null, amount: number, status: string, reference: string | null, refundedAt?: string, createdAt?: string }
 export interface AdminBillingStats { revenue: number, invoices: number, paid: number, refunded: number, refundedAmount: number, byPlan: { label: string, value: number }[], series: { date: string, value: number }[] }
+// ——— الذكاء الاصطناعيّ (حوكمة المساعد) ———
+export type AiProvider = 'simulation' | 'claude' | 'openai' | 'custom'
+export interface AiSettings {
+  enabled: boolean
+  provider: AiProvider
+  model: string | null
+  apiKey: string | null
+  endpoint: string | null
+  temperature: number
+  maxTokens: number
+  language: 'ar' | 'en' | 'auto'
+  systemPrompt: string | null
+  assistantLevel: 1 | 2 | 3
+  allowUserLevelOverride: boolean
+  docMaxReads: number
+  levelTokens: Record<string, number>
+}
+export interface AiCapability { id: number, key: string, label: string, icon: string | null, hint: string | null, enabled: boolean }
+export interface AiKnowledgeEntry { id: number, title: string, content: string, tags: string[], enabled: boolean }
+export interface AiQuota { key: string, name: string, maxTokensPerRequest: number, dailyTokens: number, weeklyTokens: number, monthlyTokens: number }
+export interface AiConfig { settings: AiSettings, capabilities: AiCapability[], knowledge: AiKnowledgeEntry[], planQuotas: AiQuota[] }
+export interface AiStats { enabled: boolean, provider: string, model: string | null, capabilitiesTotal: number, capabilitiesEnabled: number, knowledgeTotal: number, knowledgeActive: number, plansConfigured: number, assistantLevel: number, distribution: { label: string, value: number }[] }
+export interface AiSettingsPatch {
+  enabled?: boolean
+  provider?: AiProvider
+  model?: string | null
+  api_key?: string | null
+  endpoint?: string | null
+  temperature?: number
+  max_tokens?: number
+  language?: 'ar' | 'en' | 'auto'
+  system_prompt?: string | null
+  assistant_level?: number
+  allow_user_level_override?: boolean
+  level_tokens?: Record<string, number>
+}
+export interface AiQuotaField { maxTokensPerRequest: number, dailyTokens: number, weeklyTokens: number, monthlyTokens: number }
+export interface AiKnowledgePayload { title: string, content: string, tags?: string[], enabled?: boolean }
 
 export const api = {
   auth: {
@@ -458,6 +503,16 @@ export const api = {
     createPlan: (body: AdminPlanCreate) => post<AdminPlan>(API_PATHS.admin.plans, body),
     updatePlan: (id: number, body: AdminPlanPatch) => put<AdminPlan>(API_PATHS.admin.plan(id), body),
     deletePlan: (id: number) => del(API_PATHS.admin.plan(id)),
+    // الذكاء الاصطناعيّ
+    aiConfig: () => get<AiConfig>(API_PATHS.admin.ai),
+    aiStats: () => get<AiStats>(API_PATHS.admin.aiStats),
+    updateAiSettings: (body: AiSettingsPatch) => put<AiSettings>(API_PATHS.admin.aiSettings, body),
+    updateAiQuotas: (body: { doc_max_reads?: number, quotas?: Record<string, AiQuotaField> }) =>
+      put<{ planQuotas: AiQuota[], docMaxReads: number }>(API_PATHS.admin.aiQuotas, body),
+    toggleAiCapability: (id: number) => post<AiCapability>(API_PATHS.admin.aiCapabilityToggle(id)),
+    addAiKnowledge: (body: AiKnowledgePayload) => post<AiKnowledgeEntry>(API_PATHS.admin.aiKnowledge, body),
+    updateAiKnowledge: (id: number, body: Partial<AiKnowledgePayload>) => put<AiKnowledgeEntry>(API_PATHS.admin.aiKnowledgeItem(id), body),
+    deleteAiKnowledge: (id: number) => del(API_PATHS.admin.aiKnowledgeItem(id)),
   },
   /** تنفيذ عقد AI عبر وسيط الخادم — بديل claudeAi المباشر (يحمي المفتاح) */
   ai: <T>(contract: string, payload: Record<string, unknown>) => post<T>(API_PATHS.ai(contract), payload),

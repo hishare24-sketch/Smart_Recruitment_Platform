@@ -7,6 +7,7 @@ use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Modules\Account\Database\Seeders\PlanSeeder;
 use Modules\Account\Database\Seeders\PlatformAccountSeeder;
+use Modules\Ai\Database\Seeders\AiSeeder;
 use Modules\Governance\Database\Seeders\ModerationSeeder;
 use Modules\Support\Database\Seeders\TicketSeeder;
 use Modules\Settings\Database\Seeders\PlatformSettingSeeder;
@@ -34,5 +35,6 @@ class DatabaseSeeder extends Seeder
         $this->call(PlatformSettingSeeder::class);
         $this->call(ModerationSeeder::class);
         $this->call(TicketSeeder::class);
+        $this->call(AiSeeder::class);
     }
 }

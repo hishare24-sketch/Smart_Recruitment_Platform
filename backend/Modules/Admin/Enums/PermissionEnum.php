@@ -50,6 +50,9 @@ class PermissionEnum
 
             // التحليلات وسجلّ التدقيق والإعدادات
             'view_analytics', 'view_audit', 'view_settings', 'manage_settings',
+
+            // الذكاء الاصطناعيّ (حوكمة المساعد)
+            'view_ai', 'manage_ai',
         ];
     }
 }

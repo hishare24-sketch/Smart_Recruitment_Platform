@@ -17,6 +17,7 @@ export const ADMIN_PERMISSIONS = [
   'view_platform_accounts', 'manage_platform_accounts',
   'view_support', 'manage_support',
   'view_analytics', 'view_audit', 'view_settings', 'manage_settings',
+  'view_ai', 'manage_ai',
 ] as const
 
 export type AdminPermission = typeof ADMIN_PERMISSIONS[number]
@@ -34,4 +35,5 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
   { key: 'billing', labelKey: 'admin.groups.billing', permissions: ['view_plans', 'create_plans', 'update_plans', 'delete_plans', 'view_billing', 'manage_billing', 'view_wallets', 'adjust_wallets', 'view_platform_accounts', 'manage_platform_accounts'] },
   { key: 'support', labelKey: 'admin.groups.support', permissions: ['view_support', 'manage_support'] },
   { key: 'analytics', labelKey: 'admin.groups.analytics', permissions: ['view_analytics', 'view_audit', 'view_settings', 'manage_settings'] },
+  { key: 'ai', labelKey: 'admin.groups.ai', permissions: ['view_ai', 'manage_ai'] },
 ]
