@@ -205,6 +205,10 @@ export const API_PATHS = {
     matchingSettings: '/admin/matching/settings',
     matchingShortlist: '/admin/matching/shortlist',
     branding: '/admin/branding',
+    archive: '/admin/archive',
+    archiveStats: '/admin/archive/stats',
+    archiveRestore: '/admin/archive/restore',
+    archivePurge: '/admin/archive/purge',
   },
   /** هويّة المنصّة العامّة (بلا مصادقة) */
   brandingPublic: '/v1/branding',
@@ -424,6 +428,9 @@ export interface PipelineStage { key: PipelineStageKey, count: number, items: Pi
 export interface PipelineBoard { stages: PipelineStage[] }
 export interface PipelineStats { total: number, active: number, hired: number, rejected: number, hireRate: number, byStage: { label: string, value: number }[] }
 export interface PipelineOpportunity { id: number, title: string, company: string | null, applications: number }
+// ——— الأرشيف ———
+export interface ArchiveItem { type: string, id: number, title: string, deletedAt: string | null }
+export interface ArchiveStats { total: number, byType: { label: string, value: number }[] }
 // ——— هويّة المنصّة (Branding) ———
 export interface Branding {
   platformName: string
@@ -666,6 +673,10 @@ export const api = {
     matchingShortlist: (opportunityId: number) => get<MatchShortlist>(API_PATHS.admin.matchingShortlist, { opportunity_id: opportunityId }),
     branding: () => get<Branding>(API_PATHS.admin.branding),
     updateBranding: (body: BrandingPatch) => put<Branding>(API_PATHS.admin.branding, body),
+    archive: (params?: { type?: string, page?: number }) => getPage<ArchiveItem>(API_PATHS.admin.archive, params as Record<string, unknown>),
+    archiveStats: () => get<ArchiveStats>(API_PATHS.admin.archiveStats),
+    restoreArchive: (type: string, id: number) => post<{ restored: boolean }>(API_PATHS.admin.archiveRestore, { type, id }),
+    purgeArchive: (type: string, id: number) => post<{ purged: boolean }>(API_PATHS.admin.archivePurge, { type, id }),
     toggleAiCapability: (id: number) => post<AiCapability>(API_PATHS.admin.aiCapabilityToggle(id)),
     addAiKnowledge: (body: AiKnowledgePayload) => post<AiKnowledgeEntry>(API_PATHS.admin.aiKnowledge, body),
     updateAiKnowledge: (id: number, body: Partial<AiKnowledgePayload>) => put<AiKnowledgeEntry>(API_PATHS.admin.aiKnowledgeItem(id), body),

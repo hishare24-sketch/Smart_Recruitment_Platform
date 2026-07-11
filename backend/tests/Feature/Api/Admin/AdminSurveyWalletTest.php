@@ -42,7 +42,7 @@ class AdminSurveyWalletTest extends TestCase
             ->assertJsonPath('data.state', 'closed');
 
         $this->deleteJson("/api/admin/surveys/{$survey->id}")->assertOk();
-        $this->assertDatabaseMissing('surveys', ['id' => $survey->id]);
+        $this->assertSoftDeleted('surveys', ['id' => $survey->id]);
     }
 
     public function test_admin_can_adjust_wallet(): void

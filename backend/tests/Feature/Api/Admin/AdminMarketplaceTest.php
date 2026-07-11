@@ -40,7 +40,7 @@ class AdminMarketplaceTest extends TestCase
             ->assertJsonStructure(['data', 'meta' => ['current_page', 'total']]);
 
         $this->deleteJson("/api/admin/opportunities/{$opp->id}")->assertOk();
-        $this->assertDatabaseMissing('opportunities', ['id' => $opp->id]);
+        $this->assertSoftDeleted('opportunities', ['id' => $opp->id]);
     }
 
     public function test_admin_can_list_and_delete_requests(): void
@@ -53,7 +53,7 @@ class AdminMarketplaceTest extends TestCase
             ->assertJsonStructure(['data', 'meta']);
 
         $this->deleteJson("/api/admin/requests/{$req->id}")->assertOk();
-        $this->assertDatabaseMissing('market_requests', ['id' => $req->id]);
+        $this->assertSoftDeleted('market_requests', ['id' => $req->id]);
     }
 
     public function test_non_admin_cannot_list_opportunities(): void

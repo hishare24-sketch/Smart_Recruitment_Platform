@@ -65,6 +65,9 @@ class PermissionEnum
 
             // صحّة النظام والمراقبة
             'view_health',
+
+            // الأرشيف ودورة حياة البيانات
+            'view_archive', 'manage_archive',
         ];
     }
 }
