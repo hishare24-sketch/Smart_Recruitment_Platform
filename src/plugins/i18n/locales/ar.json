@@ -374,7 +374,9 @@
       "settings": "إعدادات المنصّة",
       "billing": "الفوترة والاشتراكات",
       "governance": "الحوكمة والإشراف",
-      "broadcast": "الإشعارات والبثّ"
+      "broadcast": "الإشعارات والبثّ",
+      "groupSupport": "الدعم",
+      "support": "الدعم والتذاكر"
     },
     "groups": {
       "users": "المستخدمون والأدوار",
@@ -384,7 +386,8 @@
       "governance": "الحوكمة",
       "broadcast": "البثّ والإشعارات",
       "billing": "الباقات والمحفظة",
-      "analytics": "التحليلات"
+      "analytics": "التحليلات",
+      "support": "الدعم"
     },
     "overview": {
       "title": "النظرة العامّة",
@@ -862,6 +865,43 @@
       "fieldTarget": "الاستهداف",
       "estimate": "الجمهور المستهدف",
       "recipients": "{n} مستخدم"
+    },
+    "support": {
+      "title": "الدعم والتذاكر",
+      "subtitle": "إدارة تذاكر المستخدمين والردّ عليها",
+      "searchPlaceholder": "بحث بالعنوان أو المستخدم...",
+      "statTotal": "التذاكر",
+      "statOpen": "مفتوحة",
+      "statPending": "قيد المعالجة",
+      "statResolved": "محلولة",
+      "byCategory": "التوزيع حسب الفئة",
+      "byPriority": "التوزيع حسب الأولويّة",
+      "colSubject": "الموضوع",
+      "colUser": "المستخدم",
+      "colCategory": "الفئة",
+      "colPriority": "الأولويّة",
+      "colStatus": "الحالة",
+      "colReplies": "الردود",
+      "cat_billing": "فوترة",
+      "cat_technical": "تقنيّ",
+      "cat_account": "حساب",
+      "cat_other": "أخرى",
+      "prio_low": "منخفضة",
+      "prio_normal": "عاديّة",
+      "prio_high": "عالية",
+      "prio_urgent": "عاجلة",
+      "st_open": "مفتوحة",
+      "st_pending": "قيد المعالجة",
+      "st_resolved": "محلولة",
+      "st_closed": "مغلقة",
+      "staff": "الدعم",
+      "assignedTo": "مُسندة إلى",
+      "assignToMe": "أسنِدها لي",
+      "assigned": "أُسندت إليك",
+      "reply": "إرسال الردّ",
+      "replied": "أُرسل الردّ",
+      "replyPlaceholder": "اكتب ردّك...",
+      "statusChanged": "تغيّرت الحالة"
     }
   }
 }

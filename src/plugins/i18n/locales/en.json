@@ -374,7 +374,9 @@
       "settings": "Platform settings",
       "billing": "Billing",
       "governance": "Governance",
-      "broadcast": "Broadcast"
+      "broadcast": "Broadcast",
+      "groupSupport": "Support",
+      "support": "Support tickets"
     },
     "groups": {
       "users": "Users & Roles",
@@ -384,7 +386,8 @@
       "governance": "Governance",
       "broadcast": "Broadcast & Notifications",
       "billing": "Plans & Wallet",
-      "analytics": "Analytics"
+      "analytics": "Analytics",
+      "support": "Support"
     },
     "overview": {
       "title": "Overview",
@@ -862,6 +865,43 @@
       "fieldTarget": "Target",
       "estimate": "Target audience",
       "recipients": "{n} users"
+    },
+    "support": {
+      "title": "Support tickets",
+      "subtitle": "Manage and respond to user tickets",
+      "searchPlaceholder": "Search by subject or user...",
+      "statTotal": "Tickets",
+      "statOpen": "Open",
+      "statPending": "Pending",
+      "statResolved": "Resolved",
+      "byCategory": "By category",
+      "byPriority": "By priority",
+      "colSubject": "Subject",
+      "colUser": "User",
+      "colCategory": "Category",
+      "colPriority": "Priority",
+      "colStatus": "Status",
+      "colReplies": "Replies",
+      "cat_billing": "Billing",
+      "cat_technical": "Technical",
+      "cat_account": "Account",
+      "cat_other": "Other",
+      "prio_low": "Low",
+      "prio_normal": "Normal",
+      "prio_high": "High",
+      "prio_urgent": "Urgent",
+      "st_open": "Open",
+      "st_pending": "Pending",
+      "st_resolved": "Resolved",
+      "st_closed": "Closed",
+      "staff": "Staff",
+      "assignedTo": "Assigned to",
+      "assignToMe": "Assign to me",
+      "assigned": "Assigned to you",
+      "reply": "Send reply",
+      "replied": "Reply sent",
+      "replyPlaceholder": "Type your reply...",
+      "statusChanged": "Status changed"
     }
   }
 }

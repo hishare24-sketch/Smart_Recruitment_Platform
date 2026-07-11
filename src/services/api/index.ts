@@ -125,6 +125,12 @@ export const API_PATHS = {
     broadcasts: '/admin/broadcasts',
     broadcastsStats: '/admin/broadcasts/stats',
     broadcastAudience: '/admin/broadcasts/audience',
+    tickets: '/admin/tickets',
+    ticketsStats: '/admin/tickets/stats',
+    ticket: (id: number) => `/admin/tickets/${id}`,
+    ticketReply: (id: number) => `/admin/tickets/${id}/reply`,
+    ticketStatus: (id: number) => `/admin/tickets/${id}/status`,
+    ticketAssign: (id: number) => `/admin/tickets/${id}/assign`,
     roles: '/admin/roles',
     rolesStats: '/admin/roles/stats',
     role: (role: string) => `/admin/roles/${role}`,
@@ -265,6 +271,9 @@ export interface AdminModerationStats { total: number, pending: number, approved
 export interface AdminBroadcast { id: number, title: string, body: string, channel: string, audience: string, audience_value: string | null, status: string, recipients: number, sender: string | null, sentAt?: string, createdAt?: string }
 export interface AdminBroadcastCreate { title: string, body: string, channel: string, audience: string, audience_value?: string }
 export interface AdminBroadcastStats { total: number, reach: number, audienceSize: number, byChannel: { label: string, value: number }[], byAudience: { label: string, value: number }[] }
+export interface AdminTicketReply { id: number, author: string | null, isStaff: boolean, body: string, at?: string }
+export interface AdminTicket { id: number, subject: string, user: string, category: string, priority: string, status: string, assignee: string | null, repliesCount: number, lastReplyAt?: string, createdAt?: string, replies?: AdminTicketReply[] }
+export interface AdminSupportStats { total: number, open: number, pending: number, resolved: number, byCategory: { label: string, value: number }[], byPriority: { label: string, value: number }[], series: { date: string, value: number }[] }
 export interface AdminAuditLog { id: number, actor: string, actorId: number | null, method: string, resource: string | null, action: string, path: string, targetId: number | null, status: number, ip: string | null, at?: string }
 export interface AdminAuditStats { total: number, today: number, actors: number, byAction: { label: string, value: number }[], byResource: { label: string, value: number }[], series: { date: string, value: number }[] }
 export interface AdminRole { name: string, usersCount: number, permissions: string[] }
@@ -399,6 +408,12 @@ export const api = {
     broadcastsStats: () => get<AdminBroadcastStats>(API_PATHS.admin.broadcastsStats),
     broadcastAudience: (audience: string, audience_value?: string) => get<{ count: number }>(API_PATHS.admin.broadcastAudience, { audience, audience_value }),
     sendBroadcast: (body: AdminBroadcastCreate) => post<AdminBroadcast>(API_PATHS.admin.broadcasts, body),
+    tickets: (params?: AdminMarketQuery & { priority?: string }) => getPage<AdminTicket>(API_PATHS.admin.tickets, params as Record<string, unknown>),
+    ticketsStats: () => get<AdminSupportStats>(API_PATHS.admin.ticketsStats),
+    ticket: (id: number) => get<AdminTicket>(API_PATHS.admin.ticket(id)),
+    replyTicket: (id: number, body: string) => post<AdminTicket>(API_PATHS.admin.ticketReply(id), { body }),
+    setTicketStatus: (id: number, status: string) => put<AdminTicket>(API_PATHS.admin.ticketStatus(id), { status }),
+    assignTicket: (id: number) => post<AdminTicket>(API_PATHS.admin.ticketAssign(id)),
     roles: () => get<AdminRolesResponse>(API_PATHS.admin.roles),
     rolesStats: () => get<AdminRolesStats>(API_PATHS.admin.rolesStats),
     createRole: (name: string, permissions: string[]) => post<AdminRole>(API_PATHS.admin.roles, { name, permissions }),

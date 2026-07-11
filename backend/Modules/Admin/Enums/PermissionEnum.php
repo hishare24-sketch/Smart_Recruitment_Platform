@@ -45,6 +45,9 @@ class PermissionEnum
             // نماذج الاستبيانات
             'view_survey_templates', 'manage_survey_templates',
 
+            // الدعم والتذاكر
+            'view_support', 'manage_support',
+
             // التحليلات وسجلّ التدقيق والإعدادات
             'view_analytics', 'view_audit', 'view_settings', 'manage_settings',
         ];
