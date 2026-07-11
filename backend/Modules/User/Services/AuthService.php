@@ -9,6 +9,11 @@ class AuthService
 {
     public function register(array $data): array
     {
+        // بوّابة التسجيل من إعدادات المنصّة (الافتراضيّ مسموح)
+        if (! setting('registration.allow_signups', true)) {
+            abort(403, __('Registration is currently disabled.'));
+        }
+
         $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
@@ -28,6 +33,11 @@ class AuthService
 
         if (! $user || ! Hash::check($data['password'], $user->password)) {
             return null;
+        }
+
+        // الحساب المُعلَّق من الأدمن يُمنع من الدخول (403 — البيانات صحيحة لكن الحساب موقوف)
+        if ($user->isSuspended()) {
+            abort(403, __('This account is suspended. Please contact support.'));
         }
 
         return $this->sessionFor($user);

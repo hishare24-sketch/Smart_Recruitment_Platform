@@ -1,14 +1,21 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useTheme } from 'vuetify'
 import DefaultLayout from '@/layouts/DefaultLayout.vue'
 import BlankLayout from '@/layouts/BlankLayout.vue'
 import FormsLayout from '@/layouts/FormsLayout.vue'
+import AdminLayout from '@/layouts/AdminLayout.vue'
 import { useThemeStore } from '@/stores/ThemeStore'
+import { useAuthStore } from '@/stores/AuthStore'
+import { api } from '@/services/api'
 
 const route = useRoute()
+
+// يزامن صلاحيّات الأدمن من الخادم مرّة عند الإقلاع — فتظهر الميزات الإداريّة الجديدة
+// بمجرّد إعادة التحميل بلا تسجيل خروج/دخول.
+const authStore = useAuthStore()
 const { locale } = useI18n()
 const theme = useTheme()
 
@@ -17,10 +24,32 @@ const theme = useTheme()
 const themeStore = useThemeStore()
 themeStore.bind(theme)
 
+onMounted(async () => {
+  // يزامن صلاحيّات الأدمن من الخادم — فتظهر الميزات الإداريّة الجديدة بإعادة التحميل بلا تسجيل دخول.
+  authStore.syncPermissions()
+  // هويّة المنصّة الافتراضيّة — تُطبَّق فقط إن لم يخصّص المستخدم ثيمه بعد.
+  if (!localStorage.getItem('themePrefs')) {
+    try {
+      const b = await api.branding()
+      if (b) {
+        themeStore.setPreset(b.preset)
+        themeStore.setMode(b.mode)
+        if (b.primaryColor)
+          themeStore.setCustomPrimary(b.primaryColor)
+        if (b.secondaryColor)
+          themeStore.setCustomSecondary(b.secondaryColor)
+        themeStore.apply()
+      }
+    }
+    catch { /* الثيم الافتراضيّ */ }
+  }
+})
+
 const layouts = {
   default: DefaultLayout,
   blank: BlankLayout,
   forms: FormsLayout,
+  admin: AdminLayout,
 }
 
 const layoutComponent = computed(() => {

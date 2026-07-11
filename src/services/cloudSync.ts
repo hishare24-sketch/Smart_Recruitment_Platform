@@ -47,13 +47,14 @@ export interface PublicProfileDocOptions extends CloudDocContract {
 const NEST_PRIVATE_STORES = new Set([
   'requests', 'postedOpportunities', 'applications', // السوق
   'interviews', 'interviewerWorkspace', // المقابلات وورشة المقيّم
-  'surveys', 'notifications', // الاستبيانات والإشعارات
+  'surveys', // الاستبيانات (الإشعارات نُقلت لمصدرها الخادميّ /v1/notifications + بثّ Reverb — لا تُزامَن ككتلة account-states)
   'wallet', 'accountPlan', // المحفظة وباقة الحساب (سِجِلّ العميل يبقى؛ الدفع الخادمي الذرّي مؤجّل لطور المدفوعات الحقيقية)
   // بقية المخازن الخاصة (blob) — نفس الآلية العامة:
   'messages', 'wishes', 'saved', 'reviews', 'gamification', 'candidates',
   'roleProfiles', 'resumes', 'searchPrefs', 'expertRoles', 'peerRequests',
   'roleRequests', 'endorser', 'interviewerBrand',
   'persona', // شخصيّة الحساب: seekerPersona/orgType + القطاعات المهتمّ بها (onboarding)
+  'accountPrefs', // تفضيلات الإعدادات: الإشعارات + الخصوصية + حجم الخط
 ])
 
 /**
