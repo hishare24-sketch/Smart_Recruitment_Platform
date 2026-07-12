@@ -33,9 +33,9 @@ function profilePayload() {
   return {
     headline: profile.headline,
     field: profile.headline,
-    skills: profile.skills.map(s => ({ name: s.name, level: s.selfLevel })),
-    experiences: profile.experiences.map(e => ({ title: e.title, org: e.company, years: 0, summary: e.desc })),
-    certificates: profile.certificates.map(c => ({ name: c.name, issuer: c.issuer, year: c.date })),
+    skills: skills.value.map(s => ({ name: s.name, level: s.level })),
+    experiences: experiences.value.map(e => ({ title: e.title, org: e.org, years: 0, summary: e.desc })),
+    certificates: certificates.value.map(c => ({ name: c.name, issuer: c.issuer, year: c.date })),
   }
 }
 
@@ -64,14 +64,31 @@ onMounted(() => compose('medium'))
 // ——— الثيمات ———
 interface Theme { key: string, name: string, layout: 'single' | 'sidebar' | 'band' }
 const THEMES: Theme[] = [
-  { key: 'classic', name: 'كلاسيكيّ فاتح', layout: 'single' },
-  { key: 'modern', name: 'عصريّ فاتح', layout: 'single' },
-  { key: 'sidebar', name: 'مكس — جانبيّ ملوّن', layout: 'sidebar' },
-  { key: 'band', name: 'مكس — ترويسة داكنة', layout: 'band' },
+  { key: 'classic', name: 'كلاسيكيّ', layout: 'single' },
+  { key: 'modern', name: 'عصريّ', layout: 'single' },
+  { key: 'minimal', name: 'مينيمال', layout: 'single' },
+  { key: 'timeline', name: 'خطّ زمنيّ', layout: 'single' },
+  { key: 'elegant', name: 'أنيق (Serif)', layout: 'single' },
+  { key: 'sidebar', name: 'جانبيّ ملوّن', layout: 'sidebar' },
+  { key: 'sidebarSoft', name: 'جانبيّ ناعم', layout: 'sidebar' },
+  { key: 'band', name: 'ترويسة داكنة', layout: 'band' },
+  { key: 'bandAccent', name: 'ترويسة ملوّنة', layout: 'band' },
 ]
-const theme = ref<Theme>(THEMES[2])
-const ACCENTS = ['#0f6e56', '#185fa5', '#534ab7', '#993c1d', '#0d9488', '#b45309']
+const theme = ref<Theme>(THEMES[5])
+const ACCENTS = ['#0f6e56', '#185fa5', '#534ab7', '#993c1d', '#0d9488', '#b45309', '#be185d', '#111827']
 const accent = ref(ACCENTS[0])
+
+// ——— نمط العرض (ديناميكيّة الهويّة) ———
+const DENSITIES = [{ key: 'compact', name: 'مضغوط', scale: 0.88 }, { key: 'cozy', name: 'متوسّط', scale: 1 }, { key: 'spacious', name: 'مريح', scale: 1.12 }]
+const density = ref(DENSITIES[1])
+const FONTS = [{ key: 'tajawal', name: 'Tajawal', css: `'Tajawal', sans-serif` }, { key: 'cairo', name: 'Cairo', css: `'Cairo', 'Tajawal', sans-serif` }, { key: 'amiri', name: 'Amiri', css: `'Amiri', 'Tajawal', serif` }]
+const font = ref(FONTS[0])
+const headerAlign = ref<'start' | 'center'>('start')
+const pageStyle = computed(() => ({
+  '--accent': accent.value,
+  '--scale': String(density.value.scale),
+  'fontFamily': font.value.css,
+}))
 
 // ——— الأقسام: ترتيب + إظهار (سحب) ———
 interface Section { key: string, label: string, visible: boolean }
@@ -97,6 +114,23 @@ function addEdu() { if (!newEdu.degree.trim()) return; education.value.push({ id
 function addLang() { if (!newLang.name.trim()) return; languages.value.push({ id: Date.now(), name: newLang.name.trim(), level: newLang.level }); newLang.name = '' }
 function removeEdu(id: number) { education.value = education.value.filter(e => e.id !== id) }
 function removeLang(id: number) { languages.value = languages.value.filter(l => l.id !== id) }
+
+// ——— محتوى قابل للتحرير داخل الاستوديو (مبذور من الملف، مع إضافة لكلّ قسم) ———
+interface SkillItem { id: number, name: string, level: number }
+interface ExpItem { id: number, title: string, org: string, period: string, desc: string }
+interface CertItem { id: number, name: string, issuer: string, date: string }
+const skills = ref<SkillItem[]>(profile.skills.map(s => ({ id: s.id, name: s.name, level: s.selfLevel })))
+const experiences = ref<ExpItem[]>(profile.experiences.map(e => ({ id: e.id, title: e.title, org: e.company, period: e.period, desc: e.desc })))
+const certificates = ref<CertItem[]>(profile.certificates.map(c => ({ id: c.id, name: c.name, issuer: c.issuer, date: c.date })))
+const newSkill = reactive({ name: '', level: 3 })
+const newExp = reactive({ title: '', org: '', period: '', desc: '' })
+const newCert = reactive({ name: '', issuer: '', date: '' })
+function addSkill() { if (!newSkill.name.trim()) return; skills.value.push({ id: Date.now(), name: newSkill.name.trim(), level: Number(newSkill.level) || 3 }); newSkill.name = '' }
+function addExp() { if (!newExp.title.trim()) return; experiences.value.push({ id: Date.now(), title: newExp.title.trim(), org: newExp.org.trim(), period: newExp.period.trim(), desc: newExp.desc.trim() }); newExp.title = ''; newExp.org = ''; newExp.period = ''; newExp.desc = '' }
+function addCert() { if (!newCert.name.trim()) return; certificates.value.push({ id: Date.now(), name: newCert.name.trim(), issuer: newCert.issuer.trim(), date: newCert.date.trim() }); newCert.name = ''; newCert.issuer = ''; newCert.date = '' }
+function removeSkill(id: number) { skills.value = skills.value.filter(s => s.id !== id) }
+function removeExp(id: number) { experiences.value = experiences.value.filter(e => e.id !== id) }
+function removeCert(id: number) { certificates.value = certificates.value.filter(c => c.id !== id) }
 const dragIndex = ref<number | null>(null)
 function onDragStart(i: number) { dragIndex.value = i }
 function onDrop(i: number) {
@@ -148,7 +182,13 @@ const person = computed(() => ({
 const resumes = useResumesStore()
 const versionName = ref('')
 function buildConfig() {
-  return { length: length.value, theme: theme.value.key, accent: accent.value, sections: sections.value, links: links.value, education: education.value, languages: languages.value, draft: { headline: draft.headline, summary: draft.summary, highlights: draft.highlights } }
+  return {
+    length: length.value, theme: theme.value.key, accent: accent.value,
+    density: density.value.key, font: font.value.key, headerAlign: headerAlign.value,
+    sections: sections.value, links: links.value, education: education.value, languages: languages.value,
+    skills: skills.value, experiences: experiences.value, certificates: certificates.value,
+    draft: { headline: draft.headline, summary: draft.summary, highlights: draft.highlights },
+  }
 }
 function saveVersion() {
   const name = versionName.value.trim() || `سيرة ${lengthLabel(length.value)} · ${theme.value.name}`
@@ -162,10 +202,16 @@ function loadVersion(r: { id: number, name: string, config?: unknown }) {
   length.value = c.length
   theme.value = THEMES.find(t => t.key === c.theme) ?? theme.value
   accent.value = c.accent
+  density.value = DENSITIES.find(d => d.key === (c as { density?: string }).density) ?? density.value
+  font.value = FONTS.find(f => f.key === (c as { font?: string }).font) ?? font.value
+  headerAlign.value = (c as { headerAlign?: 'start' | 'center' }).headerAlign ?? headerAlign.value
   sections.value = c.sections
   links.value = c.links
   education.value = c.education ?? education.value
   languages.value = c.languages ?? languages.value
+  skills.value = (c as { skills?: typeof skills.value }).skills ?? skills.value
+  experiences.value = (c as { experiences?: typeof experiences.value }).experiences ?? experiences.value
+  certificates.value = (c as { certificates?: typeof certificates.value }).certificates ?? certificates.value
   draft.headline = c.draft.headline; draft.summary = c.draft.summary; draft.highlights = c.draft.highlights
   resumes.setActive(r.id)
   toast(`فُتحت النسخة: ${r.name}`)
@@ -225,6 +271,27 @@ function exportWord() {
           <div class="swatches">
             <button v-for="c in ACCENTS" :key="c" class="swatch" :class="{ active: accent === c }" :style="{ background: c }" @click="accent = c" :aria-label="c" />
           </div>
+
+          <div class="disp-label">نمط العرض</div>
+          <div class="disp-row">
+            <span class="disp-tag">الكثافة</span>
+            <div class="seg sm">
+              <button v-for="d in DENSITIES" :key="d.key" class="seg-btn" :class="{ active: density.key === d.key }" @click="density = d">{{ d.name }}</button>
+            </div>
+          </div>
+          <div class="disp-row">
+            <span class="disp-tag">الخطّ</span>
+            <div class="seg sm">
+              <button v-for="f in FONTS" :key="f.key" class="seg-btn" :class="{ active: font.key === f.key }" @click="font = f">{{ f.name }}</button>
+            </div>
+          </div>
+          <div class="disp-row">
+            <span class="disp-tag">الترويسة</span>
+            <div class="seg sm">
+              <button class="seg-btn" :class="{ active: headerAlign === 'start' }" @click="headerAlign = 'start'">لليمين</button>
+              <button class="seg-btn" :class="{ active: headerAlign === 'center' }" @click="headerAlign = 'center'">توسيط</button>
+            </div>
+          </div>
         </BaseCard>
 
         <!-- ترتيب الأقسام -->
@@ -239,6 +306,54 @@ function exportWord() {
               <button class="mini" :disabled="i === sections.length - 1" @click="move(i, 1)"><BaseIcon name="mdi-chevron-down" :size="16" /></button>
             </li>
           </ul>
+        </BaseCard>
+
+        <!-- المهارات -->
+        <BaseCard>
+          <div class="ctl-head"><BaseIcon name="mdi-star-outline" :size="18" class="text-brand" /><h3>المهارات</h3></div>
+          <div v-for="s in skills" :key="s.id" class="link-row">
+            <span class="link-label">{{ s.name }}</span>
+            <span class="link-url">مستوى {{ s.level }}/5</span>
+            <button class="mini" @click="removeSkill(s.id)"><BaseIcon name="mdi-close" :size="14" /></button>
+          </div>
+          <div class="link-add" style="grid-template-columns: 1fr 70px auto;">
+            <BaseInput v-model="newSkill.name" placeholder="المهارة" />
+            <BaseInput v-model.number="newSkill.level" type="number" placeholder="1-5" />
+            <BaseButton variant="tonal-accent" size="sm" @click="addSkill"><BaseIcon name="mdi-plus" :size="16" /></BaseButton>
+          </div>
+        </BaseCard>
+
+        <!-- الخبرات -->
+        <BaseCard>
+          <div class="ctl-head"><BaseIcon name="mdi-briefcase-outline" :size="18" class="text-brand" /><h3>الخبرات</h3></div>
+          <div v-for="e in experiences" :key="e.id" class="link-row">
+            <span class="link-label">{{ e.title }}</span>
+            <span class="link-url">{{ e.org }}</span>
+            <button class="mini" @click="removeExp(e.id)"><BaseIcon name="mdi-close" :size="14" /></button>
+          </div>
+          <div class="link-add">
+            <BaseInput v-model="newExp.title" placeholder="المسمّى" />
+            <BaseInput v-model="newExp.org" placeholder="الجهة" />
+            <BaseInput v-model="newExp.period" placeholder="المدّة (2022 - الآن)" />
+            <BaseInput v-model="newExp.desc" placeholder="وصف موجز" />
+            <BaseButton variant="tonal-accent" size="sm" @click="addExp"><BaseIcon name="mdi-plus" :size="16" />إضافة خبرة</BaseButton>
+          </div>
+        </BaseCard>
+
+        <!-- الشهادات -->
+        <BaseCard>
+          <div class="ctl-head"><BaseIcon name="mdi-certificate-outline" :size="18" class="text-brand" /><h3>الشهادات</h3></div>
+          <div v-for="c in certificates" :key="c.id" class="link-row">
+            <span class="link-label">{{ c.name }}</span>
+            <span class="link-url">{{ c.issuer }}</span>
+            <button class="mini" @click="removeCert(c.id)"><BaseIcon name="mdi-close" :size="14" /></button>
+          </div>
+          <div class="link-add">
+            <BaseInput v-model="newCert.name" placeholder="اسم الشهادة" />
+            <BaseInput v-model="newCert.issuer" placeholder="الجهة المانحة" />
+            <BaseInput v-model="newCert.date" placeholder="السنة" />
+            <BaseButton variant="tonal-accent" size="sm" @click="addCert"><BaseIcon name="mdi-plus" :size="16" />إضافة شهادة</BaseButton>
+          </div>
         </BaseCard>
 
         <!-- الروابط -->
@@ -306,7 +421,7 @@ function exportWord() {
 
       <!-- المعاينة الحيّة (A4) -->
       <div class="preview-wrap">
-        <div class="page" :class="[`theme-${theme.key}`, `layout-${theme.layout}`]" :style="{ '--accent': accent }">
+        <div class="page" :class="[`theme-${theme.key}`, `layout-${theme.layout}`, `hdr-${headerAlign}`]" :style="pageStyle">
           <!-- ترويسة -->
           <header class="cv-head">
             <div class="cv-identity">
@@ -323,10 +438,10 @@ function exportWord() {
             <!-- عمود جانبيّ (للثيم الجانبيّ) -->
             <aside v-if="theme.layout === 'sidebar'" class="cv-aside">
               <template v-for="s in visibleOrdered" :key="`a-${s.key}`">
-                <section v-if="s.key === 'skills' && profile.skills.length" class="cv-sec">
+                <section v-if="s.key === 'skills' && skills.length" class="cv-sec">
                   <h2>المهارات</h2>
                   <div class="chips">
-                    <span v-for="sk in profile.skills" :key="sk.id" class="chip">{{ sk.name }}</span>
+                    <span v-for="sk in skills" :key="sk.id" class="chip">{{ sk.name }}</span>
                   </div>
                 </section>
                 <section v-else-if="s.key === 'languages' && languages.length" class="cv-sec">
@@ -337,9 +452,9 @@ function exportWord() {
                   <h2>التعليم</h2>
                   <div v-for="e in education" :key="e.id" class="cert"><b>{{ e.degree }}</b><span>{{ e.org }} · {{ e.year }}</span></div>
                 </section>
-                <section v-else-if="s.key === 'certificates' && profile.certificates.length" class="cv-sec">
+                <section v-else-if="s.key === 'certificates' && certificates.length" class="cv-sec">
                   <h2>الشهادات</h2>
-                  <div v-for="c in profile.certificates" :key="c.id" class="cert"><b>{{ c.name }}</b><span>{{ c.issuer }} · {{ c.date }}</span></div>
+                  <div v-for="c in certificates" :key="c.id" class="cert"><b>{{ c.name }}</b><span>{{ c.issuer }} · {{ c.date }}</span></div>
                 </section>
                 <section v-else-if="s.key === 'links' && links.length" class="cv-sec">
                   <h2>روابط</h2>
@@ -363,20 +478,20 @@ function exportWord() {
                   </ul>
                 </section>
 
-                <section v-else-if="s.key === 'experiences' && profile.experiences.length" class="cv-sec">
+                <section v-else-if="s.key === 'experiences' && experiences.length" class="cv-sec">
                   <h2>الخبرات</h2>
-                  <div v-for="e in profile.experiences" :key="e.id" class="cv-exp">
-                    <div class="cv-exp-top"><b>{{ e.title }}</b><span class="cv-exp-org">{{ e.company }}</span></div>
+                  <div v-for="e in experiences" :key="e.id" class="cv-exp">
+                    <div class="cv-exp-top"><b>{{ e.title }}</b><span class="cv-exp-org">{{ e.org }}</span></div>
                     <span class="cv-exp-period">{{ e.period }}</span>
                     <p v-if="e.desc">{{ e.desc }}</p>
                   </div>
                 </section>
 
                 <!-- في الثيمات غير الجانبيّة تظهر المهارات/الشهادات/الروابط في الرئيس -->
-                <section v-else-if="s.key === 'skills' && theme.layout !== 'sidebar' && profile.skills.length" class="cv-sec">
+                <section v-else-if="s.key === 'skills' && theme.layout !== 'sidebar' && skills.length" class="cv-sec">
                   <h2>المهارات</h2>
                   <div class="chips">
-                    <span v-for="sk in profile.skills" :key="sk.id" class="chip">{{ sk.name }}</span>
+                    <span v-for="sk in skills" :key="sk.id" class="chip">{{ sk.name }}</span>
                   </div>
                 </section>
                 <section v-else-if="s.key === 'education' && theme.layout !== 'sidebar' && education.length" class="cv-sec">
@@ -392,9 +507,9 @@ function exportWord() {
                     <span v-for="l in languages" :key="l.id" class="chip">{{ l.name }} · {{ l.level }}</span>
                   </div>
                 </section>
-                <section v-else-if="s.key === 'certificates' && theme.layout !== 'sidebar' && profile.certificates.length" class="cv-sec">
+                <section v-else-if="s.key === 'certificates' && theme.layout !== 'sidebar' && certificates.length" class="cv-sec">
                   <h2>الشهادات</h2>
-                  <div v-for="c in profile.certificates" :key="c.id" class="cert"><b>{{ c.name }}</b><span>{{ c.issuer }} · {{ c.date }}</span></div>
+                  <div v-for="c in certificates" :key="c.id" class="cert"><b>{{ c.name }}</b><span>{{ c.issuer }} · {{ c.date }}</span></div>
                 </section>
                 <section v-else-if="s.key === 'links' && theme.layout !== 'sidebar' && links.length" class="cv-sec">
                   <h2>روابط</h2>
@@ -509,6 +624,55 @@ function exportWord() {
 .theme-band .cv-headline { color: var(--accent); font-weight: 700; }
 .theme-band .cv-contact { color: #cbd5e1; }
 .theme-band .cv-main { padding-top: 24px; }
+
+/* الثيم: مينيمال — نظيف بلا خلفيّات، عناوين رفيعة */
+.theme-minimal .cv-name { color: var(--ink); font-weight: 800; }
+.theme-minimal .cv-headline { color: var(--accent); font-weight: 600; }
+.theme-minimal .cv-sec h2 { color: var(--muted); font-weight: 700; letter-spacing: 1.5px; font-size: 11px; }
+.theme-minimal .cv-head { border-bottom: 1px solid #eee; }
+
+/* الثيم: خطّ زمنيّ — الخبرات على تايم لاين */
+.theme-timeline .cv-name { color: var(--accent); }
+.theme-timeline .cv-main .cv-exp { position: relative; padding-inline-start: 16px; border-inline-start: 2px solid color-mix(in srgb, var(--accent) 30%, #fff); padding-bottom: 6px; }
+.theme-timeline .cv-main .cv-exp::before { content: ''; position: absolute; inline-size: 9px; block-size: 9px; border-radius: 50%; background: var(--accent); inset-inline-start: -5px; inset-block-start: 4px; }
+
+/* الثيم: أنيق — عناوين Serif ومحاذاة رقيقة */
+.theme-elegant .cv-name { font-family: 'Amiri', serif; color: var(--ink); }
+.theme-elegant .cv-sec h2 { font-family: 'Amiri', serif; color: var(--accent); border-bottom: 1px solid color-mix(in srgb, var(--accent) 25%, #fff); padding-bottom: 4px; text-transform: none; letter-spacing: 0; font-size: 15px; }
+.theme-elegant .cv-head { border-bottom: 2px double color-mix(in srgb, var(--accent) 40%, #fff); }
+
+/* الثيم: جانبيّ ناعم — عمود فاتح وترويسة بيضاء */
+.theme-sidebarSoft .cv-head { background: #fff; }
+.theme-sidebarSoft .cv-name { color: var(--accent); }
+.theme-sidebarSoft .cv-headline, .theme-sidebarSoft .cv-contact { color: var(--muted); }
+.theme-sidebarSoft .cv-aside { background: #f6f8fa; padding-top: 24px; }
+.theme-sidebarSoft .cv-aside .cv-sec h2 { color: var(--accent); }
+.theme-sidebarSoft .cv-main { padding-top: 24px; }
+
+/* الثيم: ترويسة ملوّنة */
+.theme-bandAccent .cv-head { background: var(--accent); padding-bottom: 24px; }
+.theme-bandAccent .cv-name { color: #fff; }
+.theme-bandAccent .cv-headline { color: rgba(255, 255, 255, 0.92); }
+.theme-bandAccent .cv-contact { color: rgba(255, 255, 255, 0.88); }
+.theme-bandAccent .cv-main { padding-top: 24px; }
+
+/* محاذاة الترويسة */
+.hdr-center .cv-head { text-align: center; }
+.hdr-center .cv-contact { justify-content: center; }
+
+/* الكثافة (نمط العرض) — تُقاس نسبةً إلى --scale */
+.page .cv-head { padding: calc(28px * var(--scale, 1)) calc(34px * var(--scale, 1)); }
+.page .cv-main, .page .cv-aside { padding-inline: calc(34px * var(--scale, 1)); padding-bottom: calc(30px * var(--scale, 1)); }
+.page .cv-sec { margin-bottom: calc(18px * var(--scale, 1)); }
+.page .cv-name { font-size: calc(30px * var(--scale, 1)); }
+.page .cv-summary, .page .cv-highlights li, .page .cv-exp p { font-size: calc(13px * var(--scale, 1)); }
+
+/* عناصر «نمط العرض» في اللوحة */
+.disp-label { margin-top: 14px; margin-bottom: 6px; font-size: 12px; font-weight: 700; color: rgba(var(--v-theme-on-surface), 0.6); }
+.disp-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.disp-tag { font-size: 11px; color: rgba(var(--v-theme-on-surface), 0.55); min-width: 46px; }
+.seg.sm { flex: 1; padding: 3px; }
+.seg.sm .seg-btn { padding: 5px; font-size: 11.5px; }
 
 /* ============ الطباعة ============ */
 @media print {
