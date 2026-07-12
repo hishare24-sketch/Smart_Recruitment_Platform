@@ -70,7 +70,7 @@ class AdminQualityTest extends TestCase
         // التغطية = مؤتمَت / الإجمالي × 100 (تناسق)
         $data = $res->json('data');
         $expected = round($data['automated'] / $data['total'] * 100, 1);
-        $this->assertSame($expected, $data['coverage']);
+        $this->assertEquals($expected, $data['coverage']); // مرن على int/float من ترميز JSON
     }
 
     public function test_atoms_list_paginates_and_filters(): void
