@@ -78,6 +78,7 @@ export const API_PATHS = {
   },
   marketplace: {
     opportunities: '/v1/opportunities',
+    whyMatch: '/v1/opportunities/why-match',
     apply: (id: number) => `/v1/opportunities/${id}/apply`,
     requests: '/v1/requests',
     myRequests: '/v1/requests/mine',
@@ -525,6 +526,7 @@ export interface MatchShortlist { opportunity: { id: number, title: string, comp
 export interface MatchSettingsResponse { settings: MatchSettings, aiActive: boolean }
 export interface MatchSettingsPatch { skills_weight?: number, experience_weight?: number, category_weight?: number, threshold?: number, ai_boost?: boolean }
 export interface MatchExplain { applicationId: number, candidate: string, live: boolean, score: number, verdict: string, reasons: string[], redFlags: string[], summary: string, matchedSkills: string[], meta: { simulated?: boolean, provider?: string, model?: string, fallback?: boolean, fallbackReason?: string } }
+export interface WhyMatch { live: boolean, score: number, verdict: string, reasons: string[], redFlags: string[], summary: string, matchedSkills: string[], meta: { simulated?: boolean, provider?: string, model?: string, fallback?: boolean, fallbackReason?: string } }
 // ——— صحّة النظام ———
 export interface HealthService { key: string, label: string, status: 'ok' | 'warn' | 'down', detail: string, metric: number | null, driver: string | null }
 export interface HealthMetrics { users: number, pendingJobs: number, failedJobs: number, requestsToday: number, errorsToday: number, php: string, laravel: string, env: string, debug: boolean }
@@ -607,6 +609,7 @@ export const api = {
   },
   marketplace: {
     opportunities: (params?: { q?: string, category?: string }) => get(API_PATHS.marketplace.opportunities, params),
+    whyMatch: (body: { title: string, category?: string | null, skills?: string[] }) => post<WhyMatch>(API_PATHS.marketplace.whyMatch, body),
     postOpportunity: (body: unknown) => post(API_PATHS.marketplace.opportunities, body),
     apply: (id: number) => post(API_PATHS.marketplace.apply(id)),
     requests: (params?: { type?: string }) => get(API_PATHS.marketplace.requests, params),
