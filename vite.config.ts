@@ -23,12 +23,13 @@ function versionFile(): Plugin {
 
 // https://vite.dev/config/
 // Base path differs per deploy target:
-//  - GitHub Pages project site serves under /smart-recruitment-system/
+//  - GitHub Pages project site serves under /mawazin_swift/ (repo name; was
+//    smart-recruitment-system before the repo was renamed — keep in sync with it).
 //  - Netlify / Vercel (and dev) serve from the root, so assets live at /
 // Netlify sets NETLIFY=true and Vercel sets VERCEL=1 during their builds.
 const isRootHost = !!process.env.NETLIFY || !!process.env.VERCEL
 export default defineConfig(({ command }) => ({
-  base: command === 'build' && !isRootHost ? '/smart-recruitment-system/' : '/',
+  base: command === 'build' && !isRootHost ? '/mawazin_swift/' : '/',
   define: {
     __BUILD_ID__: JSON.stringify(BUILD_ID),
   },
