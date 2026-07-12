@@ -233,6 +233,8 @@ export const API_PATHS = {
     complianceAdverseImpact: '/admin/compliance/adverse-impact',
     complianceFunnel: '/admin/compliance/funnel',
     complianceAuditTrail: '/admin/compliance/audit-trail',
+    qualityOverview: '/admin/quality/overview',
+    qualityAtoms: '/admin/quality/atoms',
   },
   /** بلاغ محتوى من المستخدم → طابور الإشراف (مصادَق) */
   reports: '/v1/reports',
@@ -538,6 +540,38 @@ export interface SystemHealth {
   series: { date: string, value: number, errors: number }[]
   overall: 'ok' | 'warn' | 'down'
 }
+// ——— مركز قيادة الجودة (اللوحة الذرّية) ———
+export interface QualityCount { key: string, count: number }
+export interface QualityGapSection { section: string, layer: string, gaps: number }
+export interface QualityOverview {
+  total: number
+  automated: number
+  gap: number
+  failing: number
+  critical: number
+  criticalGaps: number
+  coverage: number
+  byLayer: QualityCount[]
+  byType: QualityCount[]
+  byPriority: QualityCount[]
+  byStatus: QualityCount[]
+  topGapSections: QualityGapSection[]
+  series: { date: string, coverage: number, total: number, automated: number }[]
+}
+export interface QualityAtom {
+  id: number
+  caseId: string
+  title: string
+  layer: string
+  section: string
+  module: string
+  type: 'U' | 'F' | 'E' | null
+  priority: 'critical' | 'important' | 'normal'
+  status: 'automated' | 'gap' | 'failing'
+  lifecycle: string
+  testFile: string | null
+}
+export interface QualityAtomQuery { page?: number, perPage?: number, sort?: string, q?: string, layer?: string, section?: string, module?: string, type?: string, priority?: string, status?: string }
 // ——— المساعد الذكيّ للمستخدم + الدعم ———
 export interface AssistantGovernanceState { aiEnabled: boolean, capabilityEnabled: boolean, assistantEnabled: boolean, effectiveEnabled: boolean, level: number, provider: string, model: string | null }
 export interface AssistantActivity { wallet: number, opportunities: number, applications: number, surveys: number }
@@ -800,6 +834,9 @@ export const api = {
     complianceAdverseImpact: (dimension: string) => get<AdverseImpact>(API_PATHS.admin.complianceAdverseImpact, { dimension }),
     complianceFunnel: (dimension: string) => get<ComplianceFunnel>(API_PATHS.admin.complianceFunnel, { dimension }),
     complianceAuditTrail: () => get<ComplianceAuditRow[]>(API_PATHS.admin.complianceAuditTrail),
+    // مركز قيادة الجودة (اللوحة الذرّية — ف1)
+    qualityOverview: () => get<QualityOverview>(API_PATHS.admin.qualityOverview),
+    qualityAtoms: (params?: QualityAtomQuery) => getPage<QualityAtom>(API_PATHS.admin.qualityAtoms, params as Record<string, unknown>),
     toggleAiCapability: (id: number) => post<AiCapability>(API_PATHS.admin.aiCapabilityToggle(id)),
     addAiKnowledge: (body: AiKnowledgePayload) => post<AiKnowledgeEntry>(API_PATHS.admin.aiKnowledge, body),
     updateAiKnowledge: (id: number, body: Partial<AiKnowledgePayload>) => put<AiKnowledgeEntry>(API_PATHS.admin.aiKnowledgeItem(id), body),
