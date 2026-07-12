@@ -7,7 +7,9 @@ use Modules\Ai\Entities\AiCapability;
 use Modules\Ai\Entities\AiKnowledge;
 use Modules\Ai\Entities\AiSetting;
 use Modules\Ai\Entities\AssistantPreference;
+use Modules\Ai\Services\Providers\ClaudeProvider;
 use Modules\Chat\Entities\ChatSetting;
+use Modules\User\Entities\User;
 
 /**
  * دماغ المساعد الذكيّ للمستخدم — يجمع الحوكمة (من موديولَي Ai/Chat) + سياق المستخدم
@@ -158,13 +160,19 @@ class AssistantService
      * تأليف الردّ — يفوّض لمزوّد حيّ (Claude) حين يكون مهيّأً بمفتاح، وإلّا محاكاة محكومة.
      * أيّ فشل للمزوّد يعود للمحاكاة بأمان (fallback) مع وسم meta.
      */
-    public function compose(string $message, array $context, array $history = []): array
+    public function compose(string $message, array $context, array $history = [], ?User $user = null): array
     {
         $ai = AiSetting::current();
         $provider = $this->providerFor($ai);
 
         if ($provider !== null) {
             try {
+                // مسار الأدوات الحيّة (function-calling) متاح لكلود حين نعرف المستخدم؛
+                // غيره يبقى على التوليد النصّيّ مع ذاكرة المحادثة.
+                if ($provider instanceof ClaudeProvider && $user !== null) {
+                    return $this->composeWithTools($provider, $ai, $context, $message, $history, $user);
+                }
+
                 $result = $provider->generate($this->systemPrompt($ai, $context), $message, ['history' => $this->sanitizeHistory($history)]);
 
                 return $this->composeFromProvider($result, $ai, $context);
@@ -179,6 +187,54 @@ class AssistantService
         }
 
         return $this->simulate($message, $context, $ai);
+    }
+
+    /**
+     * تأليف مع أدوات المنصّة الحيّة — حلقة function-calling بجولات محدودة:
+     * يطلب المزوّد أداة → ننفّذها ونُعيد نتيجتها → يُنتج الردّ النهائيّ. أرقام التوكن تُجمَع عبر الجولات.
+     */
+    private function composeWithTools(ClaudeProvider $provider, AiSetting $ai, array $context, string $message, array $history, User $user): array
+    {
+        $tools = new PlatformTools;
+        $defs = $tools->definitions();
+        $system = $this->systemPrompt($ai, $context)."\n\nلديك أدوات للوصول لبيانات المنصّة الحيّة — استعملها عند الحاجة لحقائق دقيقة عن المستخدم أو الفرص بدل التخمين.";
+        $messages = array_merge($this->sanitizeHistory($history), [['role' => 'user', 'content' => $message]]);
+
+        $resp = $provider->chatWithTools($system, $messages, $defs);
+        $inTok = (int) $resp['usage']['input'];
+        $outTok = (int) $resp['usage']['output'];
+        $usedTools = [];
+
+        $rounds = 0;
+        while (($resp['stopReason'] ?? '') === 'tool_use' && $rounds < 2) {
+            $rounds++;
+            $messages[] = ['role' => 'assistant', 'content' => $resp['assistant']];
+
+            $toolResults = [];
+            foreach ($resp['toolUses'] as $tu) {
+                $usedTools[] = $tu['name'];
+                $out = $tools->execute($tu['name'], $tu['input'], $user);
+                $toolResults[] = [
+                    'type' => 'tool_result',
+                    'tool_use_id' => $tu['id'],
+                    'content' => json_encode($out, JSON_UNESCAPED_UNICODE),
+                ];
+            }
+            $messages[] = ['role' => 'user', 'content' => $toolResults];
+
+            $resp = $provider->chatWithTools($system, $messages, $defs);
+            $inTok += (int) $resp['usage']['input'];
+            $outTok += (int) $resp['usage']['output'];
+        }
+
+        if (trim($resp['text']) === '') {
+            throw new \RuntimeException('assistant_empty_after_tools');
+        }
+
+        $composed = $this->composeFromProvider(['text' => $resp['text'], 'usage' => ['input' => $inTok, 'output' => $outTok]], $ai, $context);
+        $composed['meta']['usedTools'] = array_values(array_unique($usedTools));
+
+        return $composed;
     }
 
     /**

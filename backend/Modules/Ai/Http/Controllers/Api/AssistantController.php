@@ -91,7 +91,7 @@ class AssistantController extends Controller
         }
 
         $context = $this->service->context($user);
-        $composed = $this->service->compose($data['message'], $context, $history);
+        $composed = $this->service->compose($data['message'], $context, $history, $user);
 
         // قياس الاستهلاك: تفضيل ما يعيده المزوّد الحقيقيّ، وإلّا تقدير الردّ.
         $responseTokens = (int) ($composed['meta']['usage']['response'] ?? $this->usage->estimate($composed['reply']));
