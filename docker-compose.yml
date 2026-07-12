@@ -47,7 +47,7 @@ services:
       APP_ENV: ${APP_ENV:-local}
       APP_KEY: ${APP_KEY:-}
       APP_DEBUG: ${APP_DEBUG:-true}
-      APP_URL: ${APP_URL:-https://recruitment.mawazinswift.com}
+      APP_URL: ${APP_URL:-https://sufha.com}
       APP_LOCALE: ar
       APP_FALLBACK_LOCALE: en
       LOG_CHANNEL: stderr
@@ -65,7 +65,7 @@ services:
       REDIS_PORT: "6379"
       BROADCAST_CONNECTION: reverb
       MAIL_MAILER: log
-      MAIL_FROM_ADDRESS: no-reply@recruitment.mawazinswift.com
+      MAIL_FROM_ADDRESS: no-reply@sufha.com
       MAIL_FROM_NAME: ${APP_NAME:-منظومة التوظيف الذكية}
       REVERB_APP_ID: ${REVERB_APP_ID:-mawazin}
       REVERB_APP_KEY: ${REVERB_APP_KEY:-v6zvrzamckeajqmbcfn0}
@@ -75,7 +75,7 @@ services:
       REVERB_SCHEME: http
       REVERB_SERVER_HOST: "0.0.0.0"
       REVERB_SERVER_PORT: "8080"
-      FRONTEND_URL: ${APP_URL:-https://recruitment.mawazinswift.com}
+      FRONTEND_URL: ${APP_URL:-https://sufha.com}
       RUN_MIGRATIONS: "1"
       PORT: "10000"
     volumes:

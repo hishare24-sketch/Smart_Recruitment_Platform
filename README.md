@@ -29,7 +29,7 @@
 
 ### Docker + nginx المشترك (`ubuntu-nginx-1`)
 
-الدومين: **recruitment.mawazinswift.com**
+الدومين: **sufha.com**
 
 1. التطبيق على `127.0.0.1:8088` وبنفس شبكة nginx عبر alias `mawazin-swift`
 2. كونفيج الدومين في مستودع nginx: `servers/mawazinswift/live/web.conf`
