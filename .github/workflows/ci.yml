@@ -61,10 +61,11 @@ jobs:
       BROADCAST_CONNECTION: log
     steps:
       - uses: actions/checkout@v4
-      - name: Setup PHP 8.2
+      - name: Setup PHP 8.4
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
+          # الحزم المقفلة تتطلّب PHP >= 8.4.1 (الحاوية على 8.5) — نطابق ذلك في CI.
+          php-version: '8.4'
           extensions: pdo_mysql, mbstring, bcmath, intl, gd, zip, exif, pcntl
           coverage: none
       - name: Cache Composer
