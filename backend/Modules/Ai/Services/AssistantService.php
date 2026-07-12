@@ -7,7 +7,9 @@ use Modules\Ai\Entities\AiCapability;
 use Modules\Ai\Entities\AiKnowledge;
 use Modules\Ai\Entities\AiSetting;
 use Modules\Ai\Entities\AssistantPreference;
+use Modules\Ai\Services\Providers\ToolCallingProvider;
 use Modules\Chat\Entities\ChatSetting;
+use Modules\User\Entities\User;
 
 /**
  * دماغ المساعد الذكيّ للمستخدم — يجمع الحوكمة (من موديولَي Ai/Chat) + سياق المستخدم
@@ -158,14 +160,20 @@ class AssistantService
      * تأليف الردّ — يفوّض لمزوّد حيّ (Claude) حين يكون مهيّأً بمفتاح، وإلّا محاكاة محكومة.
      * أيّ فشل للمزوّد يعود للمحاكاة بأمان (fallback) مع وسم meta.
      */
-    public function compose(string $message, array $context): array
+    public function compose(string $message, array $context, array $history = [], ?User $user = null): array
     {
         $ai = AiSetting::current();
         $provider = $this->providerFor($ai);
 
         if ($provider !== null) {
             try {
-                $result = $provider->generate($this->systemPrompt($ai, $context), $message);
+                // مسار الأدوات الحيّة (function-calling) متاح لأيّ مزوّد يدعمها حين نعرف المستخدم؛
+                // غيره يبقى على التوليد النصّيّ مع ذاكرة المحادثة.
+                if ($provider instanceof ToolCallingProvider && $user !== null) {
+                    return $this->composeWithTools($provider, $ai, $context, $message, $history, $user);
+                }
+
+                $result = $provider->generate($this->systemPrompt($ai, $context), $message, ['history' => $this->sanitizeHistory($history)]);
 
                 return $this->composeFromProvider($result, $ai, $context);
             } catch (\Throwable $e) {
@@ -182,21 +190,72 @@ class AssistantService
     }
 
     /**
+     * تأليف مع أدوات المنصّة الحيّة — حلقة function-calling بجولات محدودة:
+     * يطلب المزوّد أداة → ننفّذها ونُعيد نتيجتها → يُنتج الردّ النهائيّ. أرقام التوكن تُجمَع عبر الجولات.
+     */
+    private function composeWithTools(ToolCallingProvider $provider, AiSetting $ai, array $context, string $message, array $history, User $user): array
+    {
+        $tools = new PlatformTools;
+        $defs = $tools->definitions();
+        $system = $this->systemPrompt($ai, $context)."\n\nلديك أدوات للوصول لبيانات المنصّة الحيّة — استعملها عند الحاجة لحقائق دقيقة عن المستخدم أو الفرص بدل التخمين.";
+        $messages = array_merge($this->sanitizeHistory($history), [['role' => 'user', 'content' => $message]]);
+
+        $resp = $provider->chatWithTools($system, $messages, $defs);
+        $inTok = (int) $resp['usage']['input'];
+        $outTok = (int) $resp['usage']['output'];
+        $usedTools = [];
+
+        $rounds = 0;
+        while (($resp['stopReason'] ?? '') === 'tool_use' && $rounds < 2) {
+            $rounds++;
+
+            $toolResults = [];
+            foreach ($resp['toolUses'] as $tu) {
+                $usedTools[] = $tu['name'];
+                $out = $tools->execute($tu['name'], $tu['input'], $user);
+                $toolResults[] = ['id' => $tu['id'], 'output' => json_encode($out, JSON_UNESCAPED_UNICODE)];
+            }
+            // شكل دورة الأدوات (المساعد + النتائج) يملكه المزوّد — Anthropic/OpenAI مختلفان.
+            $messages = array_merge($messages, $provider->formatToolResultTurn($resp['assistant'], $toolResults));
+
+            $resp = $provider->chatWithTools($system, $messages, $defs);
+            $inTok += (int) $resp['usage']['input'];
+            $outTok += (int) $resp['usage']['output'];
+        }
+
+        if (trim($resp['text']) === '') {
+            throw new \RuntimeException('assistant_empty_after_tools');
+        }
+
+        $composed = $this->composeFromProvider(['text' => $resp['text'], 'usage' => ['input' => $inTok, 'output' => $outTok]], $ai, $context);
+        $composed['meta']['usedTools'] = array_values(array_unique($usedTools));
+
+        return $composed;
+    }
+
+    /**
      * يختار مزوّدًا حيًّا حين المفتاح مهيّأ، وإلّا null (محاكاة).
-     * claude → Anthropic · openai → OpenAI · custom → نقطة نهاية متوافقة مع OpenAI (عبر endpoint).
+     * يفوّض للمصنع المشترك ProviderFactory (مصدر توجيه واحد لكلّ الوحدات).
      */
     private function providerFor(AiSetting $ai): ?\Modules\Ai\Services\Providers\LlmProvider
     {
-        if (! filled($ai->api_key)) {
-            return null; // بلا مفتاح → محاكاة آمنة
-        }
+        return (new ProviderFactory)->for($ai);
+    }
 
-        return match ($ai->provider) {
-            'claude' => new \Modules\Ai\Services\Providers\ClaudeProvider($ai),
-            'openai' => new \Modules\Ai\Services\Providers\OpenAiProvider($ai),
-            'custom' => new \Modules\Ai\Services\Providers\OpenAiProvider($ai),
-            default => null, // simulation | مزوّد غير معروف
-        };
+    /**
+     * يطبّع أدوار المحادثة السابقة لتمريرها كذاكرة للمزوّد الحيّ:
+     * أدوار user/assistant غير المحجوبة فقط، آخر 10، بمحتوى نصّيّ غير فارغ.
+     *
+     * @return array<int, array{role:string, content:string}>
+     */
+    private function sanitizeHistory(array $history): array
+    {
+        return collect($history)
+            ->filter(fn ($m) => is_array($m)
+                && in_array($m['role'] ?? null, ['user', 'assistant'], true)
+                && is_string($m['content'] ?? null) && trim($m['content']) !== '')
+            ->map(fn ($m) => ['role' => $m['role'], 'content' => Str::limit(trim($m['content']), 1500, '')])
+            ->take(-10)->values()->all();
     }
 
     /** يبني توجيه النظام من الحوكمة + الشخصيّة + المعرفة المفعّلة + سياق النشاط. */

@@ -1255,6 +1255,10 @@
       "bExp": "خبرة",
       "bCat": "قطاع",
       "boosted": "معزّز بالذكاء",
+      "analyze": "تحليل ذكيّ",
+      "reanalyze": "إعادة التحليل",
+      "live": "تحليل حيّ",
+      "heuristic": "تقييم استدلاليّ",
       "noApplicants": "لا متقدّمين لهذه الفرصة."
     },
     "pipeline": {
@@ -1407,6 +1411,8 @@
     "level1": "مباشر",
     "level2": "متوازن",
     "level3": "مستشار",
+    "tool_get_my_applications": "تقديماتي",
+    "tool_search_opportunities": "بحث الفرص",
     "catBilling": "فوترة",
     "catTechnical": "تقنيّ",
     "catAccount": "حساب",

@@ -8,6 +8,9 @@ use Laravel\Sanctum\Sanctum;
 use Modules\Ai\Database\Seeders\AiSeeder;
 use Modules\Ai\Entities\AiCapability;
 use Modules\Ai\Entities\AiSetting;
+use Modules\Ai\Entities\AiUsage;
+use Modules\Marketplace\Entities\Application;
+use Modules\Marketplace\Entities\Opportunity;
 use Modules\User\Entities\User;
 use Tests\Support\Api\AssertsApiJson;
 use Tests\TestCase;
@@ -236,6 +239,89 @@ class AssistantTest extends TestCase
         $row = \Modules\Ai\Entities\AiUsage::where('user_id', $user->id)->first();
         $this->assertSame(42, $row->request_tokens);
         $this->assertSame(17, $row->response_tokens);
+    }
+
+    public function test_message_passes_conversation_history_to_live_provider(): void
+    {
+        $this->seed(AiSeeder::class);
+        $this->useClaudeProvider();
+        Http::fake(['api.anthropic.com/*' => Http::response([
+            'content' => [['type' => 'text', 'text' => 'ردّ المساعد الأوّل.']],
+            'stop_reason' => 'end_turn',
+            'usage' => ['input_tokens' => 10, 'output_tokens' => 5],
+        ], 200)]);
+        $this->user(['role' => 'seeker']);
+
+        $first = $this->postJson('/api/v1/assistant/message', ['message' => 'سؤالي الأوّل'])->assertOk();
+        $cid = $first->json('data.conversationId');
+        $this->postJson('/api/v1/assistant/message', ['message' => 'سؤالي الثاني', 'conversationId' => $cid])->assertOk();
+
+        // آخر طلب للمزوّد يحمل الأدوار السابقة (ذاكرة المحادثة) قبل السؤال الثاني.
+        Http::assertSent(function ($request) {
+            if (! str_contains($request->url(), 'anthropic.com')) {
+                return false;
+            }
+            $contents = collect($request['messages'] ?? [])->pluck('content')->implode(' | ');
+
+            return str_contains($contents, 'سؤالي الأوّل')
+                && str_contains($contents, 'ردّ المساعد الأوّل.')
+                && str_contains($contents, 'سؤالي الثاني');
+        });
+    }
+
+    public function test_assistant_uses_platform_tools_to_answer(): void
+    {
+        $this->seed(AiSeeder::class);
+        $this->useClaudeProvider();
+        $user = $this->user(['role' => 'seeker']);
+
+        $emp = User::create(['name' => 'Emp', 'email' => 'emp'.uniqid().'@rec.test', 'password' => 'secret123']);
+        $opp = Opportunity::create(['user_id' => $emp->id, 'title' => 'مطوّر واجهات', 'company' => 'أفق', 'location' => 'عن بُعد', 'salary' => '—', 'category' => 'tech']);
+        Application::create(['user_id' => $user->id, 'opportunity_id' => $opp->id, 'stage' => 'applied']);
+
+        // جولة 1: المزوّد يطلب أداة · جولة 2: يُنتج الردّ النهائيّ مستندًا لنتيجتها.
+        Http::fake(['api.anthropic.com/*' => Http::sequence()
+            ->push(['content' => [['type' => 'tool_use', 'id' => 'tu_1', 'name' => 'get_my_applications', 'input' => []]], 'stop_reason' => 'tool_use', 'usage' => ['input_tokens' => 30, 'output_tokens' => 10]], 200)
+            ->push(['content' => [['type' => 'text', 'text' => 'لديك تقديم واحد على «مطوّر واجهات».']], 'stop_reason' => 'end_turn', 'usage' => ['input_tokens' => 50, 'output_tokens' => 20]], 200),
+        ]);
+
+        $this->postJson('/api/v1/assistant/message', ['message' => 'ما حالة تقديماتي؟'])
+            ->assertOk()
+            ->assertJsonPath('data.blocked', false)
+            ->assertJsonPath('data.meta.simulated', false)
+            ->assertJsonPath('data.reply', 'لديك تقديم واحد على «مطوّر واجهات».')
+            ->assertJsonPath('data.meta.usedTools', ['get_my_applications']);
+
+        // التوكن مجموع عبر الجولتين (30+50 مدخل، 10+20 مخرج).
+        $row = AiUsage::where('user_id', $user->id)->first();
+        $this->assertSame(80, $row->request_tokens);
+        $this->assertSame(30, $row->response_tokens);
+    }
+
+    public function test_assistant_uses_platform_tools_via_openai(): void
+    {
+        $this->seed(AiSeeder::class);
+        $this->useOpenAiProvider();
+        $user = $this->user(['role' => 'seeker']);
+
+        $emp = User::create(['name' => 'Emp', 'email' => 'emp'.uniqid().'@rec.test', 'password' => 'secret123']);
+        $opp = Opportunity::create(['user_id' => $emp->id, 'title' => 'محلّل بيانات', 'company' => 'بيان', 'location' => 'الرياض', 'salary' => '—', 'category' => 'data']);
+        Application::create(['user_id' => $user->id, 'opportunity_id' => $opp->id, 'stage' => 'screening']);
+
+        Http::fake(['api.openai.com/*' => Http::sequence()
+            ->push(['choices' => [['message' => ['content' => null, 'tool_calls' => [['id' => 'call_1', 'type' => 'function', 'function' => ['name' => 'get_my_applications', 'arguments' => '{}']]]], 'finish_reason' => 'tool_calls']], 'usage' => ['prompt_tokens' => 30, 'completion_tokens' => 10]], 200)
+            ->push(['choices' => [['message' => ['content' => 'تقديمك على «محلّل بيانات» في مرحلة الفرز.'], 'finish_reason' => 'stop']], 'usage' => ['prompt_tokens' => 50, 'completion_tokens' => 20]], 200),
+        ]);
+
+        $this->postJson('/api/v1/assistant/message', ['message' => 'أين وصلت تقديماتي؟'])
+            ->assertOk()
+            ->assertJsonPath('data.meta.simulated', false)
+            ->assertJsonPath('data.reply', 'تقديمك على «محلّل بيانات» في مرحلة الفرز.')
+            ->assertJsonPath('data.meta.usedTools', ['get_my_applications']);
+
+        $row = AiUsage::where('user_id', $user->id)->first();
+        $this->assertSame(80, $row->request_tokens);
+        $this->assertSame(30, $row->response_tokens);
     }
 
     public function test_falls_back_to_simulation_on_provider_error(): void
