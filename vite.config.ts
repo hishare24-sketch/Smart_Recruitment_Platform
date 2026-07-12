@@ -23,13 +23,15 @@ function versionFile(): Plugin {
 
 // https://vite.dev/config/
 // Base path differs per deploy target:
-//  - GitHub Pages project site serves under /mawazin_swift/ (repo name; was
-//    smart-recruitment-system before the repo was renamed — keep in sync with it).
-//  - Netlify / Vercel (and dev) serve from the root, so assets live at /
-// Netlify sets NETLIFY=true and Vercel sets VERCEL=1 during their builds.
+//  - GitHub Pages project site serves under /<repo-name>/. We derive the repo
+//    name automatically from GITHUB_REPOSITORY (set by GitHub Actions during the
+//    Pages build) so renaming the repo never breaks the deploy again — no manual
+//    edit needed. Falls back to '/' when that var is absent (local build).
+//  - Netlify / Vercel / Docker (and dev) serve from the root, so assets live at /
+const ghRepoName = process.env.GITHUB_REPOSITORY?.split('/')[1]
 const isRootHost = !!process.env.NETLIFY || !!process.env.VERCEL || !!process.env.DOCKER
 export default defineConfig(({ command }) => ({
-  base: command === 'build' && !isRootHost ? '/mawazin_swift/' : '/',
+  base: command === 'build' && !isRootHost && ghRepoName ? `/${ghRepoName}/` : '/',
   define: {
     __BUILD_ID__: JSON.stringify(BUILD_ID),
   },
