@@ -158,14 +158,14 @@ class AssistantService
      * تأليف الردّ — يفوّض لمزوّد حيّ (Claude) حين يكون مهيّأً بمفتاح، وإلّا محاكاة محكومة.
      * أيّ فشل للمزوّد يعود للمحاكاة بأمان (fallback) مع وسم meta.
      */
-    public function compose(string $message, array $context): array
+    public function compose(string $message, array $context, array $history = []): array
     {
         $ai = AiSetting::current();
         $provider = $this->providerFor($ai);
 
         if ($provider !== null) {
             try {
-                $result = $provider->generate($this->systemPrompt($ai, $context), $message);
+                $result = $provider->generate($this->systemPrompt($ai, $context), $message, ['history' => $this->sanitizeHistory($history)]);
 
                 return $this->composeFromProvider($result, $ai, $context);
             } catch (\Throwable $e) {
@@ -188,6 +188,22 @@ class AssistantService
     private function providerFor(AiSetting $ai): ?\Modules\Ai\Services\Providers\LlmProvider
     {
         return (new ProviderFactory)->for($ai);
+    }
+
+    /**
+     * يطبّع أدوار المحادثة السابقة لتمريرها كذاكرة للمزوّد الحيّ:
+     * أدوار user/assistant غير المحجوبة فقط، آخر 10، بمحتوى نصّيّ غير فارغ.
+     *
+     * @return array<int, array{role:string, content:string}>
+     */
+    private function sanitizeHistory(array $history): array
+    {
+        return collect($history)
+            ->filter(fn ($m) => is_array($m)
+                && in_array($m['role'] ?? null, ['user', 'assistant'], true)
+                && is_string($m['content'] ?? null) && trim($m['content']) !== '')
+            ->map(fn ($m) => ['role' => $m['role'], 'content' => Str::limit(trim($m['content']), 1500, '')])
+            ->take(-10)->values()->all();
     }
 
     /** يبني توجيه النظام من الحوكمة + الشخصيّة + المعرفة المفعّلة + سياق النشاط. */

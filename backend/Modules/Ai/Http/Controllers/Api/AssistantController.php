@@ -47,6 +47,14 @@ class AssistantController extends Controller
         $blocked = $this->service->blockedReason();
 
         $conversation = $this->resolveConversation($user, $data['conversationId'] ?? null, $data['message']);
+
+        // ذاكرة المحادثة: الأدوار السابقة (قبل رسالة المستخدم الحاليّة) لتمريرها للمزوّد الحيّ.
+        $history = $conversation->messages()
+            ->whereIn('role', ['user', 'assistant'])
+            ->where(fn ($q) => $q->whereNull('meta->blocked')->whereNull('meta->quotaBlocked'))
+            ->orderBy('id')->get(['role', 'body'])
+            ->map(fn ($m) => ['role' => $m->role, 'content' => $m->body])->all();
+
         $conversation->messages()->create(['role' => 'user', 'body' => $data['message']]);
 
         if ($blocked !== null) {
@@ -83,7 +91,7 @@ class AssistantController extends Controller
         }
 
         $context = $this->service->context($user);
-        $composed = $this->service->compose($data['message'], $context);
+        $composed = $this->service->compose($data['message'], $context, $history);
 
         // قياس الاستهلاك: تفضيل ما يعيده المزوّد الحقيقيّ، وإلّا تقدير الردّ.
         $responseTokens = (int) ($composed['meta']['usage']['response'] ?? $this->usage->estimate($composed['reply']));

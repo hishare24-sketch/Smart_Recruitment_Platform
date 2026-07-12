@@ -39,10 +39,11 @@ class OpenAiProvider implements LlmProvider
             ->post($this->setting->endpoint ?: self::DEFAULT_ENDPOINT, [
                 'model' => $model,
                 'max_completion_tokens' => $maxTokens,
-                'messages' => [
-                    ['role' => 'system', 'content' => $systemPrompt],
-                    ['role' => 'user', 'content' => $userMessage],
-                ],
+                'messages' => array_merge(
+                    [['role' => 'system', 'content' => $systemPrompt]],
+                    $options['history'] ?? [], // أدوار سابقة {role,content} (ذاكرة المحادثة)
+                    [['role' => 'user', 'content' => $userMessage]],
+                ),
             ]);
 
         if (! $response->successful()) {

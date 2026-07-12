@@ -238,6 +238,34 @@ class AssistantTest extends TestCase
         $this->assertSame(17, $row->response_tokens);
     }
 
+    public function test_message_passes_conversation_history_to_live_provider(): void
+    {
+        $this->seed(AiSeeder::class);
+        $this->useClaudeProvider();
+        Http::fake(['api.anthropic.com/*' => Http::response([
+            'content' => [['type' => 'text', 'text' => 'ردّ المساعد الأوّل.']],
+            'stop_reason' => 'end_turn',
+            'usage' => ['input_tokens' => 10, 'output_tokens' => 5],
+        ], 200)]);
+        $this->user(['role' => 'seeker']);
+
+        $first = $this->postJson('/api/v1/assistant/message', ['message' => 'سؤالي الأوّل'])->assertOk();
+        $cid = $first->json('data.conversationId');
+        $this->postJson('/api/v1/assistant/message', ['message' => 'سؤالي الثاني', 'conversationId' => $cid])->assertOk();
+
+        // آخر طلب للمزوّد يحمل الأدوار السابقة (ذاكرة المحادثة) قبل السؤال الثاني.
+        Http::assertSent(function ($request) {
+            if (! str_contains($request->url(), 'anthropic.com')) {
+                return false;
+            }
+            $contents = collect($request['messages'] ?? [])->pluck('content')->implode(' | ');
+
+            return str_contains($contents, 'سؤالي الأوّل')
+                && str_contains($contents, 'ردّ المساعد الأوّل.')
+                && str_contains($contents, 'سؤالي الثاني');
+        });
+    }
+
     public function test_falls_back_to_simulation_on_provider_error(): void
     {
         $this->seed(AiSeeder::class);

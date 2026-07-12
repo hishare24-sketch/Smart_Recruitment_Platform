@@ -32,9 +32,10 @@ class ClaudeProvider implements LlmProvider
             'model' => $model,
             'max_tokens' => $maxTokens,
             'system' => $systemPrompt,
-            'messages' => [
-                ['role' => 'user', 'content' => $userMessage],
-            ],
+            'messages' => array_merge(
+                $options['history'] ?? [], // أدوار سابقة {role,content} (ذاكرة المحادثة)
+                [['role' => 'user', 'content' => $userMessage]],
+            ),
         ];
 
         // temperature يُرفَض على عائلة 4.7/4.8/Sonnet 5/Fable 5 (400) — أرسِله فقط لنماذج لا ترفضه.
