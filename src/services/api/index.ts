@@ -233,9 +233,18 @@ export const API_PATHS = {
     complianceAdverseImpact: '/admin/compliance/adverse-impact',
     complianceFunnel: '/admin/compliance/funnel',
     complianceAuditTrail: '/admin/compliance/audit-trail',
+    qualityOverview: '/admin/quality/overview',
+    qualityAtoms: '/admin/quality/atoms',
+    qualityBoard: '/admin/quality/board',
+    qualityRuntime: '/admin/quality/runtime',
+    qualityCi: '/admin/quality/ci',
+    qualityDispatch: (atomId: number) => `/admin/quality/atoms/${atomId}/dispatch`,
+    qualityDispatchItem: (id: number) => `/admin/quality/dispatches/${id}`,
   },
   /** بلاغ محتوى من المستخدم → طابور الإشراف (مصادَق) */
   reports: '/v1/reports',
+  /** استيعاب إشارات وقت-التشغيل (عامّ، بلا مصادقة) — مركز قيادة الجودة ف3 */
+  observe: '/v1/observe',
   /** هويّة المنصّة العامّة (بلا مصادقة) */
   brandingPublic: '/v1/branding',
   /** وسيط Claude — المفتاح يبقى في الخادم، والعقد يطابق أسماء src/services/ai/types.ts */
@@ -538,6 +547,59 @@ export interface SystemHealth {
   series: { date: string, value: number, errors: number }[]
   overall: 'ok' | 'warn' | 'down'
 }
+// ——— مركز قيادة الجودة (اللوحة الذرّية) ———
+export interface QualityCount { key: string, count: number }
+export interface QualityGapSection { section: string, layer: string, gaps: number }
+export interface QualityOverview {
+  total: number
+  automated: number
+  gap: number
+  failing: number
+  critical: number
+  criticalGaps: number
+  coverage: number
+  byLayer: QualityCount[]
+  byType: QualityCount[]
+  byPriority: QualityCount[]
+  byStatus: QualityCount[]
+  topGapSections: QualityGapSection[]
+  series: { date: string, coverage: number, total: number, automated: number }[]
+  runtime: { open: number, critical: number, today: number }
+}
+export interface QualityRuntimeError {
+  id: number
+  fingerprint: string
+  type: string
+  message: string
+  layer: string
+  scope: string | null
+  route: string | null
+  severity: 'critical' | 'high' | 'warning' | 'info'
+  status: 'new' | 'ongoing' | 'resolved' | 'regressed'
+  count: number
+  firstSeen: string | null
+  lastSeen: string | null
+}
+export interface QualityRuntimeQuery { page?: number, perPage?: number, sort?: string, q?: string, type?: string, layer?: string, scope?: string, severity?: string, status?: string }
+export interface QualityCiRun { id: number, name: string, branch: string | null, event: string | null, status: string | null, conclusion: string | null, runNumber: number | null, url: string | null, commit: string, createdAt: string | null, updatedAt: string | null }
+export interface QualityCi { available: boolean, repo?: string, reason?: string, runs?: QualityCiRun[], summary?: { total: number, passRate: number | null, lastConclusion: string | null } }
+export interface QualityAtom {
+  id: number
+  caseId: string
+  title: string
+  layer: string
+  section: string
+  module: string
+  type: 'U' | 'F' | 'E' | null
+  priority: 'critical' | 'important' | 'normal'
+  status: 'automated' | 'gap' | 'failing'
+  lifecycle: string
+  testFile: string | null
+}
+export interface QualityAtomQuery { page?: number, perPage?: number, sort?: string, q?: string, layer?: string, section?: string, module?: string, type?: string, priority?: string, status?: string }
+export interface QualityDispatchCard { id: number, department: string, state: string, assignee: string | null, note: string | null, atom: QualityAtom | null }
+export interface QualityBoard { departments: string[], states: string[], lanes: Record<string, QualityDispatchCard[]>, counts: Record<string, number>, total: number }
+export interface QualityDispatchPayload { department?: string, state?: string, assignee?: string | null, note?: string | null }
 // ——— المساعد الذكيّ للمستخدم + الدعم ———
 export interface AssistantGovernanceState { aiEnabled: boolean, capabilityEnabled: boolean, assistantEnabled: boolean, effectiveEnabled: boolean, level: number, provider: string, model: string | null }
 export interface AssistantActivity { wallet: number, opportunities: number, applications: number, surveys: number }
@@ -658,6 +720,9 @@ export const api = {
     create: (body: { targetRef: string, subject: string, reason?: string }) =>
       post<{ id: number, status: string }>(API_PATHS.reports, body),
   },
+  /** استيعاب إشارة خطأ وقت-تشغيل (عامّ، fire-and-forget) — مركز قيادة الجودة ف3 */
+  observe: (body: { type: string, message: string, route?: string, status?: number, layer?: string, scope?: string, stack?: string, url?: string, blank?: boolean }) =>
+    post<{ fingerprint: string, status: string, severity: string }>(API_PATHS.observe, body),
   /** هويّة المنصّة العامّة — تُطبَّق عند الإقلاع (بلا مصادقة) */
   branding: () => get<Branding | null>(API_PATHS.brandingPublic),
   /** المساعد الذكيّ للمستخدم — محكوم بحوكمة الذكاء، سياقيّ، مبادر */
@@ -800,6 +865,15 @@ export const api = {
     complianceAdverseImpact: (dimension: string) => get<AdverseImpact>(API_PATHS.admin.complianceAdverseImpact, { dimension }),
     complianceFunnel: (dimension: string) => get<ComplianceFunnel>(API_PATHS.admin.complianceFunnel, { dimension }),
     complianceAuditTrail: () => get<ComplianceAuditRow[]>(API_PATHS.admin.complianceAuditTrail),
+    // مركز قيادة الجودة (اللوحة الذرّية — ف1)
+    qualityOverview: () => get<QualityOverview>(API_PATHS.admin.qualityOverview),
+    qualityAtoms: (params?: QualityAtomQuery) => getPage<QualityAtom>(API_PATHS.admin.qualityAtoms, params as Record<string, unknown>),
+    qualityBoard: () => get<QualityBoard>(API_PATHS.admin.qualityBoard),
+    qualityRuntime: (params?: QualityRuntimeQuery) => getPage<QualityRuntimeError>(API_PATHS.admin.qualityRuntime, params as Record<string, unknown>),
+    qualityCi: () => get<QualityCi>(API_PATHS.admin.qualityCi),
+    qualityDispatch: (atomId: number, body: QualityDispatchPayload) => post<QualityDispatchCard>(API_PATHS.admin.qualityDispatch(atomId), body),
+    qualityMoveDispatch: (id: number, body: QualityDispatchPayload) => patch<QualityDispatchCard>(API_PATHS.admin.qualityDispatchItem(id), body),
+    qualityRemoveDispatch: (id: number) => del(API_PATHS.admin.qualityDispatchItem(id)),
     toggleAiCapability: (id: number) => post<AiCapability>(API_PATHS.admin.aiCapabilityToggle(id)),
     addAiKnowledge: (body: AiKnowledgePayload) => post<AiKnowledgeEntry>(API_PATHS.admin.aiKnowledge, body),
     updateAiKnowledge: (id: number, body: Partial<AiKnowledgePayload>) => put<AiKnowledgeEntry>(API_PATHS.admin.aiKnowledgeItem(id), body),
