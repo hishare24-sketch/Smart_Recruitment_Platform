@@ -10,6 +10,7 @@ import { useProfileStore } from '@/stores/ProfileStore'
 import { matchScore } from '@/services/matching'
 import { opportunityMatchProfile, seekerMatchProfile } from '@/services/matchProfile'
 import { useSectorContext } from '@/composables/useSectorContext'
+import { type WhyMatch, api } from '@/services/api'
 import type { Opportunity } from '../interfaces/Opportunity'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -50,6 +51,27 @@ function liveMatch(o: Opportunity): number {
   return matchScore(seeker.value, opportunityMatchProfile(o)).score
 }
 const matchRate = computed(() => (opportunity.value ? liveMatch(opportunity.value) : 0))
+
+// «لماذا أنا مطابق؟» — شرح ذكيّ عند الطلب (لا يظهر إلا بنقرة، بلا إزعاج)
+const why = ref<WhyMatch | null>(null)
+const whyLoading = ref(false)
+const whyError = ref('')
+function whyColor(s: number) { return s >= 75 ? 'success' : s >= 50 ? 'warning' : 'error' }
+async function explainMatch() {
+  if (!opportunity.value)
+    return
+  whyLoading.value = true
+  whyError.value = ''
+  try {
+    why.value = await api.marketplace.whyMatch({
+      title: opportunity.value.title,
+      category: opportunity.value.department,
+      skills: opportunity.value.skills ?? [],
+    })
+  }
+  catch (e) { whyError.value = (e as { message?: string })?.message ?? 'تعذّر التحليل الآن' }
+  finally { whyLoading.value = false }
+}
 
 const applyDialog = ref(false)
 const appliedSnackbar = ref(false)
@@ -181,6 +203,38 @@ function askAboutOpportunity() {
               <span class="text-2xl font-bold">{{ matchRate }}%</span>
             </BaseProgressRing>
             <div class="mt-2 text-sm text-muted">نسبة تطابقك مع الفرصة</div>
+            <button
+              class="mx-auto mt-2 inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium text-brand transition hover:bg-brand/10 disabled:opacity-60"
+              :disabled="whyLoading" @click="explainMatch"
+            >
+              <BaseIcon :name="whyLoading ? 'mdi-loading' : 'mdi-auto-fix'" :size="15" :class="whyLoading ? 'animate-spin' : ''" />
+              {{ why ? 'حدّث التحليل' : 'لماذا أنا مطابق؟' }}
+            </button>
+          </div>
+
+          <!-- لوحة الشرح الذكيّ (تظهر عند الطلب فقط) -->
+          <div v-if="whyError" class="mb-3 rounded-ui border-s-4 p-2.5 text-xs" style="border-color: rgb(var(--v-theme-error)); background: rgba(var(--v-theme-error), 0.08)">
+            {{ whyError }}
+          </div>
+          <div v-else-if="why" class="mb-3 rounded-ui border-ui bg-surfalt p-3 text-sm">
+            <div class="mb-2 flex flex-wrap items-center gap-2">
+              <BaseChip :color="whyColor(why.score)">{{ why.verdict }} · {{ why.score }}%</BaseChip>
+              <BaseChip :color="why.live ? 'brand' : 'neutral'">
+                <BaseIcon :name="why.live ? 'mdi-auto-fix' : 'mdi-scale-balance'" :size="12" />
+                {{ why.live ? 'تحليل ذكيّ' : 'تقدير مبدئيّ' }}
+              </BaseChip>
+            </div>
+            <p v-if="why.summary" class="mb-2 text-content">{{ why.summary }}</p>
+            <ul v-if="why.reasons.length" class="space-y-1">
+              <li v-for="(r, ri) in why.reasons" :key="`wr${ri}`" class="flex items-start gap-1.5 text-muted">
+                <BaseIcon name="mdi-check-circle-outline" :size="15" class="mt-0.5 shrink-0 text-success" /><span>{{ r }}</span>
+              </li>
+            </ul>
+            <ul v-if="why.redFlags.length" class="mt-1 space-y-1">
+              <li v-for="(f, fi) in why.redFlags" :key="`wf${fi}`" class="flex items-start gap-1.5 text-muted">
+                <BaseIcon name="mdi-lightbulb-on-outline" :size="15" class="mt-0.5 shrink-0 text-warning" /><span>{{ f }}</span>
+              </li>
+            </ul>
           </div>
 
           <BaseButton variant="accent" size="lg" block :disabled="applied" @click="openApply">
