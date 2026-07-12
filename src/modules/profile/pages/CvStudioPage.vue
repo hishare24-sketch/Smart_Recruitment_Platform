@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { api, type CvExtractionData } from '@/services/api'
 import { useProfileStore } from '@/stores/ProfileStore'
 import { useAuthStore } from '@/stores/AuthStore'
+import { useResumesStore } from '@/stores/ResumesStore'
 import PageHeader from '@/components/shared/PageHeader.vue'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -79,9 +80,23 @@ const sections = ref<Section[]>([
   { key: 'highlights', label: 'أبرز النقاط', visible: true },
   { key: 'skills', label: 'المهارات', visible: true },
   { key: 'experiences', label: 'الخبرات', visible: true },
+  { key: 'education', label: 'التعليم', visible: true },
+  { key: 'languages', label: 'اللغات', visible: true },
   { key: 'certificates', label: 'الشهادات', visible: true },
   { key: 'links', label: 'الروابط', visible: true },
 ])
+
+// ——— أقسام إضافيّة قابلة للتحرير (من القديم: تعليم/لغات) ———
+interface Education { id: number, degree: string, org: string, year: string }
+interface Language { id: number, name: string, level: string }
+const education = ref<Education[]>([{ id: 1, degree: 'بكالوريوس علوم حاسب', org: 'جامعة الملك سعود', year: '2020' }])
+const languages = ref<Language[]>([{ id: 1, name: 'العربية', level: 'اللغة الأم' }, { id: 2, name: 'الإنجليزية', level: 'متقدّم' }])
+const newEdu = reactive({ degree: '', org: '', year: '' })
+const newLang = reactive({ name: '', level: 'متقدّم' })
+function addEdu() { if (!newEdu.degree.trim()) return; education.value.push({ id: Date.now(), degree: newEdu.degree.trim(), org: newEdu.org.trim(), year: newEdu.year.trim() }); newEdu.degree = ''; newEdu.org = ''; newEdu.year = '' }
+function addLang() { if (!newLang.name.trim()) return; languages.value.push({ id: Date.now(), name: newLang.name.trim(), level: newLang.level }); newLang.name = '' }
+function removeEdu(id: number) { education.value = education.value.filter(e => e.id !== id) }
+function removeLang(id: number) { languages.value = languages.value.filter(l => l.id !== id) }
 const dragIndex = ref<number | null>(null)
 function onDragStart(i: number) { dragIndex.value = i }
 function onDrop(i: number) {
@@ -129,17 +144,57 @@ const person = computed(() => ({
   phone: (auth.authUser as { phone?: string })?.phone ?? '',
 }))
 
+// ——— النسخ المحفوظة (توحيد مع «منشئ السيرة» القديم) ———
+const resumes = useResumesStore()
+const versionName = ref('')
+function buildConfig() {
+  return { length: length.value, theme: theme.value.key, accent: accent.value, sections: sections.value, links: links.value, education: education.value, languages: languages.value, draft: { headline: draft.headline, summary: draft.summary, highlights: draft.highlights } }
+}
+function saveVersion() {
+  const name = versionName.value.trim() || `سيرة ${lengthLabel(length.value)} · ${theme.value.name}`
+  resumes.saveVersion(name, buildConfig())
+  versionName.value = ''
+  toast(`حُفظت النسخة: ${name}`)
+}
+function loadVersion(r: { id: number, name: string, config?: unknown }) {
+  const c = r.config as ReturnType<typeof buildConfig> | undefined
+  if (!c) { toast('نسخة قديمة بلا إعداد استوديو'); return }
+  length.value = c.length
+  theme.value = THEMES.find(t => t.key === c.theme) ?? theme.value
+  accent.value = c.accent
+  sections.value = c.sections
+  links.value = c.links
+  education.value = c.education ?? education.value
+  languages.value = c.languages ?? languages.value
+  draft.headline = c.draft.headline; draft.summary = c.draft.summary; draft.highlights = c.draft.highlights
+  resumes.setActive(r.id)
+  toast(`فُتحت النسخة: ${r.name}`)
+}
+
 // ——— التصدير ———
 function exportPdf() {
   toast('جارٍ فتح نافذة الطباعة — اختر «حفظ كـPDF». الروابط ستبقى قابلة للنقر.')
   setTimeout(() => window.print(), 400)
 }
+function exportWord() {
+  const node = document.querySelector('.page') as HTMLElement | null
+  if (!node) return
+  const html = `<!DOCTYPE html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><style>body{font-family:'Tajawal',Arial,sans-serif}a{color:${accent.value};text-decoration:none}</style></head><body dir="rtl">${node.outerHTML}</body></html>`
+  const blob = new Blob(['﻿', html], { type: 'application/msword' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = `${(versionName.value.trim() || person.value.name || 'resume')}.doc`
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+  toast('نُزّلت السيرة بصيغة Word (.doc) — الروابط قابلة للنقر.')
+}
 </script>
 
 <template>
   <div class="cv-studio">
-    <PageHeader title="استوديو السيرة الذاتيّة" subtitle="صياغة بالذكاء · ثيمات · ترتيب مرن · روابط تفاعليّة · تصدير PDF" icon="mdi-file-star-outline">
+    <PageHeader title="منشئ السيرة الذاتيّة — استوديو ذكيّ" subtitle="صياغة بالذكاء · ثيمات · ترتيب مرن · روابط تفاعليّة · نسخ محفوظة · تصدير PDF/Word" icon="mdi-file-star-outline">
       <template #actions>
+        <BaseButton variant="ghost" size="sm" @click="exportWord"><BaseIcon name="mdi-file-word-box" :size="18" />Word</BaseButton>
         <BaseButton variant="brand" size="sm" @click="exportPdf"><BaseIcon name="mdi-file-pdf-box" :size="18" />تصدير PDF</BaseButton>
       </template>
     </PageHeader>
@@ -201,6 +256,52 @@ function exportPdf() {
             <BaseButton variant="tonal-accent" size="sm" @click="addLink"><BaseIcon name="mdi-plus" :size="16" />إضافة</BaseButton>
           </div>
         </BaseCard>
+
+        <!-- التعليم -->
+        <BaseCard>
+          <div class="ctl-head"><BaseIcon name="mdi-school-outline" :size="18" class="text-brand" /><h3>التعليم</h3></div>
+          <div v-for="e in education" :key="e.id" class="link-row">
+            <span class="link-label">{{ e.degree }}</span>
+            <span class="link-url">{{ e.org }} · {{ e.year }}</span>
+            <button class="mini" @click="removeEdu(e.id)"><BaseIcon name="mdi-close" :size="14" /></button>
+          </div>
+          <div class="link-add">
+            <BaseInput v-model="newEdu.degree" placeholder="الدرجة/التخصّص" />
+            <BaseInput v-model="newEdu.org" placeholder="الجهة" />
+            <BaseInput v-model="newEdu.year" placeholder="السنة" />
+            <BaseButton variant="tonal-accent" size="sm" @click="addEdu"><BaseIcon name="mdi-plus" :size="16" />إضافة</BaseButton>
+          </div>
+        </BaseCard>
+
+        <!-- اللغات -->
+        <BaseCard>
+          <div class="ctl-head"><BaseIcon name="mdi-translate" :size="18" class="text-brand" /><h3>اللغات</h3></div>
+          <div v-for="l in languages" :key="l.id" class="link-row">
+            <span class="link-label">{{ l.name }}</span>
+            <span class="link-url">{{ l.level }}</span>
+            <button class="mini" @click="removeLang(l.id)"><BaseIcon name="mdi-close" :size="14" /></button>
+          </div>
+          <div class="link-add">
+            <BaseInput v-model="newLang.name" placeholder="اللغة" />
+            <BaseButton variant="tonal-accent" size="sm" @click="addLang"><BaseIcon name="mdi-plus" :size="16" />إضافة</BaseButton>
+          </div>
+        </BaseCard>
+
+        <!-- النسخ المحفوظة -->
+        <BaseCard>
+          <div class="ctl-head"><BaseIcon name="mdi-content-save-outline" :size="18" class="text-brand" /><h3>نسخي المحفوظة</h3></div>
+          <div class="link-add" style="grid-template-columns: 1fr auto;">
+            <BaseInput v-model="versionName" placeholder="اسم النسخة (اختياريّ)" />
+            <BaseButton variant="brand" size="sm" @click="saveVersion"><BaseIcon name="mdi-content-save-outline" :size="16" />احفظ</BaseButton>
+          </div>
+          <div v-for="r in resumes.resumes" :key="r.id" class="ver-row" :class="{ active: r.active }">
+            <BaseIcon name="mdi-file-outline" :size="15" :class="r.active ? 'text-brand' : 'text-muted'" />
+            <span class="ver-name">{{ r.name }}</span>
+            <span class="ver-date">{{ r.updatedAt }}</span>
+            <button class="mini" title="فتح" @click="loadVersion(r)"><BaseIcon name="mdi-folder-open-outline" :size="15" /></button>
+            <button class="mini" title="حذف" @click="resumes.remove(r.id)"><BaseIcon name="mdi-close" :size="14" /></button>
+          </div>
+        </BaseCard>
       </div>
 
       <!-- المعاينة الحيّة (A4) -->
@@ -227,6 +328,14 @@ function exportPdf() {
                   <div class="chips">
                     <span v-for="sk in profile.skills" :key="sk.id" class="chip">{{ sk.name }}</span>
                   </div>
+                </section>
+                <section v-else-if="s.key === 'languages' && languages.length" class="cv-sec">
+                  <h2>اللغات</h2>
+                  <div v-for="l in languages" :key="l.id" class="cert"><b>{{ l.name }}</b><span>{{ l.level }}</span></div>
+                </section>
+                <section v-else-if="s.key === 'education' && education.length" class="cv-sec">
+                  <h2>التعليم</h2>
+                  <div v-for="e in education" :key="e.id" class="cert"><b>{{ e.degree }}</b><span>{{ e.org }} · {{ e.year }}</span></div>
                 </section>
                 <section v-else-if="s.key === 'certificates' && profile.certificates.length" class="cv-sec">
                   <h2>الشهادات</h2>
@@ -268,6 +377,19 @@ function exportPdf() {
                   <h2>المهارات</h2>
                   <div class="chips">
                     <span v-for="sk in profile.skills" :key="sk.id" class="chip">{{ sk.name }}</span>
+                  </div>
+                </section>
+                <section v-else-if="s.key === 'education' && theme.layout !== 'sidebar' && education.length" class="cv-sec">
+                  <h2>التعليم</h2>
+                  <div v-for="e in education" :key="e.id" class="cv-exp">
+                    <div class="cv-exp-top"><b>{{ e.degree }}</b><span class="cv-exp-org">{{ e.org }}</span></div>
+                    <span class="cv-exp-period">{{ e.year }}</span>
+                  </div>
+                </section>
+                <section v-else-if="s.key === 'languages' && theme.layout !== 'sidebar' && languages.length" class="cv-sec">
+                  <h2>اللغات</h2>
+                  <div class="chips">
+                    <span v-for="l in languages" :key="l.id" class="chip">{{ l.name }} · {{ l.level }}</span>
                   </div>
                 </section>
                 <section v-else-if="s.key === 'certificates' && theme.layout !== 'sidebar' && profile.certificates.length" class="cv-sec">
@@ -322,6 +444,10 @@ function exportPdf() {
 .link-label { font-weight: 600; }
 .link-url { flex: 1; color: rgba(var(--v-theme-on-surface), 0.5); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .link-add { display: grid; gap: 6px; margin-top: 10px; }
+.ver-row { display: flex; align-items: center; gap: 8px; padding: 7px 0; font-size: 12.5px; border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06); }
+.ver-row.active { color: rgb(var(--v-theme-brand, 16 110 86)); font-weight: 600; }
+.ver-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ver-date { font-size: 11px; color: rgba(var(--v-theme-on-surface), 0.4); }
 
 /* ============ المعاينة A4 ============ */
 .preview-wrap { display: flex; justify-content: center; }
