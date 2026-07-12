@@ -1,0 +1,118 @@
+pipeline {
+  agent any
+  options { timestamps(); disableConcurrentBuilds() }
+
+  environment {
+    TARGET_HOST = '54.86.29.10'
+    TARGET_USER = 'ubuntu'
+    APP_DIR     = '~/recruitment'
+    BRANCH_NAME = 'live-stage'
+    SITE_URL    = 'https://sufha.com'
+  }
+
+  stages {
+    stage('Deploy Sufha / Recruitment [LIVE]') {
+      steps {
+        sshagent(credentials: ['aws-backend-ssh']) {
+          sh '''
+            echo ">>> Connecting to server and deploying latest ${BRANCH_NAME}..."
+
+            ssh -o StrictHostKeyChecking=no ${TARGET_USER}@${TARGET_HOST} "
+            set -Eeuo pipefail
+
+            cd ${APP_DIR}
+
+            echo '>>> Fetching latest branch from origin...'
+            git fetch origin ${BRANCH_NAME}
+
+            echo '>>> Switching to ${BRANCH_NAME} branch...'
+            git checkout -B ${BRANCH_NAME} origin/${BRANCH_NAME}
+
+            echo '>>> Resetting local branch to origin/${BRANCH_NAME}...'
+            git reset --hard origin/${BRANCH_NAME}
+
+            echo '>>> Ensuring .env exists (do not overwrite secrets)...'
+            if [ ! -f .env ]; then
+              cp .env.docker.example .env
+              echo 'Created .env from .env.docker.example — review secrets on server if needed.'
+            fi
+
+            echo '>>> Building and restarting Docker stack...'
+            docker compose up -d --build --remove-orphans
+
+            echo '>>> Waiting for API health...'
+            for i in \$(seq 1 30); do
+              if docker compose exec -T api php -r \"exit(@file_get_contents('http://127.0.0.1:10000/up')===false?1:0);\" 2>/dev/null; then
+                echo \"API healthy after \${i} attempt(s)\"
+                break
+              fi
+              if [ \"\$i\" -eq 30 ]; then
+                echo 'API did not become healthy in time' >&2
+                docker compose ps
+                docker compose logs --tail=80 api || true
+                exit 1
+              fi
+              sleep 5
+            done
+
+            echo '>>> Running migrations + permissions inside api container...'
+            docker compose exec -T api php artisan migrate --force
+            docker compose exec -T api php artisan permission:insert || true
+
+            echo '>>> Reloading shared nginx (sufha.com)...'
+            docker exec ubuntu-nginx-1 nginx -t
+            docker exec ubuntu-nginx-1 nginx -s reload
+
+            echo '>>> Smoke check ${SITE_URL}...'
+            curl -skI ${SITE_URL} | head -5
+
+            echo '✅ LIVE deployment completed successfully.'
+            "
+          '''
+
+          script {
+            env.COMMIT_INFO = sh(returnStdout: true, script: """
+              ssh -o StrictHostKeyChecking=no ${TARGET_USER}@${TARGET_HOST} "cd ${APP_DIR} && git log -1 --pretty=format:'%h | %s'"
+            """).trim()
+
+            env.AUTHOR = sh(returnStdout: true, script: """
+              ssh -o StrictHostKeyChecking=no ${TARGET_USER}@${TARGET_HOST} "cd ${APP_DIR} && git log -1 --pretty=format:'%an <%ae>'"
+            """).trim()
+          }
+        }
+      }
+    }
+  }
+
+  post {
+    success {
+      mail to: 'mostafaramdan5544@gmail.com,hi.share.24@gmail.com',
+           subject: "✅ SUCCESS: Sufha Recruitment [LIVE] | ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+           body: """🎉 Pipeline succeeded for *Sufha — Recruitment LIVE*
+
+Site:      ${env.SITE_URL}
+Branch:    ${env.BRANCH_NAME}
+Commit:    ${env.COMMIT_INFO}
+Committer: ${env.AUTHOR}
+App dir:   ${env.APP_DIR}
+
+🔗 Build URL: ${env.BUILD_URL}
+"""
+    }
+
+    failure {
+      mail to: 'mostafaramdan5544@gmail.com,hi.share.24@gmail.com',
+           subject: "❌ FAILURE: Sufha Recruitment [LIVE] | ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+           body: """⚠️ Pipeline failed for *Sufha — Recruitment LIVE*
+
+Site:      ${env.SITE_URL}
+Branch:    ${env.BRANCH_NAME}
+Commit:    ${env.COMMIT_INFO}
+Committer: ${env.AUTHOR}
+App dir:   ${env.APP_DIR}
+
+🔗 Build URL: ${env.BUILD_URL}
+"""
+    }
+  }
+}
