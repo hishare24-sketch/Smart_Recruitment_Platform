@@ -88,6 +88,26 @@ echo "Running migrations..."
 dc exec -T api php artisan migrate --force
 dc exec -T api php artisan permission:insert || true
 
+# سوبر أدمن بكل صلاحيات Spatie — من البيئة أو .env
+if [ -z "${SUPER_ADMIN_EMAIL:-}" ]; then
+  SUPER_ADMIN_EMAIL="$(grep -E '^SUPER_ADMIN_EMAIL=' .env 2>/dev/null | cut -d= -f2- || true)"
+fi
+if [ -z "${SUPER_ADMIN_PASSWORD:-}" ]; then
+  SUPER_ADMIN_PASSWORD="$(grep -E '^SUPER_ADMIN_PASSWORD=' .env 2>/dev/null | cut -d= -f2- || true)"
+fi
+if [ -z "${SUPER_ADMIN_NAME:-}" ]; then
+  SUPER_ADMIN_NAME="$(grep -E '^SUPER_ADMIN_NAME=' .env 2>/dev/null | cut -d= -f2- || true)"
+fi
+SUPER_ADMIN_NAME="${SUPER_ADMIN_NAME:-Super Admin}"
+
+if [ -n "${SUPER_ADMIN_EMAIL:-}" ] && [ -n "${SUPER_ADMIN_PASSWORD:-}" ]; then
+  echo "Ensuring super admin: $SUPER_ADMIN_EMAIL"
+  dc exec -T api php artisan user:ensure-super-admin \
+    "$SUPER_ADMIN_EMAIL" "$SUPER_ADMIN_PASSWORD" --name="$SUPER_ADMIN_NAME"
+else
+  echo "Skip ensure-super-admin: set SUPER_ADMIN_EMAIL and SUPER_ADMIN_PASSWORD in .env"
+fi
+
 if [ -n "$NGINX_CT" ]; then
   echo "Reloading nginx: $NGINX_CT"
   docker exec "$NGINX_CT" nginx -t

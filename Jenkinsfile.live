@@ -10,6 +10,9 @@ pipeline {
     BRANCH_NAME = 'main'
     SITE_URL    = 'https://sufha.com'
     PROJECT     = 'Sufha Recruitment'
+    SUPER_ADMIN_EMAIL = 'info@mawazin.com'
+    SUPER_ADMIN_PASSWORD = 'Ss$19751975'
+    SUPER_ADMIN_NAME = 'Super Admin'
   }
 
   stages {
@@ -20,7 +23,11 @@ pipeline {
             echo ">>> Deploying ${PROJECT} branch=${BRANCH_NAME} host=${TARGET_HOST}"
 
             ssh -o StrictHostKeyChecking=no ${TARGET_USER}@${TARGET_HOST} \
-              env APP_DIR="${APP_DIR}" GIT_REPO="${GIT_REPO}" BRANCH="${BRANCH_NAME}" SITE="${SITE_URL}" bash <<'REMOTE_EOF'
+              env APP_DIR="${APP_DIR}" GIT_REPO="${GIT_REPO}" BRANCH="${BRANCH_NAME}" SITE="${SITE_URL}" \
+                  SUPER_ADMIN_EMAIL="${SUPER_ADMIN_EMAIL}" \
+                  SUPER_ADMIN_PASSWORD="${SUPER_ADMIN_PASSWORD}" \
+                  SUPER_ADMIN_NAME="${SUPER_ADMIN_NAME}" \
+                  bash <<'REMOTE_EOF'
 set -euo pipefail
 
 if [ ! -d "$APP_DIR/.git" ]; then
@@ -36,7 +43,27 @@ git fetch origin "$BRANCH"
 git checkout "$BRANCH"
 git pull --ff-only origin "$BRANCH"
 
-echo '>>> deploy...'
+# ثبّت بيانات السوبر أدمن في .env
+if [ ! -f .env ]; then
+  cp .env.docker.example .env
+fi
+upsert_env() {
+  key="$1"
+  val="$2"
+  tmp="$(mktemp)"
+  if [ -f .env ]; then
+    grep -vE "^${key}=" .env > "$tmp" || true
+  else
+    : > "$tmp"
+  fi
+  printf '%s=%s\n' "$key" "$val" >> "$tmp"
+  mv "$tmp" .env
+}
+upsert_env SUPER_ADMIN_EMAIL "$SUPER_ADMIN_EMAIL"
+upsert_env SUPER_ADMIN_PASSWORD "$SUPER_ADMIN_PASSWORD"
+upsert_env SUPER_ADMIN_NAME "$SUPER_ADMIN_NAME"
+
+echo '>>> deploy + ensure super admin...'
 bash deploy.sh
 
 echo '>>> smoke check...'
@@ -67,12 +94,13 @@ REMOTE_EOF
            body: """🎉 Pipeline succeeded
 
 Project:   ${env.PROJECT}
-Desc:      صفح — نظام التوظيف الذكي (git pull + deploy.sh)
+Desc:      صفح — نشر الإنتاج + ensure super admin
 Site:      ${env.SITE_URL}
 Branch:    ${env.BRANCH_NAME}
 Commit:    ${env.COMMIT_INFO}
 Committer: ${env.AUTHOR}
 App dir:   ${env.APP_DIR}
+Host:      ${env.TARGET_HOST}
 
 🔗 Build URL: ${env.BUILD_URL}
 """
@@ -84,12 +112,13 @@ App dir:   ${env.APP_DIR}
            body: """⚠️ Pipeline failed
 
 Project:   ${env.PROJECT}
-Desc:      صفح — نظام التوظيف الذكي (git pull + deploy.sh)
+Desc:      صفح — نشر الإنتاج + ensure super admin
 Site:      ${env.SITE_URL}
 Branch:    ${env.BRANCH_NAME}
 Commit:    ${env.COMMIT_INFO}
 Committer: ${env.AUTHOR}
 App dir:   ${env.APP_DIR}
+Host:      ${env.TARGET_HOST}
 
 🔗 Build URL: ${env.BUILD_URL}
 """
