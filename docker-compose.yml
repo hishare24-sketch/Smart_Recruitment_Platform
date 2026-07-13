@@ -4,8 +4,7 @@
 #   cp .env.docker.example .env
 #   docker compose up -d --build
 # ثم أضف موقع الدومين في nginx المشترك (انظر docker/host-nginx/)
-
-name: sufha
+# اسم المشروع: COMPOSE_PROJECT_NAME=sufha  و alias الشبكة: sufha-web
 
 services:
   mysql:

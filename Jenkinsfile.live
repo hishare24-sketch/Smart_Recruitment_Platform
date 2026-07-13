@@ -12,66 +12,30 @@ pipeline {
   }
 
   stages {
-    stage('Deploy Sufha Recruitment [LIVE]') {
+    stage('Deploy Sufha Recruitment LIVE') {
       steps {
         sshagent(credentials: ['aws-backend-ssh']) {
           sh '''
-            echo ">>> Deploying ${PROJECT} (${BRANCH_NAME}) to ${TARGET_HOST}..."
+            echo ">>> Deploying ${PROJECT} branch=${BRANCH_NAME} host=${TARGET_HOST}"
 
-            ssh -o StrictHostKeyChecking=no ${TARGET_USER}@${TARGET_HOST} "
-            set -Eeuo pipefail
-            cd ${APP_DIR}
+            ssh -o StrictHostKeyChecking=no ${TARGET_USER}@${TARGET_HOST} \
+              env APP_DIR="${APP_DIR}" BRANCH="${BRANCH_NAME}" SITE="${SITE_URL}" bash <<'REMOTE_EOF'
+set -euo pipefail
+cd "$APP_DIR"
 
-            echo '>>> git pull...'
-            git fetch origin ${BRANCH_NAME}
-            git checkout ${BRANCH_NAME}
-            git pull --ff-only origin ${BRANCH_NAME}
+echo '>>> git pull...'
+git fetch origin "$BRANCH"
+git checkout "$BRANCH"
+git pull --ff-only origin "$BRANCH"
 
-            echo '>>> ensure .env...'
-            if [ ! -f .env ]; then
-              cp .env.docker.example .env
-              echo 'Created .env from .env.docker.example'
-            fi
+echo '>>> deploy...'
+bash deploy.sh
 
-            if docker compose version >/dev/null 2>&1; then DC='docker compose'; else DC='docker-compose'; fi
+echo '>>> smoke check...'
+curl -skI "$SITE" | head -5
 
-            echo '>>> deploy...'
-            \$DC up -d --build --remove-orphans
-
-            echo '>>> wait for API health...'
-            for i in \$(seq 1 30); do
-              if \$DC exec -T api php -r \"exit(@file_get_contents('http://127.0.0.1:10000/up')===false?1:0);\" 2>/dev/null; then
-                echo \"API healthy after \${i} attempt(s)\"
-                break
-              fi
-              if [ \"\$i\" -eq 30 ]; then
-                echo 'API did not become healthy in time' >&2
-                \$DC ps
-                \$DC logs --tail=80 api || true
-                exit 1
-              fi
-              sleep 5
-            done
-
-            echo '>>> migrations...'
-            \$DC exec -T api php artisan migrate --force
-            \$DC exec -T api php artisan permission:insert || true
-
-            echo '>>> reload nginx...'
-            NGINX_CT=\$(docker ps --format '{{.Names}}' | grep -Ei 'nginx' | head -n1 || true)
-            if [ -n \"\$NGINX_CT\" ]; then
-              docker exec \"\$NGINX_CT\" nginx -t
-              docker exec \"\$NGINX_CT\" nginx -s reload
-            else
-              echo 'No nginx container found - skip reload'
-              docker ps --format '  - {{.Names}}'
-            fi
-
-            echo '>>> smoke check...'
-            curl -skI ${SITE_URL} | head -5
-
-            echo '✅ Deploy done.'
-            "
+echo 'Deploy done.'
+REMOTE_EOF
           '''
 
           script {
@@ -95,7 +59,7 @@ pipeline {
            body: """🎉 Pipeline succeeded
 
 Project:   ${env.PROJECT}
-Desc:      صفح — نظام التوظيف الذكي (git pull + docker compose + migrate + nginx reload)
+Desc:      صفح — نظام التوظيف الذكي (git pull + deploy.sh)
 Site:      ${env.SITE_URL}
 Branch:    ${env.BRANCH_NAME}
 Commit:    ${env.COMMIT_INFO}
@@ -112,7 +76,7 @@ App dir:   ${env.APP_DIR}
            body: """⚠️ Pipeline failed
 
 Project:   ${env.PROJECT}
-Desc:      صفح — نظام التوظيف الذكي (git pull + docker compose + migrate + nginx reload)
+Desc:      صفح — نظام التوظيف الذكي (git pull + deploy.sh)
 Site:      ${env.SITE_URL}
 Branch:    ${env.BRANCH_NAME}
 Commit:    ${env.COMMIT_INFO}
