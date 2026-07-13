@@ -54,6 +54,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     key: 'quality',
     titleKey: 'admin.nav.groupQuality',
     items: [
+      { title: 'admin.nav.qualityCommand', icon: 'mdi-shield-star-outline', to: 'admin-quality-command', permission: 'view_quality' },
       { title: 'admin.nav.interviewers', icon: 'mdi-account-tie-outline', to: 'admin-interviewers', permission: 'view_interviewers' },
       { title: 'admin.nav.interviewQuality', icon: 'mdi-clipboard-check-outline', to: 'admin-interview-quality', permission: 'view_interviews' },
       { title: 'admin.nav.compliance', icon: 'mdi-scale-balance', to: 'admin-compliance', permission: 'view_compliance' },

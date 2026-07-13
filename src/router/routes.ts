@@ -425,6 +425,12 @@ export const routes: RouteRecordRaw[] = [
     meta: { layout: 'admin', roles: ['admin'], permission: 'view_interviews', title: 'admin.nav.interviewQuality' },
   },
   {
+    path: '/admin/quality-command',
+    name: 'admin-quality-command',
+    component: () => import('@/modules/admin/pages/AdminQualityCommandPage.vue'),
+    meta: { layout: 'admin', roles: ['admin'], permission: 'view_quality', title: 'admin.nav.qualityCommand' },
+  },
+  {
     path: '/admin/compliance',
     name: 'admin-compliance',
     component: () => import('@/modules/admin/pages/AdminCompliancePage.vue'),
